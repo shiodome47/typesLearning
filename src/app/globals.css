@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* コードエディタの見た目を整える */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* textarea のタブ幅を統一 */
+  textarea {
+    tab-size: 2;
+  }
+}
