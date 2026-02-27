@@ -2,49 +2,96 @@
 
 // ─────────────────────────────────────────────────────────────
 // CodeEditor.tsx
-// textarea の薄いラッパー。
-// 将来 Monaco Editor に差し替える際は、このコンポーネントの
-// 内部実装だけを変える（props インターフェースは維持）。
+// Monaco Editor ラッパー。
+// - TypeScript シンタックスハイライト（vs-dark テーマ）
+// - Tab キーでスペース2個インデント（Monaco ネイティブ）
+// - 縦リサイズ可能 + 高さを localStorage に保存/復元
 // ─────────────────────────────────────────────────────────────
 
+import { useEffect, useRef, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
+
+// SSR を無効にして Monaco をロード（Next.js 必須）
+const MonacoEditor = dynamic(
+  () => import("@monaco-editor/react").then((m) => m.default),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full bg-gray-900 rounded-lg animate-pulse" />
+    ),
+  }
+);
+
+const STORAGE_KEY_HEIGHT = "ts-practice-editor-height";
+const DEFAULT_HEIGHT = 360;
+const MIN_HEIGHT = 160;
+
+// 既存の props インターフェースを維持（minHeight は後方互換のため残す）
 export interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
+  placeholder?: string; // Monaco は placeholder 非対応のため無視
   readOnly?: boolean;
-  minHeight?: string; // Tailwind height class, e.g. "min-h-64"
+  minHeight?: string;   // 後方互換のため残す（Monaco では使用しない）
 }
 
 export function CodeEditor({
   value,
   onChange,
-  placeholder = "// ここにコードを書いてください",
   readOnly = false,
-  minHeight = "min-h-64",
 }: CodeEditorProps) {
+  const [containerHeight, setContainerHeight] = useState(DEFAULT_HEIGHT);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // マウント時に localStorage から高さを復元
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_HEIGHT);
+    if (saved) {
+      const h = parseInt(saved, 10);
+      if (!isNaN(h) && h >= MIN_HEIGHT) setContainerHeight(h);
+    }
+  }, []);
+
+  // ドラッグリサイズ後（mouseup）に高さを保存
+  const handleMouseUp = useCallback(() => {
+    if (!wrapperRef.current) return;
+    const h = wrapperRef.current.offsetHeight;
+    if (h >= MIN_HEIGHT && h !== containerHeight) {
+      setContainerHeight(h);
+      localStorage.setItem(STORAGE_KEY_HEIGHT, String(h));
+    }
+  }, [containerHeight]);
+
   return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      readOnly={readOnly}
-      spellCheck={false}
-      autoCapitalize="off"
-      autoCorrect="off"
-      className={[
-        "w-full",
-        minHeight,
-        "font-mono text-sm leading-relaxed",
-        "bg-gray-900 text-gray-100",
-        "p-4 rounded-lg border border-gray-700",
-        "resize-y outline-none",
-        "focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
-        "placeholder-gray-500",
-        "transition-colors",
-        readOnly ? "opacity-60 cursor-default" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    />
+    <div
+      ref={wrapperRef}
+      style={{ height: containerHeight, minHeight: MIN_HEIGHT, resize: "vertical", overflow: "hidden" }}
+      onMouseUp={handleMouseUp}
+      className="rounded-lg border border-gray-700"
+    >
+      <MonacoEditor
+        height="100%"
+        language="typescript"
+        theme="vs-dark"
+        value={value}
+        onChange={(v) => onChange(v ?? "")}
+        options={{
+          readOnly,
+          automaticLayout: true,   // コンテナリサイズに追従
+          fontSize: 13,
+          lineHeight: 1.6,
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          wordWrap: "on",
+          tabSize: 2,
+          insertSpaces: true,      // Tab → スペース2個
+          renderLineHighlight: "all",
+          padding: { top: 12, bottom: 12 },
+          overviewRulerLanes: 0,
+          scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
+        }}
+      />
+    </div>
   );
 }
