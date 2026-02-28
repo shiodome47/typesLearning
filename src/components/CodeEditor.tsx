@@ -35,6 +35,7 @@ function applyDiagnostics(monaco: Monaco, enabled: boolean) {
 }
 
 const STORAGE_KEY_HEIGHT = "ts-practice-editor-height";
+const STORAGE_KEY_HINT = "ts-practice-editor-resize-hint-dismissed";
 const DEFAULT_HEIGHT = 360;
 const MIN_HEIGHT = 160;
 
@@ -55,16 +56,19 @@ export function CodeEditor({
   diagnosticsEnabled = false,
 }: CodeEditorProps) {
   const [containerHeight, setContainerHeight] = useState(DEFAULT_HEIGHT);
+  const [showHint, setShowHint] = useState(false); // SSR後にのみ表示
   const wrapperRef = useRef<HTMLDivElement>(null);
   const monacoRef = useRef<Monaco | null>(null);
 
-  // マウント時に localStorage から高さを復元
+  // マウント時に localStorage から高さ・ヒント表示状態を復元
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY_HEIGHT);
     if (saved) {
       const h = parseInt(saved, 10);
       if (!isNaN(h) && h >= MIN_HEIGHT) setContainerHeight(h);
     }
+    // ヒントを一度も見ていない（=リサイズ未経験）なら表示
+    if (!localStorage.getItem(STORAGE_KEY_HINT)) setShowHint(true);
   }, []);
 
   // diagnosticsEnabled が変わったら Monaco 設定に即時反映
@@ -83,7 +87,7 @@ export function CodeEditor({
     [diagnosticsEnabled]
   );
 
-  // ドラッグリサイズ後（mouseup）に高さを保存
+  // ドラッグリサイズ後（mouseup）に高さを保存 + 初回でヒントを消す
   const handleMouseUp = useCallback(() => {
     if (!wrapperRef.current) return;
     const h = wrapperRef.current.offsetHeight;
@@ -91,15 +95,25 @@ export function CodeEditor({
       setContainerHeight(h);
       localStorage.setItem(STORAGE_KEY_HEIGHT, String(h));
     }
-  }, [containerHeight]);
+    // 初回リサイズでヒントを永久に非表示にする
+    if (showHint) {
+      setShowHint(false);
+      localStorage.setItem(STORAGE_KEY_HINT, "1");
+    }
+  }, [containerHeight, showHint]);
 
   return (
     <div
       ref={wrapperRef}
       style={{ height: containerHeight, minHeight: MIN_HEIGHT, resize: "vertical", overflow: "hidden" }}
       onMouseUp={handleMouseUp}
-      className="rounded-lg border border-gray-700"
+      className="relative rounded-lg border border-gray-700"
     >
+      {showHint && (
+        <span className="absolute bottom-6 right-3 text-xs text-gray-500 pointer-events-none select-none z-10">
+          ↘ 右下をドラッグで高さ調整
+        </span>
+      )}
       <MonacoEditor
         height="100%"
         language="typescript"
