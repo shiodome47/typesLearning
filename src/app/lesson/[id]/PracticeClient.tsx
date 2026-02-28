@@ -181,6 +181,37 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
                 ))}
               </ul>
             </div>
+
+            {/* 関連教材 */}
+            {lesson.relatedIds.length > 0 && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  関連教材
+                </h2>
+                <ul className="space-y-1.5">
+                  {lesson.relatedIds.map((relId) => {
+                    const rel = allLessons.find((l) => l.id === relId);
+                    if (!rel) return null;
+                    const isBefore = rel.order < lesson.order;
+                    return (
+                      <li key={relId}>
+                        <Link
+                          href={`/lesson/${rel.id}`}
+                          className="flex items-center gap-2 text-xs hover:underline"
+                        >
+                          <span className="text-gray-400 flex-shrink-0 w-10">
+                            {isBefore ? "↑ 前提" : "→ 次へ"}
+                          </span>
+                          <span className="text-blue-600 hover:text-blue-800">
+                            {rel.order}. {rel.title}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
 
           {/* ── 右カラム: 練習エリア ── */}
