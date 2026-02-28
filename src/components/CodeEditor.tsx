@@ -10,6 +10,8 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
+import type { Monaco } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 
 // SSR を無効にして Monaco をロード（Next.js 必須）
 const MonacoEditor = dynamic(
@@ -22,6 +24,16 @@ const MonacoEditor = dynamic(
   }
 );
 
+// Monaco の TypeScript 診断（赤波線）をグローバルに設定する
+function applyDiagnostics(monaco: Monaco, enabled: boolean) {
+  const opts = {
+    noSemanticValidation: !enabled,
+    noSyntaxValidation: !enabled,
+  };
+  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(opts);
+  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(opts);
+}
+
 const STORAGE_KEY_HEIGHT = "ts-practice-editor-height";
 const DEFAULT_HEIGHT = 360;
 const MIN_HEIGHT = 160;
@@ -30,18 +42,21 @@ const MIN_HEIGHT = 160;
 export interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string; // Monaco は placeholder 非対応のため無視
+  placeholder?: string;    // Monaco は placeholder 非対応のため無視
   readOnly?: boolean;
-  minHeight?: string;   // 後方互換のため残す（Monaco では使用しない）
+  minHeight?: string;      // 後方互換のため残す（Monaco では使用しない）
+  diagnosticsEnabled?: boolean; // TypeScript 診断（赤波線）の ON/OFF
 }
 
 export function CodeEditor({
   value,
   onChange,
   readOnly = false,
+  diagnosticsEnabled = false,
 }: CodeEditorProps) {
   const [containerHeight, setContainerHeight] = useState(DEFAULT_HEIGHT);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const monacoRef = useRef<Monaco | null>(null);
 
   // マウント時に localStorage から高さを復元
   useEffect(() => {
@@ -51,6 +66,22 @@ export function CodeEditor({
       if (!isNaN(h) && h >= MIN_HEIGHT) setContainerHeight(h);
     }
   }, []);
+
+  // diagnosticsEnabled が変わったら Monaco 設定に即時反映
+  useEffect(() => {
+    if (monacoRef.current) {
+      applyDiagnostics(monacoRef.current, diagnosticsEnabled);
+    }
+  }, [diagnosticsEnabled]);
+
+  // Monaco マウント時: インスタンスを保存して初期診断設定を適用
+  const handleMount = useCallback(
+    (_editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
+      monacoRef.current = monaco;
+      applyDiagnostics(monaco, diagnosticsEnabled);
+    },
+    [diagnosticsEnabled]
+  );
 
   // ドラッグリサイズ後（mouseup）に高さを保存
   const handleMouseUp = useCallback(() => {
@@ -75,6 +106,7 @@ export function CodeEditor({
         theme="vs-dark"
         value={value}
         onChange={(v) => onChange(v ?? "")}
+        onMount={handleMount}
         options={{
           readOnly,
           automaticLayout: true,   // コンテナリサイズに追従

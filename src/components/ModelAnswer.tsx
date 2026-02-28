@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MonacoViewer } from "./MonacoViewer";
 
 interface ModelAnswerProps {
   code: string;
@@ -26,10 +27,8 @@ export function ModelAnswer({ code, defaultVisible = false }: ModelAnswerProps) 
 
       {isVisible && (
         <div className="relative">
-          <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto leading-relaxed whitespace-pre-wrap break-words">
-            {code}
-          </pre>
-          <span className="absolute top-2 right-2 text-xs text-gray-500 select-none">
+          <MonacoViewer code={code} />
+          <span className="absolute top-2 right-8 text-xs text-gray-500 select-none z-10">
             手本
           </span>
         </div>

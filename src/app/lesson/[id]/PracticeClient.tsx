@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useProgress } from "@/hooks/useProgress";
 import { CodeEditor } from "@/components/CodeEditor";
 import { ModelAnswer } from "@/components/ModelAnswer";
 import { HintPanel } from "@/components/HintPanel";
 import type { Lesson } from "@curriculum/types";
+
+const DIAGNOSTICS_STORAGE_KEY = "ts-practice-editor-diagnostics-enabled";
 
 const CATEGORY_LABELS: Record<string, string> = {
   "type-basics": "型の基礎",
@@ -47,6 +49,8 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
   // コードエディタの内容（null = ロード前）
   const [code, setCode] = useState<string | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
+  // 型エラー表示トグル（デフォルト OFF = 学習モード）
+  const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
 
   const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
@@ -60,7 +64,18 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
     const p = getLessonProgress(lesson.id);
     setIsCompleted(p.completed);
     setCode(p.savedCode || lesson.starterCode);
+    // 型エラー表示の設定を復元
+    const saved = localStorage.getItem(DIAGNOSTICS_STORAGE_KEY);
+    if (saved !== null) setDiagnosticsEnabled(saved === "true");
   }, [isLoaded, lesson.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDiagnosticsToggle = useCallback(() => {
+    setDiagnosticsEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem(DIAGNOSTICS_STORAGE_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   const handleCodeChange = (newCode: string) => {
     setCode(newCode);
@@ -176,12 +191,29 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
                 <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   白紙練習エリア
                 </h2>
-                <button
-                  onClick={handleReset}
-                  className="text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
-                >
-                  リセット
-                </button>
+                <div className="flex items-center gap-3">
+                  {/* 型エラー表示トグル */}
+                  {isLoaded && (
+                    <button
+                      onClick={handleDiagnosticsToggle}
+                      className={[
+                        "text-xs px-2 py-1 rounded border transition-colors",
+                        diagnosticsEnabled
+                          ? "bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-100"
+                          : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200",
+                      ].join(" ")}
+                      title="TypeScriptの型エラー表示（赤波線）をON/OFFします"
+                    >
+                      型エラー: {diagnosticsEnabled ? "ON" : "OFF"}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleReset}
+                    className="text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
+                  >
+                    リセット
+                  </button>
+                </div>
               </div>
 
               {/* ロード前はスケルトン表示（ハイドレーションミスマッチ防止） */}
@@ -190,6 +222,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
                   value={code}
                   onChange={handleCodeChange}
                   minHeight="min-h-72"
+                  diagnosticsEnabled={diagnosticsEnabled}
                 />
               ) : (
                 <div className="min-h-72 bg-gray-900 rounded-lg animate-pulse" />
