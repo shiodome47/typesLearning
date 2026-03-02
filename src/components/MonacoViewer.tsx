@@ -2,9 +2,11 @@
 
 // 手本コード表示専用の Monaco 読み取り専用ビューア
 // - シンタックスハイライト（vs-dark）
-// - 行数に応じて高さを自動計算（最大480px）
+// - onDidContentSizeChange で実測高さを反映（最大480px）
 // - 診断（エラー波線）は表示しない（readOnly表示に不要）
 
+import { useState, useCallback } from "react";
+import type { editor as MonacoEditorType } from "monaco-editor";
 import dynamic from "next/dynamic";
 
 const MonacoEditor = dynamic(
@@ -21,9 +23,25 @@ interface MonacoViewerProps {
   code: string;
 }
 
+const MAX_HEIGHT = 510;
+
 export function MonacoViewer({ code }: MonacoViewerProps) {
-  // 行数から高さを推定（1行 ≒ 19px + padding 24px、最大480px）
-  const height = Math.min(Math.max(code.split("\n").length * 19 + 24, 80), 480);
+  // 初期値: 行数ベースの推定（実測前のレイアウトシフトを最小化）
+  const [height, setHeight] = useState(
+    Math.min(Math.max(code.split("\n").length * 21 + 24, 80), MAX_HEIGHT)
+  );
+
+  const handleMount = useCallback(
+    (editor: MonacoEditorType.IStandaloneCodeEditor) => {
+      const updateHeight = () => {
+        const actual = editor.getContentHeight();
+        setHeight(Math.min(Math.max(actual, 80), MAX_HEIGHT));
+      };
+      editor.onDidContentSizeChange(updateHeight);
+      updateHeight();
+    },
+    []
+  );
 
   return (
     <div
@@ -35,6 +53,7 @@ export function MonacoViewer({ code }: MonacoViewerProps) {
         language="typescript"
         theme="vs-dark"
         value={code}
+        onMount={handleMount}
         options={{
           readOnly: true,
           domReadOnly: true,
