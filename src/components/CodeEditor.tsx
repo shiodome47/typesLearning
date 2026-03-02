@@ -47,6 +47,7 @@ export interface CodeEditorProps {
   readOnly?: boolean;
   minHeight?: string;      // 後方互換のため残す（Monaco では使用しない）
   diagnosticsEnabled?: boolean; // TypeScript 診断（赤波線）の ON/OFF
+  theme?: string;               // Monaco テーマ（"vs-dark" / "vs"）
 }
 
 export function CodeEditor({
@@ -54,6 +55,7 @@ export function CodeEditor({
   onChange,
   readOnly = false,
   diagnosticsEnabled = false,
+  theme = "vs-dark",
 }: CodeEditorProps) {
   const [containerHeight, setContainerHeight] = useState(DEFAULT_HEIGHT);
   const [showHint, setShowHint] = useState(false); // SSR後にのみ表示
@@ -107,7 +109,7 @@ export function CodeEditor({
       ref={wrapperRef}
       style={{ height: containerHeight, minHeight: MIN_HEIGHT, resize: "vertical", overflow: "hidden" }}
       onMouseUp={handleMouseUp}
-      className="relative rounded-lg border border-gray-700"
+      className={`relative rounded-lg border ${theme === "vs-dark" ? "border-gray-700" : "border-gray-300"}`}
     >
       {showHint && (
         <span className="absolute bottom-6 right-3 text-xs text-gray-500 pointer-events-none select-none z-10">
@@ -117,7 +119,7 @@ export function CodeEditor({
       <MonacoEditor
         height="100%"
         language="typescript"
-        theme="vs-dark"
+        theme={theme}
         value={value}
         onChange={(v) => onChange(v ?? "")}
         onMount={handleMount}

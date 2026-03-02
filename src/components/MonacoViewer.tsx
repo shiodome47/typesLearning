@@ -21,11 +21,12 @@ const MonacoEditor = dynamic(
 
 interface MonacoViewerProps {
   code: string;
+  theme?: string;
 }
 
 const MAX_HEIGHT = 510;
 
-export function MonacoViewer({ code }: MonacoViewerProps) {
+export function MonacoViewer({ code, theme = "vs-dark" }: MonacoViewerProps) {
   // 初期値: 行数ベースの推定（実測前のレイアウトシフトを最小化）
   const [height, setHeight] = useState(
     Math.min(Math.max(code.split("\n").length * 21 + 24, 80), MAX_HEIGHT)
@@ -46,12 +47,12 @@ export function MonacoViewer({ code }: MonacoViewerProps) {
   return (
     <div
       style={{ height }}
-      className="rounded-lg border border-gray-700 overflow-hidden"
+      className={`rounded-lg border ${theme === "vs-dark" ? "border-gray-700" : "border-gray-300"} overflow-hidden`}
     >
       <MonacoEditor
         height="100%"
         language="typescript"
-        theme="vs-dark"
+        theme={theme}
         value={code}
         onMount={handleMount}
         options={{

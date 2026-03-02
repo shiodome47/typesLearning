@@ -7,9 +7,10 @@ interface ModelAnswerProps {
   code: string;
   defaultVisible?: boolean;
   diagramUrl?: string;
+  theme?: string;
 }
 
-export function ModelAnswer({ code, defaultVisible = false, diagramUrl }: ModelAnswerProps) {
+export function ModelAnswer({ code, defaultVisible = false, diagramUrl, theme = "vs-dark" }: ModelAnswerProps) {
   const [isVisible, setIsVisible] = useState(defaultVisible);
   const [copied, setCopied] = useState(false);
 
@@ -51,7 +52,7 @@ export function ModelAnswer({ code, defaultVisible = false, diagramUrl }: ModelA
 
       {isVisible && (
         <div className="relative">
-          <MonacoViewer code={code} />
+          <MonacoViewer code={code} theme={theme} />
           <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
             <span className="text-xs text-gray-500 select-none">手本</span>
             <button

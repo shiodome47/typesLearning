@@ -10,6 +10,8 @@ import type { Lesson } from "@curriculum/types";
 import { LESSON_DIAGRAM_LINKS } from "@/lib/lessonDiagramLinks";
 
 const DIAGNOSTICS_STORAGE_KEY = "ts-practice-editor-diagnostics-enabled";
+const THEME_STORAGE_KEY = "ts-practice-editor-theme";
+type EditorTheme = "vs-dark" | "vs";
 
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -53,6 +55,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
   const [isCompleted, setIsCompleted] = useState(false);
   // 型エラー表示トグル（デフォルト OFF = 学習モード）
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
+  const [editorTheme, setEditorTheme] = useState<EditorTheme>("vs-dark");
 
   const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
@@ -69,12 +72,22 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
     // 型エラー表示の設定を復元
     const saved = localStorage.getItem(DIAGNOSTICS_STORAGE_KEY);
     if (saved !== null) setDiagnosticsEnabled(saved === "true");
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    if (savedTheme === "vs-dark" || savedTheme === "vs") setEditorTheme(savedTheme);
   }, [isLoaded, lesson.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDiagnosticsToggle = useCallback(() => {
     setDiagnosticsEnabled((prev) => {
       const next = !prev;
       localStorage.setItem(DIAGNOSTICS_STORAGE_KEY, String(next));
+      return next;
+    });
+  }, []);
+
+  const handleThemeToggle = useCallback(() => {
+    setEditorTheme((prev) => {
+      const next: EditorTheme = prev === "vs-dark" ? "vs" : "vs-dark";
+      localStorage.setItem(THEME_STORAGE_KEY, next);
       return next;
     });
   }, []);
@@ -166,6 +179,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
               <ModelAnswer
                 code={lesson.modelAnswer}
                 diagramUrl={LESSON_DIAGRAM_LINKS[lesson.id]}
+                theme={editorTheme}
               />
             </div>
 
@@ -228,6 +242,21 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
                   白紙練習エリア
                 </h2>
                 <div className="flex items-center gap-3">
+                  {/* テーマ切替 */}
+                  {isLoaded && (
+                    <button
+                      onClick={handleThemeToggle}
+                      className={[
+                        "text-xs px-2 py-1 rounded border transition-colors",
+                        editorTheme === "vs-dark"
+                          ? "bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700"
+                          : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200",
+                      ].join(" ")}
+                      title="エディタテーマをダーク/ライトで切り替えます"
+                    >
+                      テーマ: {editorTheme === "vs-dark" ? "Dark" : "Light"}
+                    </button>
+                  )}
                   {/* 型エラー表示トグル */}
                   {isLoaded && (
                     <button
@@ -259,6 +288,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
                   onChange={handleCodeChange}
                   minHeight="min-h-72"
                   diagnosticsEnabled={diagnosticsEnabled}
+                  theme={editorTheme}
                 />
               ) : (
                 <div className="min-h-72 bg-gray-900 rounded-lg animate-pulse" />
