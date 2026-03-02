@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "audit:diagrams": "node scripts/audit-diagrams.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

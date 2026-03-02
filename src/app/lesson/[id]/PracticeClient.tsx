@@ -7,8 +7,10 @@ import { CodeEditor } from "@/components/CodeEditor";
 import { ModelAnswer } from "@/components/ModelAnswer";
 import { HintPanel } from "@/components/HintPanel";
 import type { Lesson } from "@curriculum/types";
+import { LESSON_DIAGRAM_LINKS } from "@/lib/lessonDiagramLinks";
 
 const DIAGNOSTICS_STORAGE_KEY = "ts-practice-editor-diagnostics-enabled";
+
 
 const CATEGORY_LABELS: Record<string, string> = {
   "type-basics": "型の基礎",
@@ -136,7 +138,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{lesson.title}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{lesson.order}. {lesson.title}</h1>
           <p className="text-green-700 font-medium mt-1 text-sm">
             目標: {lesson.goal}
           </p>
@@ -161,7 +163,10 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
               <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 手本コード
               </h2>
-              <ModelAnswer code={lesson.modelAnswer} />
+              <ModelAnswer
+                code={lesson.modelAnswer}
+                diagramUrl={LESSON_DIAGRAM_LINKS[lesson.id]}
+              />
             </div>
 
             {/* 確認ポイント */}
