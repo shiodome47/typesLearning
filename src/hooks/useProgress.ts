@@ -50,6 +50,16 @@ export function useProgress() {
     [updateLesson]
   );
 
+  const markUncompleted = useCallback(
+    (lessonId: string) => {
+      updateLesson(lessonId, {
+        completed: false,
+        lastAttemptAt: new Date().toISOString(),
+      });
+    },
+    [updateLesson]
+  );
+
   const saveCode = useCallback(
     (lessonId: string, code: string) => {
       updateLesson(lessonId, { savedCode: code });
@@ -123,6 +133,7 @@ export function useProgress() {
     isLoaded,
     getLessonProgress,
     markCompleted,
+    markUncompleted,
     saveCode,
     addHintUsed,
     incrementAttempt,

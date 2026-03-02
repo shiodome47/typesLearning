@@ -44,6 +44,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
     isLoaded,
     getLessonProgress,
     markCompleted,
+    markUncompleted,
     saveCode,
     addHintUsed,
     incrementAttempt,
@@ -56,6 +57,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
   // 型エラー表示トグル（デフォルト OFF = 学習モード）
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
   const [editorTheme, setEditorTheme] = useState<EditorTheme>("vs-dark");
+  const [resetCount, setResetCount] = useState(0);
 
   const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
@@ -98,15 +100,21 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
   };
 
   const handleComplete = () => {
-    markCompleted(lesson.id);
-    incrementAttempt(lesson.id);
-    setIsCompleted(true);
+    if (isCompleted) {
+      markUncompleted(lesson.id);
+      setIsCompleted(false);
+    } else {
+      markCompleted(lesson.id);
+      incrementAttempt(lesson.id);
+      setIsCompleted(true);
+    }
   };
 
   const handleReset = () => {
     setCode(lesson.starterCode);
     saveCode(lesson.id, lesson.starterCode);
     incrementAttempt(lesson.id);
+    setResetCount((c) => c + 1); // HintPanel を再マウントして閉じる
   };
 
   const handleHintReveal = (level: number) => {
@@ -299,9 +307,9 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
             {isLoaded && (
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <HintPanel
-                  key={lesson.id} // lessonが変わったら再マウント
+                  key={`${lesson.id}-${resetCount}`} // lesson変更 or リセットで再マウント
                   hints={lesson.hints}
-                  initialRevealed={initialHintsUsed}
+                  initialRevealed={resetCount === 0 ? initialHintsUsed : []}
                   onReveal={handleHintReveal}
                 />
               </div>
@@ -310,15 +318,14 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
             {/* 完了ボタン */}
             <button
               onClick={handleComplete}
-              disabled={isCompleted}
               className={[
                 "w-full py-3 rounded-xl font-semibold text-sm transition-colors",
                 isCompleted
-                  ? "bg-green-50 text-green-700 border-2 border-green-300 cursor-default"
+                  ? "bg-green-50 text-green-700 border-2 border-green-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
                   : "bg-green-600 text-white hover:bg-green-700 active:bg-green-800",
               ].join(" ")}
             >
-              {isCompleted ? "✓ 完了済み" : "完了！"}
+              {isCompleted ? "✓ 完了済み（クリックで未完了に戻す）" : "完了！"}
             </button>
           </div>
         </div>
