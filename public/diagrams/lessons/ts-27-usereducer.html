@@ -3,54 +3,535 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: useReducer</title>
+    <title>React 図解: useReducer と 直和型</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* React/Reducerカラー */
+      .react-blue {
+        color: #06b6d4;
+      }
+      .reducer-purple {
+        color: #8b5cf6;
+      }
+
+      /* アクションオブジェクトの飛行アニメーション */
+      @keyframes fly-to-reducer {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(150px, -50px) scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(300px, 0) scale(0.5);
+          opacity: 0;
+        }
+      }
+
+      .action-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      }
+
+      .action-packet.flying {
+        animation: fly-to-reducer 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* Reducer工場の処理アニメーション */
+      @keyframes process-glow {
+        0% {
+          box-shadow: 0 0 0 rgba(139, 92, 246, 0);
+          border-color: #cbd5e1;
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+          border-color: #8b5cf6;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(139, 92, 246, 0);
+          border-color: #cbd5e1;
+        }
+      }
+      .processing {
+        animation: process-glow 0.8s ease-in-out;
+      }
+
+      /* switchのケース行ハイライト */
+      .case-active {
+        background-color: #ede9fe !important; /* violet-100 */
+        border-color: #8b5cf6 !important; /* violet-500 */
+        transform: scale(1.02);
+        z-index: 10;
+      }
+
+      /* State更新時のポップアニメーション */
+      @keyframes pop-update {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.2);
+          color: #06b6d4;
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .state-update-anim {
+        animation: pop-update 0.4s ease-out forwards;
+      }
+
+      /* データの流れの線 */
+      .flow-path {
+        position: absolute;
+        border: 2px dashed #cbd5e1;
+        z-index: 0;
+        border-radius: 8px;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-violet-100 text-violet-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-violet-200"
+        >
+          堅牢な状態管理パターン
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
+          命令を投げて状態を作る：<br class="md:hidden" /><span
+            class="reducer-purple"
             >useReducer</span
           >
           の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          useReducer で state と action に型を付けて、複雑な状態管理を型安全に実装しましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">useState</code>
+          が「状態を直接書き換える」のに対し、<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >useReducer</code
+          >
+          は「やりたいこと（Action）をメモに書いて投げる（Dispatch）」だけです。受け取った工場（Reducer）が、安全な手順（switch文）に従って新しい状態を作ってくれます。
         </p>
       </header>
 
+      <!-- 1. インタラクティブ・シミュレーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative overflow-hidden"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700 relative z-10"
+        >
+          <i class="fa-solid fa-gears reducer-purple"></i> 1. Dispatch と
+          Reducer の動作シミュレーション
+        </h2>
+
+        <div
+          class="relative flex flex-col md:flex-row gap-8 items-center justify-between min-h-[400px]"
+        >
+          <!-- 背景の接続線 (PCのみ表示) -->
+          <div
+            class="hidden md:block flow-path"
+            style="
+              top: 50%;
+              left: 20%;
+              right: 20%;
+              height: 2px;
+              transform: translateY(-50%);
+            "
+          ></div>
+
+          <!-- 飛行するアクションのプレースホルダー -->
+          <div
+            id="flying-action"
+            class="action-packet bg-white border-2 rounded-lg p-2 flex flex-col items-center"
+          >
+            <div class="text-[10px] font-bold text-slate-500 mb-1">Action</div>
+            <div id="flying-code" class="code-font text-xs font-bold"></div>
+          </div>
+
+          <!-- ① コンポーネント (UI) -->
+          <div
+            class="w-full md:w-[30%] bg-slate-50 border-2 border-slate-200 rounded-2xl p-5 relative z-10 flex flex-col items-center shadow-md"
+          >
+            <div
+              class="absolute -top-3 bg-react-blue text-white text-xs font-bold px-3 py-1 rounded shadow-sm"
+            >
+              &lt;Counter /&gt; (UI)
+            </div>
+
+            <!-- 状態の表示 -->
+            <div
+              class="bg-white border-2 border-cyan-200 rounded-xl w-full p-4 text-center mb-6 shadow-sm"
+            >
+              <div class="text-xs font-bold text-slate-500 mb-1">
+                現在の State
+              </div>
+              <div
+                class="code-font text-3xl font-black text-slate-700"
+                id="ui-count-display"
+              >
+                { count: <span id="ui-count-val">0</span> }
+              </div>
+            </div>
+
+            <div class="text-xs font-bold text-slate-500 mb-2">
+              アクションを Dispatch (送信)
+            </div>
+
+            <!-- 操作ボタン -->
+            <div class="flex flex-col gap-3 w-full relative" id="btn-container">
+              <button
+                onclick="handleDispatch('increment')"
+                class="bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-700 font-bold py-2 px-4 rounded-lg shadow-sm transition-all flex justify-between items-center group"
+              >
+                <span>+1</span>
+                <span
+                  class="code-font text-[10px] bg-white px-1.5 py-0.5 rounded text-blue-500 border border-blue-200 group-hover:bg-blue-50"
+                  >{ type: "increment" }</span
+                >
+              </button>
+
+              <button
+                onclick="handleDispatch('decrement')"
+                class="bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-700 font-bold py-2 px-4 rounded-lg shadow-sm transition-all flex justify-between items-center group"
+              >
+                <span>-1</span>
+                <span
+                  class="code-font text-[10px] bg-white px-1.5 py-0.5 rounded text-rose-500 border border-rose-200 group-hover:bg-rose-50"
+                  >{ type: "decrement" }</span
+                >
+              </button>
+
+              <button
+                onclick="handleDispatch('reset')"
+                class="bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-700 font-bold py-2 px-4 rounded-lg shadow-sm transition-all flex justify-between items-center group"
+              >
+                <span>リセット</span>
+                <span
+                  class="code-font text-[10px] bg-white px-1.5 py-0.5 rounded text-amber-500 border border-amber-200 group-hover:bg-amber-50"
+                  >{ type: "reset", payload: 0 }</span
+                >
+              </button>
+            </div>
+          </div>
+
+          <!-- 矢印 -->
+          <div class="hidden md:flex flex-col items-center z-10 text-slate-400">
+            <div class="text-[10px] font-bold mb-1">Dispatch</div>
+            <i class="fa-solid fa-arrow-right-long text-2xl"></i>
+          </div>
+
+          <!-- ② Reducer (状態更新工場) -->
+          <div
+            id="reducer-box"
+            class="w-full md:w-[45%] bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 relative z-10 shadow-xl transition-all duration-300"
+          >
+            <div
+              class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-violet-500 text-white text-sm font-bold px-4 py-1 rounded-full shadow-md flex items-center gap-2"
+            >
+              <i class="fa-solid fa-industry"></i> function reducer
+            </div>
+
+            <div
+              class="text-xs text-slate-400 mb-3 text-center mt-2 flex justify-center gap-4"
+            >
+              <span
+                >引数1: <span class="text-cyan-300 code-font">state</span></span
+              >
+              <span
+                >引数2:
+                <span class="text-amber-300 code-font">action</span></span
+              >
+            </div>
+
+            <div class="bg-slate-900 rounded-xl p-3 border border-slate-600">
+              <div class="code-font text-sm text-slate-300 mb-2">
+                <span class="text-blue-400">switch</span> (<span
+                  class="text-amber-300 font-bold"
+                  >action.type</span
+                >) {
+              </div>
+
+              <div class="flex flex-col gap-1 pl-4">
+                <!-- Increment Case -->
+                <div
+                  id="case-increment"
+                  class="transition-all-custom border border-transparent rounded p-2 flex flex-col gap-1 bg-slate-800/50"
+                >
+                  <div class="code-font text-xs text-blue-300 font-bold">
+                    case "increment":
+                  </div>
+                  <div class="code-font text-sm pl-4">
+                    <span class="text-blue-400">return</span> { count:
+                    state.count <span class="text-emerald-400">+ 1</span> };
+                  </div>
+                </div>
+
+                <!-- Decrement Case -->
+                <div
+                  id="case-decrement"
+                  class="transition-all-custom border border-transparent rounded p-2 flex flex-col gap-1 bg-slate-800/50"
+                >
+                  <div class="code-font text-xs text-rose-300 font-bold">
+                    case "decrement":
+                  </div>
+                  <div class="code-font text-sm pl-4">
+                    <span class="text-blue-400">return</span> { count:
+                    state.count <span class="text-emerald-400">- 1</span> };
+                  </div>
+                </div>
+
+                <!-- Reset Case -->
+                <div
+                  id="case-reset"
+                  class="transition-all-custom border border-transparent rounded p-2 flex flex-col gap-1 bg-slate-800/50"
+                >
+                  <div class="code-font text-xs text-amber-300 font-bold">
+                    case "reset":
+                  </div>
+                  <div class="code-font text-sm pl-4">
+                    <span class="text-blue-400">return</span> { count:
+                    <span class="text-emerald-400">action.payload</span> };
+                  </div>
+                </div>
+              </div>
+
+              <div class="code-font text-sm text-slate-300 mt-2">}</div>
+            </div>
+
+            <!-- Reducerの出力 -->
+            <div class="mt-4 flex justify-center">
+              <div
+                id="reducer-output"
+                class="bg-slate-700 text-slate-400 border border-slate-600 px-4 py-2 rounded-lg text-sm font-bold code-font transition-all opacity-0 transform translate-y-2"
+              >
+                新しい State を返却
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. コード解説と型の安全性 -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-shield-halved text-emerald-500"></i> 2.
+          直和型（Discriminated Union）による圧倒的な安全性
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Action型の解説 -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-5">
+            <div
+              class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-tag text-amber-500"></i>
+              Actionの型定義（直和型）
+            </div>
+            <div
+              class="bg-slate-800 text-white p-4 rounded-lg shadow-inner code-font text-[13px] leading-relaxed mb-4"
+            >
+              <span class="text-blue-400">type</span> Action =<br />
+              &nbsp;&nbsp;| { type:
+              <span class="text-blue-300">"increment"</span> }<br />
+              &nbsp;&nbsp;| { type:
+              <span class="text-rose-300">"decrement"</span> }<br />
+              &nbsp;&nbsp;| { type: <span class="text-amber-300">"reset"</span>;
+              payload: <span class="text-pink-400">number</span> };
+            </div>
+            <p class="text-sm text-slate-600 leading-relaxed">
+              この書き方がTypeScriptにおける**直和型**です。<br />
+              共通のプロパティ（ここでは
+              <code class="bg-slate-200 px-1 rounded">type</code
+              >）を見ることで、TypeScriptは「今どのケースにいるか」を正確に判定します。
+            </p>
+          </div>
+
+          <!-- 実際のチェック例 -->
+          <div
+            class="bg-slate-50 border border-slate-200 rounded-xl p-5 flex flex-col justify-center gap-4"
+          >
+            <div
+              class="bg-white border-l-4 border-emerald-500 p-3 shadow-sm rounded"
+            >
+              <div class="text-emerald-700 font-bold text-xs mb-1">
+                ✅ 安全な推論（Type Narrowing）
+              </div>
+              <div class="text-sm text-slate-600">
+                <code class="code-font bg-slate-100 px-1 rounded"
+                  >switch(action.type)</code
+                >
+                で
+                <code class="code-font bg-slate-100 px-1 rounded">"reset"</code>
+                に分岐した瞬間、TypeScriptは「このActionは絶対にpayloadを持っている！」と確信するため、安全に
+                <code class="code-font bg-slate-100 px-1 rounded"
+                  >action.payload</code
+                >
+                にアクセスできます。
+              </div>
+            </div>
+
+            <div
+              class="bg-white border-l-4 border-red-500 p-3 shadow-sm rounded"
+            >
+              <div class="text-red-700 font-bold text-xs mb-1">
+                ❌ コンパイルエラーで守ってくれる
+              </div>
+              <div class="text-sm text-slate-600">
+                もし
+                <code class="code-font bg-slate-100 px-1 rounded"
+                  >"increment"</code
+                >
+                のケースの中で間違えて
+                <code class="code-font bg-slate-100 px-1 rounded"
+                  >action.payload</code
+                >
+                を使おうとすると、**「incrementアクションにはpayloadなんて存在しないよ！」**と赤い波線で怒ってくれます。実行する前にバグに気づけるのです。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-6 bg-blue-50 border border-blue-200 p-4 rounded-lg text-sm text-blue-800 flex items-start gap-3"
+        >
+          <i class="fa-solid fa-circle-info mt-0.5"></i>
+          <div>
+            <strong>なぜ useState ではなく useReducer なの？</strong><br />
+            カウンターくらいなら
+            <code class="bg-blue-100 px-1 rounded">useState</code>
+            でも十分ですが、状態が「ユーザー情報」「カートの中身」「UIの開閉状態」など複雑に絡み合ってきた時、コンポーネント内に更新ロジックを散らかさず、<strong
+              >「状態を更新するルール」を Reducer
+              という純粋な関数に一極集中させる</strong
+            >ことで、テストがしやすくバグの少ない設計になります。
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let currentState = { count: 0 };
+      let isAnimating = false;
+
+      function handleDispatch(actionType) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        // DOM Elements
+        const btnContainer = document.getElementById("btn-container");
+        const flyingAction = document.getElementById("flying-action");
+        const flyingCode = document.getElementById("flying-code");
+        const reducerBox = document.getElementById("reducer-box");
+        const uiCountVal = document.getElementById("ui-count-val");
+        const reducerOutput = document.getElementById("reducer-output");
+
+        // 1. アクションパケットの準備
+        let actionObj = {};
+        let colorClass = "";
+        let borderClass = "";
+
+        if (actionType === "increment") {
+          actionObj = { type: "increment" };
+          colorClass = "text-blue-600";
+          borderClass = "border-blue-400";
+        } else if (actionType === "decrement") {
+          actionObj = { type: "decrement" };
+          colorClass = "text-rose-600";
+          borderClass = "border-rose-400";
+        } else if (actionType === "reset") {
+          actionObj = { type: "reset", payload: 0 };
+          colorClass = "text-amber-600";
+          borderClass = "border-amber-400";
+        }
+
+        flyingCode.innerText = JSON.stringify(actionObj);
+        flyingCode.className = `code-font text-xs font-bold ${colorClass}`;
+        flyingAction.className = `action-packet bg-white border-2 rounded-lg p-2 flex flex-col items-center ${borderClass}`;
+
+        // 飛行開始位置をボタンコンテナ付近に設定（レスポンシブ対応のためざっくり配置）
+        const btnRect = btnContainer.getBoundingClientRect();
+        flyingAction.style.top = "150px";
+        flyingAction.style.left = "50px";
+
+        // アニメーション開始
+        flyingAction.classList.add("flying");
+
+        // 2. Reducer到着 (0.5秒後)
+        setTimeout(() => {
+          reducerBox.classList.add("processing");
+
+          // Caseのハイライト
+          const caseEl = document.getElementById(`case-${actionType}`);
+          caseEl.classList.add("case-active");
+
+          // 3. Stateの更新計算
+          let nextCount = currentState.count;
+          if (actionType === "increment") nextCount += 1;
+          else if (actionType === "decrement") nextCount -= 1;
+          else if (actionType === "reset") nextCount = 0;
+
+          // Reducer出力の表示
+          setTimeout(() => {
+            reducerOutput.innerText = `{ count: ${nextCount} }`;
+            reducerOutput.className =
+              "bg-emerald-100 text-emerald-800 border border-emerald-300 px-4 py-2 rounded-lg text-sm font-bold code-font transition-all opacity-100 transform translate-y-0";
+          }, 400);
+
+          // 4. UIの更新 (0.8秒後)
+          setTimeout(() => {
+            currentState.count = nextCount;
+            uiCountVal.innerText = currentState.count;
+            uiCountVal.parentElement.classList.add("state-update-anim");
+
+            // リセット処理
+            setTimeout(() => {
+              flyingAction.classList.remove("flying");
+              reducerBox.classList.remove("processing");
+              caseEl.classList.remove("case-active");
+              uiCountVal.parentElement.classList.remove("state-update-anim");
+
+              reducerOutput.className =
+                "bg-slate-700 text-slate-400 border border-slate-600 px-4 py-2 rounded-lg text-sm font-bold code-font transition-all opacity-0 transform translate-y-2";
+
+              isAnimating = false;
+            }, 500);
+          }, 800);
+        }, 500);
+      }
+    </script>
   </body>
 </html>

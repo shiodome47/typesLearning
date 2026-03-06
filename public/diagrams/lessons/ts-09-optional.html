@@ -3,54 +3,750 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: オプショナル</title>
+    <title>TypeScript 図解: ?. と ?? の安全なアクセス</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      /* スクロールバーの非表示（横スクロール用） */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* ゲートの光るアニメーション */
+      .gate-active-blue {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+        border-color: #3b82f6 !important;
+        transform: scale(1.05);
+      }
+      .gate-active-orange {
+        box-shadow: 0 0 20px rgba(249, 115, 22, 0.5);
+        border-color: #f97316 !important;
+        transform: scale(1.05);
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
-      <header class="text-center mb-10">
+      <!-- ヘッダー -->
+      <header class="text-center mb-8">
+        <div
+          class="inline-block bg-sky-100 text-sky-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm"
+        >
+          安全なプロパティアクセス
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >オプショナル</span
+          エラーで止まらない！<br class="md:hidden" /><span
+            class="text-blue-600"
+            >?.</span
           >
-          の図解
+          と <span class="text-orange-500">??</span> の連携プレー
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          オプショナルチェーンやオプショナルプロパティで、undefined を安全に扱いましょう。
+        <p class="text-slate-600 text-base max-w-3xl mx-auto leading-relaxed">
+          データが存在しない（<code class="bg-slate-200 px-1 rounded code-font"
+            >null</code
+          >
+          や
+          <code class="bg-slate-200 px-1 rounded code-font">undefined</code
+          >）かもしれないオブジェクトの奥深くへアクセスする時、<br
+            class="hidden md:block"
+          />
+          <strong>オプショナルチェーン（?.）</strong> と
+          <strong>Nullish Coalescing（??）</strong>
+          を使えば、アプリをクラッシュさせずに安全に「代わりの値」を取り出せます。
         </p>
       </header>
 
+      <!-- セクション1: getCity -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8 relative z-20"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-map-location-dot text-blue-500"></i> 1.
+          深い階層への安全なアクセス
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="flex flex-col lg:flex-row gap-6 items-stretch mb-6">
+          <!-- 左側：コードと操作パネル -->
+          <div class="w-full lg:w-1/3 flex flex-col gap-4">
+            <div
+              class="bg-slate-800 text-white rounded-xl p-4 shadow-inner code-font text-sm leading-relaxed"
+            >
+              <span class="text-purple-400">function</span> getCity(<span
+                class="text-slate-300"
+                >user</span
+              >: User) {<br />
+              &nbsp;&nbsp;<span class="text-purple-400">return</span> user<span
+                class="text-blue-400 font-bold text-base"
+                >?.</span
+              >address<span class="text-blue-400 font-bold text-base">?.</span
+              >city <span class="text-orange-400 font-bold text-base">??</span>
+              <span class="text-amber-300">"不明"</span>;<br />
+              }
+            </div>
+
+            <div
+              class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 relative z-30"
+            >
+              <div class="text-xs font-bold text-slate-500 text-center">
+                関数を呼び出す
+              </div>
+
+              <button
+                onclick="runGetCity('alice', this)"
+                class="bg-white hover:bg-blue-50 border-2 border-slate-300 hover:border-blue-400 rounded-lg p-2 text-left shadow-sm transition-all group relative"
+              >
+                <div class="text-[10px] font-bold text-blue-500 mb-0.5">
+                  address あり
+                </div>
+                <span class="code-font font-bold text-slate-700 text-sm"
+                  >getCity( <span class="text-blue-600">alice</span> )</span
+                >
+              </button>
+
+              <button
+                onclick="runGetCity('bob', this)"
+                class="bg-white hover:bg-orange-50 border-2 border-slate-300 hover:border-orange-400 rounded-lg p-2 text-left shadow-sm transition-all group relative"
+              >
+                <div class="text-[10px] font-bold text-orange-500 mb-0.5">
+                  address なし
+                </div>
+                <span class="code-font font-bold text-slate-700 text-sm"
+                  >getCity( <span class="text-orange-600">bob</span> )</span
+                >
+              </button>
+            </div>
+          </div>
+
+          <!-- 右側：パイプライン (横スクロール) -->
+          <div
+            class="w-full lg:w-2/3 overflow-x-auto no-scrollbar bg-slate-50 border-2 border-slate-200 rounded-xl p-4 flex items-center relative"
+            id="pipeline-1-container"
+          >
+            <div
+              class="min-w-[700px] flex items-center justify-between w-full relative h-32 px-4"
+            >
+              <!-- 飛行するデータパケット -->
+              <div
+                id="packet-1"
+                class="absolute z-50 pointer-events-none rounded-lg py-1.5 px-3 font-bold code-font shadow-lg border-2 whitespace-nowrap transition-all opacity-0"
+              >
+                <!-- JSで注入 -->
+              </div>
+
+              <!-- Start Dummy -->
+              <div id="gate-1-start" class="w-2"></div>
+
+              <div class="text-slate-300">
+                <i class="fa-solid fa-arrow-right"></i>
+              </div>
+
+              <!-- Gate 1: ?.address -->
+              <div
+                id="gate-1-address"
+                class="flex flex-col items-center bg-white border-2 border-blue-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300"
+              >
+                <div
+                  class="text-[9px] font-bold text-blue-500 absolute -top-3 bg-blue-50 border border-blue-200 px-2 rounded-full whitespace-nowrap"
+                >
+                  プロパティ確認
+                </div>
+                <div class="code-font font-bold text-slate-700 text-lg mt-2">
+                  <span class="text-blue-500">?.</span>address
+                </div>
+              </div>
+
+              <div class="text-slate-300">
+                <i class="fa-solid fa-arrow-right"></i>
+              </div>
+
+              <!-- Gate 2: ?.city -->
+              <div
+                id="gate-1-city"
+                class="flex flex-col items-center bg-white border-2 border-blue-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300"
+              >
+                <div
+                  class="text-[9px] font-bold text-blue-500 absolute -top-3 bg-blue-50 border border-blue-200 px-2 rounded-full whitespace-nowrap"
+                >
+                  プロパティ確認
+                </div>
+                <div
+                  class="skip-label absolute -top-8 text-red-500 font-bold text-[10px] bg-red-100 px-2 py-0.5 rounded shadow-sm hidden whitespace-nowrap"
+                >
+                  <i class="fa-solid fa-forward-step"></i> スキップ (短絡評価)
+                </div>
+                <div class="code-font font-bold text-slate-700 text-lg mt-2">
+                  <span class="text-blue-500">?.</span>city
+                </div>
+              </div>
+
+              <div class="text-slate-300">
+                <i class="fa-solid fa-arrow-right"></i>
+              </div>
+
+              <!-- Gate 3: ?? "不明" -->
+              <div
+                id="gate-1-nullish"
+                class="flex flex-col items-center bg-white border-2 border-orange-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300"
+              >
+                <div
+                  class="text-[9px] font-bold text-orange-600 absolute -top-3 bg-orange-50 border border-orange-200 px-2 rounded-full whitespace-nowrap"
+                >
+                  null/undefined判定
+                </div>
+                <div class="code-font font-bold text-slate-700 text-sm mt-2">
+                  <span class="text-orange-500 text-lg">??</span> "不明"
+                </div>
+              </div>
+
+              <div class="text-slate-300">
+                <i class="fa-solid fa-arrow-right"></i>
+              </div>
+
+              <!-- Output -->
+              <div
+                id="gate-1-out"
+                class="flex flex-col items-center justify-center bg-slate-800 border-2 border-slate-700 rounded-xl p-4 shadow-inner w-32 min-h-[5rem] relative"
+              >
+                <div
+                  class="text-[10px] font-bold text-slate-400 absolute top-1 left-2"
+                >
+                  戻り値
+                </div>
+                <div
+                  id="result-1"
+                  class="code-font text-xl font-bold text-slate-500 mt-2"
+                >
+                  ---
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- セクション2: getUserName -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 relative z-10"
+      >
+        <h2
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-user-shield text-emerald-500"></i> 2. 引数自体が
+          null の場合の安全なアクセス
+        </h2>
+
+        <div class="flex flex-col lg:flex-row gap-6 items-stretch mb-2">
+          <!-- 左側：コードと操作パネル -->
+          <div class="w-full lg:w-1/3 flex flex-col gap-4">
+            <div
+              class="bg-slate-800 text-white rounded-xl p-4 shadow-inner code-font text-sm leading-relaxed"
+            >
+              <span class="text-purple-400">function</span> getName(<span
+                class="text-slate-300"
+                >u</span
+              >: User | <span class="text-pink-400">null</span>) {<br />
+              &nbsp;&nbsp;<span class="text-purple-400">return</span> u<span
+                class="text-blue-400 font-bold text-base"
+                >?.</span
+              >name <span class="text-orange-400 font-bold text-base">??</span>
+              <span class="text-amber-300">"ゲスト"</span>;<br />
+              }
+            </div>
+
+            <div
+              class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 relative z-30"
+            >
+              <div class="text-xs font-bold text-slate-500 text-center">
+                関数を呼び出す
+              </div>
+
+              <button
+                onclick="runGetName('alice', this)"
+                class="bg-white hover:bg-emerald-50 border-2 border-slate-300 hover:border-emerald-400 rounded-lg p-2 text-left shadow-sm transition-all group relative"
+              >
+                <span class="code-font font-bold text-slate-700 text-sm"
+                  >getName( <span class="text-emerald-600">alice</span> )</span
+                >
+              </button>
+
+              <button
+                onclick="runGetName('null', this)"
+                class="bg-white hover:bg-pink-50 border-2 border-slate-300 hover:border-pink-400 rounded-lg p-2 text-left shadow-sm transition-all group relative"
+              >
+                <span class="code-font font-bold text-slate-700 text-sm"
+                  >getName( <span class="text-pink-600">null</span> )</span
+                >
+              </button>
+            </div>
+          </div>
+
+          <!-- 右側：パイプライン -->
+          <div
+            class="w-full lg:w-2/3 overflow-x-auto no-scrollbar bg-slate-50 border-2 border-slate-200 rounded-xl p-4 flex items-center relative"
+            id="pipeline-2-container"
+          >
+            <div
+              class="min-w-[500px] flex items-center justify-between w-full relative h-32 px-4"
+            >
+              <!-- 飛行するデータパケット -->
+              <div
+                id="packet-2"
+                class="absolute z-50 pointer-events-none rounded-lg py-1.5 px-3 font-bold code-font shadow-lg border-2 whitespace-nowrap transition-all opacity-0"
+              >
+                <!-- JSで注入 -->
+              </div>
+
+              <!-- Gate 1: ?.name -->
+              <div
+                id="gate-2-name"
+                class="flex flex-col items-center bg-white border-2 border-blue-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300 ml-4"
+              >
+                <div
+                  class="text-[9px] font-bold text-blue-500 absolute -top-3 bg-blue-50 border border-blue-200 px-2 rounded-full whitespace-nowrap"
+                >
+                  プロパティ確認
+                </div>
+                <div class="code-font font-bold text-slate-700 text-lg mt-2">
+                  <span class="text-blue-500">?.</span>name
+                </div>
+              </div>
+
+              <div class="text-slate-300">
+                <i class="fa-solid fa-arrow-right"></i>
+              </div>
+
+              <!-- Gate 2: ?? "ゲスト" -->
+              <div
+                id="gate-2-nullish"
+                class="flex flex-col items-center bg-white border-2 border-orange-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300"
+              >
+                <div
+                  class="text-[9px] font-bold text-orange-600 absolute -top-3 bg-orange-50 border border-orange-200 px-2 rounded-full whitespace-nowrap"
+                >
+                  null/undefined判定
+                </div>
+                <div class="code-font font-bold text-slate-700 text-sm mt-2">
+                  <span class="text-orange-500 text-lg">??</span> "ゲスト"
+                </div>
+              </div>
+
+              <div class="text-slate-300">
+                <i class="fa-solid fa-arrow-right"></i>
+              </div>
+
+              <!-- Output -->
+              <div
+                id="gate-2-out"
+                class="flex flex-col items-center justify-center bg-slate-800 border-2 border-slate-700 rounded-xl p-4 shadow-inner w-32 min-h-[5rem] relative"
+              >
+                <div
+                  class="text-[10px] font-bold text-slate-400 absolute top-1 left-2"
+                >
+                  戻り値
+                </div>
+                <div
+                  id="result-2"
+                  class="code-font text-xl font-bold text-slate-500 mt-2"
+                >
+                  ---
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-6 bg-slate-100 border border-slate-300 p-4 rounded-lg text-sm text-slate-700 flex items-start gap-3 shadow-sm"
+        >
+          <i class="fa-solid fa-circle-question text-slate-400 mt-0.5"></i>
+          <div>
+            <strong
+              >なぜ <code class="code-font">||</code> ではなく
+              <code class="code-font">??</code> を使うの？</strong
+            ><br />
+            <code
+              class="bg-white px-1 border border-slate-200 rounded code-font"
+              >||</code
+            >（OR演算子）は、値が空文字（<code class="code-font">""</code>）や
+            <code class="code-font">0</code>、<code class="code-font"
+              >false</code
+            >
+            の場合でも「偽」と判定して右側の値を使ってしまいます。<br />
+            一方
+            <code
+              class="bg-white px-1 border border-slate-200 rounded code-font text-orange-600 font-bold"
+              >??</code
+            >（Nullish Coalescing）は、本当にデータが無い（<code
+              class="code-font text-pink-500"
+              >null</code
+            >
+            か
+            <code class="code-font text-red-500">undefined</code
+            >）時に<strong>だけ</strong>右側の予備の値を使うため、より安全で正確なフォールバック（代替）が可能です。
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating1 = false;
+      let isAnimating2 = false;
+
+      // ユーティリティ: 待機
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // ユーティリティ: パケットの中心位置をターゲット要素の中心に合わせる（親コンテナ相対）
+      function updatePacketPos(packet, targetEl) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const contRect = packet.parentElement.getBoundingClientRect();
+
+        const x =
+          targetRect.left -
+          contRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2;
+        const y =
+          targetRect.top -
+          contRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2;
+
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+      }
+
+      // ユーティリティ: パケットの中身を書き換えつつ、ちょっと膨らむアニメーション
+      async function animateChange(packet, targetEl, newHtml, newClasses) {
+        // ちょっと膨らむ
+        const currentTransform = packet.style.transform;
+        packet.style.transition = "transform 0.15s ease-out";
+        packet.style.transform = currentTransform.replace(
+          "scale(1)",
+          "scale(1.15)",
+        );
+
+        await sleep(150);
+
+        // 中身とスタイルの書き換え
+        packet.innerHTML = newHtml;
+        packet.className = `absolute z-50 pointer-events-none rounded-lg py-1.5 px-3 font-bold code-font shadow-lg border-2 whitespace-nowrap ${newClasses}`;
+
+        // サイズが変わったので、transitionを一時的に切って正しい中心座標を再計算
+        packet.style.transition = "none";
+        updatePacketPos(packet, targetEl);
+
+        // 強制リフロー (ブラウザに変更を認識させる)
+        void packet.offsetWidth;
+
+        // 少し縮んで元のスケールに戻る
+        packet.style.transition = "transform 0.15s ease-in";
+        packet.style.transform = packet.style.transform.replace(
+          "scale(1.15)",
+          "scale(1)",
+        );
+
+        await sleep(150);
+      }
+
+      // ==========================================
+      // セクション1: getCity (?. と ??)
+      // ==========================================
+      async function runGetCity(type, btnEl) {
+        if (isAnimating1) return;
+        isAnimating1 = true;
+
+        const packet = document.getElementById("packet-1");
+        const gateAddress = document.getElementById("gate-1-address");
+        const gateCity = document.getElementById("gate-1-city");
+        const gateNullish = document.getElementById("gate-1-nullish");
+        const gateOut = document.getElementById("gate-1-out");
+        const resultText = document.getElementById("result-1");
+
+        // UIリセット
+        gateAddress.className =
+          "flex flex-col items-center bg-white border-2 border-blue-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300";
+        gateCity.className =
+          "flex flex-col items-center bg-white border-2 border-blue-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300";
+        gateNullish.className =
+          "flex flex-col items-center bg-white border-2 border-orange-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300";
+        gateCity.querySelector(".skip-label").classList.add("hidden");
+        resultText.innerText = "---";
+        resultText.className =
+          "code-font text-xl font-bold text-slate-500 mt-2";
+
+        // パケットの初期化
+        const isAlice = type === "alice";
+        packet.innerHTML = isAlice
+          ? '{ name: "Alice", address: ... }'
+          : '{ name: "Bob" }';
+        packet.className =
+          "absolute z-50 pointer-events-none rounded-lg py-1.5 px-3 font-bold code-font shadow-lg border-2 border-slate-300 bg-white text-slate-700 whitespace-nowrap text-xs";
+
+        // ボタンの中央に配置
+        packet.style.transition = "none";
+        packet.style.opacity = "0";
+        updatePacketPos(packet, btnEl);
+
+        await sleep(50);
+        packet.style.opacity = "1";
+        await sleep(300);
+
+        // 1. ?.address ゲートへ移動
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        updatePacketPos(packet, gateAddress);
+        await sleep(1000);
+
+        gateAddress.classList.add("gate-active-blue");
+        await sleep(300);
+
+        if (isAlice) {
+          // address あり
+          await animateChange(
+            packet,
+            gateAddress,
+            '{ city: "Tokyo" }',
+            "border-blue-400 bg-blue-50 text-blue-700 text-sm",
+          );
+          gateAddress.classList.remove("gate-active-blue");
+          await sleep(300);
+
+          // 2. ?.city ゲートへ移動
+          packet.style.transition =
+            "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)";
+          updatePacketPos(packet, gateCity);
+          await sleep(1000);
+
+          gateCity.classList.add("gate-active-blue");
+          await sleep(300);
+          await animateChange(
+            packet,
+            gateCity,
+            '"Tokyo"',
+            "border-blue-500 bg-white text-blue-600 text-lg",
+          );
+          gateCity.classList.remove("gate-active-blue");
+          await sleep(300);
+
+          // 3. ?? "不明" ゲートへ移動
+          packet.style.transition =
+            "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)";
+          updatePacketPos(packet, gateNullish);
+          await sleep(1000);
+
+          gateNullish.classList.add("gate-active-orange");
+          await sleep(300);
+          // undefinedではないのでそのまま通過
+          await animateChange(
+            packet,
+            gateNullish,
+            '"Tokyo"',
+            "border-emerald-500 bg-emerald-50 text-emerald-700 text-lg",
+          );
+          gateNullish.classList.remove("gate-active-orange");
+        } else {
+          // Bob (address なし) -> ショートサーキット
+          await animateChange(
+            packet,
+            gateAddress,
+            "undefined",
+            "border-red-400 bg-red-50 text-red-500 text-lg",
+          );
+          gateAddress.classList.remove("gate-active-blue");
+          await sleep(300);
+
+          // ?.city をスキップする視覚表現
+          gateCity.classList.add("opacity-30");
+          gateCity.querySelector(".skip-label").classList.remove("hidden");
+
+          // 3. ?? "不明" ゲートへ一気に移動
+          packet.style.transition =
+            "transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)";
+          updatePacketPos(packet, gateNullish);
+          await sleep(1200);
+
+          gateNullish.classList.add("gate-active-orange");
+          await sleep(300);
+          // undefined なのでフォールバック発動！
+          await animateChange(
+            packet,
+            gateNullish,
+            '"不明"',
+            "border-orange-500 bg-orange-50 text-orange-600 text-lg",
+          );
+          gateNullish.classList.remove("gate-active-orange");
+        }
+
+        // 4. 出力へ移動
+        await sleep(300);
+        packet.style.transition =
+          "transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease-in 0.3s";
+        updatePacketPos(packet, gateOut);
+        packet.style.opacity = "0";
+
+        await sleep(800);
+
+        // 結果表示
+        resultText.innerText = isAlice ? '"Tokyo"' : '"不明"';
+        resultText.className = isAlice
+          ? "code-font text-2xl font-black text-emerald-500 mt-1"
+          : "code-font text-2xl font-black text-orange-500 mt-1";
+
+        // リセット待ち
+        setTimeout(() => {
+          isAnimating1 = false;
+        }, 1000);
+      }
+
+      // ==========================================
+      // セクション2: getUserName (null の場合)
+      // ==========================================
+      async function runGetName(type, btnEl) {
+        if (isAnimating2) return;
+        isAnimating2 = true;
+
+        const packet = document.getElementById("packet-2");
+        const gateName = document.getElementById("gate-2-name");
+        const gateNullish = document.getElementById("gate-2-nullish");
+        const gateOut = document.getElementById("gate-2-out");
+        const resultText = document.getElementById("result-2");
+
+        // UIリセット
+        gateName.className =
+          "flex flex-col items-center bg-white border-2 border-blue-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300 ml-4";
+        gateNullish.className =
+          "flex flex-col items-center bg-white border-2 border-orange-200 rounded-xl p-3 shadow-sm w-32 relative transition-all duration-300";
+        resultText.innerText = "---";
+        resultText.className =
+          "code-font text-xl font-bold text-slate-500 mt-2";
+
+        // パケットの初期化
+        const isAlice = type === "alice";
+        packet.innerHTML = isAlice ? '{ name: "Alice" }' : "null";
+        packet.className = isAlice
+          ? "absolute z-50 pointer-events-none rounded-lg py-1.5 px-3 font-bold code-font shadow-lg border-2 border-slate-300 bg-white text-slate-700 whitespace-nowrap text-sm"
+          : "absolute z-50 pointer-events-none rounded-lg py-1.5 px-3 font-bold code-font shadow-lg border-2 border-pink-400 bg-pink-50 text-pink-600 whitespace-nowrap text-lg";
+
+        // ボタンの中央に配置
+        packet.style.transition = "none";
+        packet.style.opacity = "0";
+        updatePacketPos(packet, btnEl);
+
+        await sleep(50);
+        packet.style.opacity = "1";
+        await sleep(300);
+
+        // 1. ?.name ゲートへ移動
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        updatePacketPos(packet, gateName);
+        await sleep(1000);
+
+        gateName.classList.add("gate-active-blue");
+        await sleep(300);
+
+        if (isAlice) {
+          // name あり
+          await animateChange(
+            packet,
+            gateName,
+            '"Alice"',
+            "border-blue-500 bg-white text-blue-600 text-lg",
+          );
+          gateName.classList.remove("gate-active-blue");
+          await sleep(300);
+
+          // 2. ?? "ゲスト" ゲートへ移動
+          packet.style.transition =
+            "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)";
+          updatePacketPos(packet, gateNullish);
+          await sleep(1000);
+
+          gateNullish.classList.add("gate-active-orange");
+          await sleep(300);
+          // undefinedではないのでそのまま通過
+          await animateChange(
+            packet,
+            gateNullish,
+            '"Alice"',
+            "border-emerald-500 bg-emerald-50 text-emerald-700 text-lg",
+          );
+          gateNullish.classList.remove("gate-active-orange");
+        } else {
+          // null の場合
+          await animateChange(
+            packet,
+            gateName,
+            "undefined",
+            "border-red-400 bg-red-50 text-red-500 text-lg",
+          );
+          gateName.classList.remove("gate-active-blue");
+          await sleep(300);
+
+          // 2. ?? "ゲスト" ゲートへ移動
+          packet.style.transition =
+            "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)";
+          updatePacketPos(packet, gateNullish);
+          await sleep(1000);
+
+          gateNullish.classList.add("gate-active-orange");
+          await sleep(300);
+          // undefined なのでフォールバック発動！
+          await animateChange(
+            packet,
+            gateNullish,
+            '"ゲスト"',
+            "border-orange-500 bg-orange-50 text-orange-600 text-lg",
+          );
+          gateNullish.classList.remove("gate-active-orange");
+        }
+
+        // 3. 出力へ移動
+        await sleep(300);
+        packet.style.transition =
+          "transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease-in 0.3s";
+        updatePacketPos(packet, gateOut);
+        packet.style.opacity = "0";
+
+        await sleep(800);
+
+        // 結果表示
+        resultText.innerText = isAlice ? '"Alice"' : '"ゲスト"';
+        resultText.className = isAlice
+          ? "code-font text-2xl font-black text-emerald-500 mt-1"
+          : "code-font text-2xl font-black text-orange-500 mt-1";
+
+        setTimeout(() => {
+          isAnimating2 = false;
+        }, 1000);
+      }
+    </script>
   </body>
 </html>

@@ -3,54 +3,549 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: useEffect クリーンアップ</title>
+    <title>React 図解: useEffect のクリーンアップ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
-        background-color: #f8fafc;
+        background-color: #f0f9ff; /* sky-50 */
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Reactブルーのテーマ */
+      .react-blue {
+        color: #06b6d4;
+      }
+      .bg-react-blue {
+        background-color: #06b6d4;
+      }
+
+      /* マウント時のコンポーネント出現アニメーション */
+      @keyframes popIn {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .animate-pop {
+        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+
+      /* タイマーの「チクタク」アニメーション */
+      @keyframes pulse-tick {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+        }
+        50% {
+          transform: scale(1.05);
+          box-shadow: 0 0 0 15px rgba(6, 182, 212, 0);
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+        }
+      }
+      .tick-active {
+        animation: pulse-tick 1s infinite;
+        border-color: #06b6d4 !important;
+      }
+
+      /* クリーンアップ時のフラッシュアニメーション */
+      @keyframes flash-cleanup {
+        0% {
+          background-color: #fef2f2;
+          border-color: #ef4444;
+          color: #ef4444;
+        }
+        50% {
+          background-color: #fca5a5;
+          border-color: #b91c1c;
+          color: #7f1d1d;
+        }
+        100% {
+          background-color: #fef2f2;
+          border-color: #ef4444;
+          color: #ef4444;
+        }
+      }
+      .flash-active {
+        animation: flash-cleanup 0.5s ease-out;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+      }
+
+      /* ゴーストプロセス（クリーンアップ忘れ）のアニメーション */
+      @keyframes ghost-float {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.5;
+        }
+        50% {
+          transform: translateY(-10px);
+          opacity: 0.8;
+        }
+      }
+      .ghost-process {
+        animation: ghost-float 3s infinite ease-in-out;
+        color: #ef4444;
+        border-color: #fca5a5 !important;
+        background-color: #fef2f2 !important;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-cyan-100 text-cyan-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-cyan-200"
+        >
+          React フックの極意
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >useEffect クリーンアップ</span
+          去り際のお片付け：<br class="md:hidden" /><span class="react-blue"
+            >useEffect のクリーンアップ</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          useEffect のクリーンアップ関数で、サブスクリプション解除などを型安全に扱いましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">useEffect</code>
+          の中で関数を
+          <code class="bg-slate-200 px-1 rounded code-font">return</code>
+          すると、そのコンポーネントが画面から消える時（アンマウント時）に実行されます。裏で動いているタイマーやイベント監視を止めて、<strong>「メモリの無駄遣い（メモリリーク）」を防ぐ</strong>ための重要な仕組みです。
         </p>
       </header>
 
+      <!-- 1. インタラクティブ・シミュレーション (Timer) -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-brands fa-react react-blue"></i> 1.
+          タイマーの動作と「お片付け」シミュレーション
+        </h2>
+
+        <!-- コントロールパネル -->
+        <div class="flex justify-center gap-4 mb-8">
+          <button
+            id="btn-mount"
+            onclick="toggleMount(true)"
+            class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all flex items-center gap-2"
+          >
+            <i class="fa-solid fa-plus"></i> Timerを画面に出す (Mount)
+          </button>
+          <button
+            id="btn-unmount"
+            onclick="toggleMount(false)"
+            class="bg-slate-200 text-slate-400 font-bold py-3 px-6 rounded-xl transition-all flex items-center gap-2 cursor-not-allowed"
+            disabled
+          >
+            <i class="fa-solid fa-xmark"></i> 画面から消す (Unmount)
+          </button>
+        </div>
+
+        <!-- 舞台裏の可視化 -->
+        <div class="flex flex-col lg:flex-row gap-6 relative">
+          <!-- 左側：ブラウザの画面 (DOM) -->
+          <div
+            class="w-full lg:w-1/2 bg-slate-100 border-2 border-slate-300 rounded-xl p-4 min-h-[300px] flex flex-col relative"
+          >
+            <div
+              class="text-sm font-bold text-slate-500 mb-4 text-center border-b border-slate-300 pb-2"
+            >
+              <i class="fa-regular fa-window-maximize"></i> ブラウザの画面 (DOM)
+            </div>
+
+            <!-- コンポーネントのプレースホルダー -->
+            <div
+              id="component-area"
+              class="flex-1 flex items-center justify-center relative"
+            >
+              <div
+                id="empty-state"
+                class="text-slate-400 text-sm border-2 border-dashed border-slate-300 p-8 rounded-xl text-center"
+              >
+                現在、Timerコンポーネントは<br />画面に存在しません。
+              </div>
+
+              <!-- 実際のコンポーネント (初期非表示) -->
+              <div
+                id="timer-component"
+                class="hidden bg-white border-2 border-cyan-400 shadow-lg rounded-xl p-6 text-center w-64 absolute z-10 animate-pop"
+              >
+                <div
+                  class="text-xs bg-cyan-100 text-cyan-800 px-2 py-1 rounded inline-block mb-3 font-bold"
+                >
+                  &lt;Timer /&gt;
+                </div>
+                <div class="text-3xl font-bold text-slate-700 code-font my-2">
+                  経過秒数: <span id="timer-display" class="react-blue">0</span>
+                </div>
+                <div class="text-xs text-slate-400 mt-2">
+                  画面に描画されています
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 矢印 -->
+          <div
+            class="hidden lg:flex flex-col justify-center items-center text-slate-300"
+          >
+            <i class="fa-solid fa-arrow-right-arrow-left text-3xl"></i>
+            <div class="text-[10px] mt-1">裏側の処理</div>
+          </div>
+
+          <!-- 右側：ブラウザの裏側 (メモリ/イベント) -->
+          <div
+            class="w-full lg:w-1/2 bg-slate-800 rounded-xl p-4 min-h-[300px] flex flex-col border-4 border-slate-700 relative overflow-hidden"
+          >
+            <div
+              class="text-sm font-bold text-slate-400 mb-4 text-center border-b border-slate-700 pb-2"
+            >
+              <i class="fa-solid fa-microchip"></i> ブラウザの裏側 (メモリ)
+            </div>
+
+            <!-- 裏で動くプロセス -->
+            <div
+              class="flex-1 flex flex-col items-center justify-center gap-6 relative z-10"
+            >
+              <!-- setInterval プロセス -->
+              <div
+                id="interval-process"
+                class="transition-all-custom bg-slate-900 border-2 border-slate-600 rounded-full w-32 h-32 flex flex-col items-center justify-center shadow-inner relative"
+              >
+                <i
+                  id="gear-icon"
+                  class="fa-solid fa-gear text-4xl text-slate-600 mb-2 transition-transform duration-1000"
+                ></i>
+                <div class="text-xs font-bold text-slate-500 code-font">
+                  setInterval
+                </div>
+
+                <!-- 時計の針のアニメーション -->
+                <div
+                  id="clock-hand"
+                  class="absolute w-1 h-12 bg-cyan-400 top-4 origin-bottom rounded-full opacity-0 transition-transform duration-[1000ms] ease-linear"
+                ></div>
+              </div>
+
+              <!-- 状態メッセージ -->
+              <div
+                id="process-status"
+                class="text-slate-500 text-sm font-bold bg-slate-900 px-4 py-2 rounded-full border border-slate-700"
+              >
+                タイマーは停止しています
+              </div>
+            </div>
+
+            <!-- クリーンアップコードのハイライト領域 -->
+            <div
+              id="code-cleanup-highlight"
+              class="absolute bottom-4 left-4 right-4 bg-red-50 border-2 border-red-400 rounded-lg p-3 opacity-0 transition-opacity z-20"
+            >
+              <div class="text-xs font-bold text-red-600 mb-1">
+                <i class="fa-solid fa-broom"></i>
+                クリーンアップ関数が実行されました！
+              </div>
+              <div class="code-font text-sm text-red-800 font-bold">
+                return () => clearInterval(id);
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. コード解説 -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-code text-indigo-500"></i> 2. コードの構造解説
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="flex flex-col md:flex-row gap-6">
+          <!-- Timer のコード -->
+          <div
+            class="flex-1 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden"
+          >
+            <div
+              class="bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700 flex justify-between"
+            >
+              <span>Timerコンポーネント</span>
+              <span class="text-slate-500"
+                ><i class="fa-regular fa-clock"></i> 継続的な処理</span
+              >
+            </div>
+            <div
+              class="p-4 code-font text-[13px] leading-relaxed text-slate-800"
+            >
+              <span class="text-blue-600">function</span> Timer() {<br />
+              &nbsp;&nbsp;<span class="text-blue-600">const</span> [count,
+              setCount] = useState(0);<br /><br />
+              &nbsp;&nbsp;<span class="text-emerald-600 font-bold"
+                >useEffect</span
+              >(() => {<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"
+                >// ① マウント時に開始</span
+              ><br />
+              &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-blue-600">const</span>
+              id = <span class="text-purple-600">setInterval</span>(() => {<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;setCount((c) => c + 1);<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;}, 1000);<br /><br />
+              &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"
+                >// ② アンマウント時に実行される「お片付け」</span
+              ><br />
+              &nbsp;&nbsp;&nbsp;&nbsp;<span
+                class="bg-red-100 text-red-700 font-bold px-1 rounded border border-red-200 block mt-1"
+              >
+                <span class="text-blue-600">return</span> () =>
+                <span class="text-purple-600">clearInterval</span>(id);
+              </span>
+              &nbsp;&nbsp;}, []);<br /><br />
+              &nbsp;&nbsp;<span class="text-blue-600">return</span>
+              &lt;div&gt;経過秒数: {count}&lt;/div&gt;;<br />
+              }
+            </div>
+          </div>
+
+          <!-- WindowWidth のコード -->
+          <div
+            class="flex-1 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden"
+          >
+            <div
+              class="bg-slate-200 px-4 py-2 text-sm font-bold text-slate-700 flex justify-between"
+            >
+              <span>useWindowWidth カスタムフック</span>
+              <span class="text-slate-500"
+                ><i class="fa-solid fa-arrows-left-right"></i>
+                イベント監視</span
+              >
+            </div>
+            <div
+              class="p-4 code-font text-[13px] leading-relaxed text-slate-800"
+            >
+              <span class="text-blue-600">function</span> useWindowWidth() {<br />
+              &nbsp;&nbsp;<span class="text-blue-600">const</span> [width,
+              setWidth] = useState(window.innerWidth);<br /><br />
+              &nbsp;&nbsp;<span class="text-emerald-600 font-bold"
+                >useEffect</span
+              >(() => {<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"
+                >// ① マウント時に監視スタート</span
+              ><br />
+              &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-blue-600">const</span>
+              handler = () => setWidth(window.innerWidth);<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;window.<span class="text-purple-600"
+                >addEventListener</span
+              >("resize", handler);<br /><br />
+              &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"
+                >// ② アンマウント時に監視を解除</span
+              ><br />
+              &nbsp;&nbsp;&nbsp;&nbsp;<span
+                class="bg-red-100 text-red-700 font-bold px-1 rounded border border-red-200 block mt-1"
+              >
+                <span class="text-blue-600">return</span> () => window.<span
+                  class="text-purple-600"
+                  >removeEventListener</span
+                >("resize", handler);
+              </span>
+              &nbsp;&nbsp;}, []);<br /><br />
+              &nbsp;&nbsp;<span class="text-blue-600">return</span> width;<br />
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- もしクリーンアップしなかったら？ -->
+        <div
+          class="mt-6 bg-red-50 border-l-4 border-red-500 p-5 rounded-r-lg shadow-sm"
+        >
+          <h3
+            class="font-bold text-red-800 mb-2 flex items-center gap-2 text-lg"
+          >
+            <i class="fa-solid fa-skull-crossbones text-red-600"></i> もし
+            return のお片付けを書き忘れたら？
+          </h3>
+          <p class="text-sm text-red-900 leading-relaxed">
+            コンポーネントが画面から消えても、裏側の
+            <code class="bg-red-100 px-1 rounded code-font">setInterval</code>
+            や
+            <code class="bg-red-100 px-1 rounded code-font"
+              >addEventListener</code
+            >
+            は**永遠に動き続けます**。再びコンポーネントを表示すると、新しいタイマーが追加され、裏で2つ、3つとタイマーが重複して暴走します。これがアプリをクラッシュさせる「メモリリーク」の原因です。だからこそ、去り際の
+            <code class="bg-red-100 px-1 rounded code-font"
+              >return () => ...</code
+            >
+            は必須なのです。
+          </p>
+        </div>
       </section>
     </div>
+
+    <script>
+      // シミュレーションの状態管理
+      let isMounted = false;
+      let jsTimerId = null;
+      let count = 0;
+      let rotationDegrees = 0;
+
+      // UIエレメント
+      const btnMount = document.getElementById("btn-mount");
+      const btnUnmount = document.getElementById("btn-unmount");
+
+      const emptyState = document.getElementById("empty-state");
+      const timerComponent = document.getElementById("timer-component");
+      const timerDisplay = document.getElementById("timer-display");
+
+      const intervalProcess = document.getElementById("interval-process");
+      const gearIcon = document.getElementById("gear-icon");
+      const clockHand = document.getElementById("clock-hand");
+      const processStatus = document.getElementById("process-status");
+
+      const codeCleanupHighlight = document.getElementById(
+        "code-cleanup-highlight",
+      );
+
+      // マウント/アンマウントの切り替え関数
+      function toggleMount(shouldMount) {
+        if (shouldMount && !isMounted) {
+          // ===== マウント処理 =====
+          isMounted = true;
+          count = 0;
+          timerDisplay.innerText = count;
+
+          // ボタンの切り替え
+          btnMount.classList.replace("bg-cyan-500", "bg-slate-200");
+          btnMount.classList.replace("text-white", "text-slate-400");
+          btnMount.classList.replace("hover:bg-cyan-600", "cursor-not-allowed");
+          btnMount.disabled = true;
+
+          btnUnmount.classList.replace("bg-slate-200", "bg-red-500");
+          btnUnmount.classList.replace("text-slate-400", "text-white");
+          btnUnmount.classList.replace(
+            "cursor-not-allowed",
+            "hover:bg-red-600",
+          );
+          btnUnmount.disabled = false;
+
+          // 画面(DOM)の更新
+          emptyState.classList.add("hidden");
+          timerComponent.classList.remove("hidden");
+
+          // 裏側(メモリ)の更新
+          intervalProcess.classList.add("tick-active");
+          clockHand.style.opacity = "1";
+          processStatus.innerText = "setInterval が稼働中... (1000ms毎)";
+          processStatus.classList.replace("text-slate-500", "text-cyan-400");
+          processStatus.classList.replace("bg-slate-900", "bg-slate-800");
+          processStatus.classList.replace(
+            "border-slate-700",
+            "border-cyan-500",
+          );
+
+          // 実際のタイマー起動
+          jsTimerId = setInterval(() => {
+            count++;
+            timerDisplay.innerText = count;
+
+            // アニメーション
+            rotationDegrees += 90;
+            gearIcon.style.transform = `rotate(${rotationDegrees}deg)`;
+            clockHand.style.transform = `rotate(${count * 360}deg)`;
+
+            // コンポーネントを少し揺らす（値更新の表現）
+            timerDisplay.style.transform = "scale(1.2)";
+            setTimeout(() => (timerDisplay.style.transform = "scale(1)"), 150);
+          }, 1000);
+        } else if (!shouldMount && isMounted) {
+          // ===== アンマウント処理 =====
+          isMounted = false;
+
+          // 実際のタイマー停止（これがクリーンアップ！）
+          clearInterval(jsTimerId);
+
+          // ボタンの切り替え
+          btnUnmount.classList.replace("bg-red-500", "bg-slate-200");
+          btnUnmount.classList.replace("text-white", "text-slate-400");
+          btnUnmount.classList.replace(
+            "hover:bg-red-600",
+            "cursor-not-allowed",
+          );
+          btnUnmount.disabled = true;
+
+          btnMount.classList.replace("bg-slate-200", "bg-cyan-500");
+          btnMount.classList.replace("text-slate-400", "text-white");
+          btnMount.classList.replace("cursor-not-allowed", "hover:bg-cyan-600");
+          btnMount.disabled = false;
+
+          // 画面(DOM)の更新
+          timerComponent.classList.add("hidden");
+          emptyState.classList.remove("hidden");
+
+          // クリーンアップのアニメーション (Flash!)
+          codeCleanupHighlight.style.opacity = "1";
+          codeCleanupHighlight.classList.add("flash-active");
+
+          // 裏側(メモリ)の更新
+          intervalProcess.classList.remove("tick-active");
+          clockHand.style.opacity = "0";
+          processStatus.innerText = "安全に停止・破棄されました🧹";
+          processStatus.classList.replace("text-cyan-400", "text-emerald-400");
+          processStatus.classList.replace(
+            "border-cyan-500",
+            "border-emerald-500",
+          );
+
+          // アニメーションのリセット
+          setTimeout(() => {
+            codeCleanupHighlight.style.opacity = "0";
+            codeCleanupHighlight.classList.remove("flash-active");
+
+            // ステータス表示を初期状態に戻す
+            setTimeout(() => {
+              if (!isMounted) {
+                processStatus.innerText = "タイマーは停止しています";
+                processStatus.classList.replace(
+                  "text-emerald-400",
+                  "text-slate-500",
+                );
+                processStatus.classList.replace("bg-slate-800", "bg-slate-900");
+                processStatus.classList.replace(
+                  "border-emerald-500",
+                  "border-slate-700",
+                );
+              }
+            }, 2000);
+          }, 800);
+        }
+      }
+    </script>
   </body>
 </html>

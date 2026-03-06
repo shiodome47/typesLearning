@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: 網羅性チェック (Exhaustiveness Check)</title>
+    <title>TypeScript 図解: 網羅性チェックと assertNever</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -16,528 +16,450 @@
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
 
-      .transition-all-custom {
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      /* エディタのテーマ（VS Code風ダークテーマ） */
+      .editor-bg {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+      }
+      .ts-keyword {
+        color: #569cd6;
+      } /* function, return, switch etc */
+      .ts-type {
+        color: #4ec9b0;
+      } /* Circle, Shape etc */
+      .ts-string {
+        color: #ce9178;
+      } /* "circle" etc */
+      .ts-comment {
+        color: #6a9955;
+      } /* // comments */
+      .ts-func {
+        color: #dcdcaa;
+      } /* getArea, assertNever */
+      .ts-var {
+        color: #9cdcfe;
+      } /* shape, radius */
+      .ts-num {
+        color: #b5cea8;
+      } /* 2, 5 */
+
+      /* 赤い波線 (コンパイルエラー) */
+      .error-squiggle {
+        text-decoration: underline wavy #f43f5e 2px;
+        background-color: rgba(244, 63, 94, 0.15);
+        border-radius: 2px;
       }
 
-      .path-active {
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
-        border-color: #3b82f6 !important;
-        transform: scale(1.02);
-        z-index: 10;
-      }
-
-      .path-error {
-        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
-        border-color: #ef4444 !important;
-        transform: scale(1.02);
-        z-index: 10;
-        animation: shake 0.4s ease-in-out;
-      }
-
-      @keyframes shake {
-        0%,
-        100% {
-          transform: translateX(0) scale(1.02);
-        }
-        25% {
-          transform: translateX(-5px) scale(1.02);
-        }
-        50% {
-          transform: translateX(5px) scale(1.02);
-        }
-        75% {
-          transform: translateX(-5px) scale(1.02);
-        }
-      }
-
-      @keyframes flow {
+      /* コンパイラのスキャンエフェクト */
+      @keyframes scan-down {
         0% {
-          transform: translateX(-10px);
-          opacity: 0;
+          top: 0;
+          opacity: 1;
         }
-        50% {
+        90% {
+          top: 100%;
           opacity: 1;
         }
         100% {
-          transform: translateX(20px);
+          top: 100%;
           opacity: 0;
         }
       }
-      .flowing-dot::after {
-        content: "▶";
+      .scanner-line {
         position: absolute;
-        color: inherit;
-        animation: flow 1s infinite;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: #3b82f6;
+        box-shadow:
+          0 0 10px #3b82f6,
+          0 0 20px #3b82f6;
+        z-index: 50;
+        display: none;
+      }
+      .scanning .scanner-line {
+        display: block;
+        animation: scan-down 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+
+      /* 飛行する型のテキスト */
+      .ghost-type {
+        position: absolute;
+        font-weight: 900;
+        font-size: 14px;
+        pointer-events: none;
+        z-index: 60;
+        transition:
+          transform 2s cubic-bezier(0.34, 1.56, 0.64, 1),
+          opacity 0.5s;
+        text-shadow: 0 0 8px rgba(192, 132, 252, 0.8);
+      }
+
+      /* ポップアップアニメーション */
+      @keyframes popIn {
+        0% {
+          transform: scale(0.9);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .animate-pop {
+        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
       }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
-    <div class="max-w-7xl w-full">
-      <!-- ヘッダー部分 -->
+    <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
         <div
-          class="inline-block bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm"
+          class="inline-block bg-rose-100 text-rose-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-rose-200"
         >
-          TypeScriptの高度な機能
+          TypeScript 最大の防御壁
         </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          処理漏れを絶対に許さない：<br class="md:hidden" /><span
-            class="text-blue-600"
-            >網羅性チェック</span
+          仕様変更の「修正漏れ」を防ぐ：<br class="md:hidden" /><span
+            class="text-rose-600"
+            >網羅性チェック と assertNever</span
           >
-          の図解
         </h1>
         <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
-          <code class="bg-slate-200 px-1 rounded code-font">assertNever</code>
-          と
-          <code class="bg-slate-200 px-1 rounded code-font">never</code>
-          型を組み合わせることで、将来「新しい図形（Ellipseなど）」を追加した時に、<strong>計算式の書き忘れ（caseの漏れ）をコンパイル時に見つける</strong>ことができる、非常に強力な設計です。
+          プログラムは一度作って終わりではありません。「将来、新しい図形が追加された時」に、<br
+            class="hidden md:block"
+          />
+          開発者がうっかり計算式の追加（<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >case</code
+          >）を忘れてしまっても、TypeScriptがコンパイル時に真っ赤なエラーを出して教えてくれる完璧な防御システムです。
         </p>
       </header>
 
-      <!-- 1. 型の設計とassertNever -->
+      <!-- メイン・シミュレーション (エディタ画面) -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8 relative overflow-hidden"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700 relative z-10"
         >
-          <i class="fa-solid fa-layer-group text-blue-500"></i> 1.
-          新しい型（Ellipse）の追加
+          <i class="fa-solid fa-laptop-code text-blue-500"></i>
+          コーディング・シミュレーション
         </h2>
-        <p class="mb-6 text-slate-600">
-          既存の図形に加えて、新しく
-          <strong>Ellipse（楕円）</strong> が追加されました。
-        </p>
 
+        <!-- 飛行用ダミーエレメント -->
         <div
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 justify-center items-stretch"
+          id="flying-type"
+          class="ghost-type code-font text-purple-400 opacity-0 bg-slate-800 px-2 py-1 rounded border border-purple-500"
         >
-          <!-- Circle -->
-          <div
-            class="bg-rose-50 border-2 border-rose-200 rounded-xl p-4 relative overflow-hidden"
-          >
-            <div
-              class="absolute top-0 right-0 bg-rose-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg"
-            >
-              <i class="fa-regular fa-circle"></i> Circle
-            </div>
-            <div class="mt-4 code-font text-sm">
-              <div class="text-rose-600">kind: "circle"</div>
-              <div class="text-slate-600">radius: number</div>
-            </div>
-          </div>
-
-          <!-- Rect -->
-          <div
-            class="bg-sky-50 border-2 border-sky-200 rounded-xl p-4 relative overflow-hidden"
-          >
-            <div
-              class="absolute top-0 right-0 bg-sky-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg"
-            >
-              <i class="fa-regular fa-square"></i> Rect
-            </div>
-            <div class="mt-4 code-font text-sm">
-              <div class="text-sky-600">kind: "rect"</div>
-              <div class="text-slate-600">width: number</div>
-              <div class="text-slate-600">height: number</div>
-            </div>
-          </div>
-
-          <!-- Triangle -->
-          <div
-            class="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 relative overflow-hidden"
-          >
-            <div
-              class="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg"
-            >
-              <i class="fa-solid fa-play -rotate-90"></i> Triangle
-            </div>
-            <div class="mt-4 code-font text-sm">
-              <div class="text-amber-600">kind: "triangle"</div>
-              <div class="text-slate-600">base: number</div>
-              <div class="text-slate-600">height: number</div>
-            </div>
-          </div>
-
-          <!-- Ellipse (NEW) -->
-          <div
-            class="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 relative overflow-hidden shadow-[0_0_15px_rgba(168,85,247,0.2)]"
-          >
-            <div
-              class="absolute top-0 right-0 bg-purple-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg"
-            >
-              <span class="inline-block scale-x-150 mr-1"
-                ><i class="fa-regular fa-circle"></i
-              ></span>
-              Ellipse
-              <span class="text-[10px] ml-1 text-purple-200">(NEW)</span>
-            </div>
-            <div class="mt-4 code-font text-sm">
-              <div class="text-purple-600 font-bold">kind: "ellipse"</div>
-              <div class="text-slate-600">rx: number</div>
-              <div class="text-slate-600">ry: number</div>
-            </div>
-          </div>
+          Ellipse
         </div>
 
-        <div class="text-center mt-6 flex justify-center items-center gap-4">
-          <div
-            class="inline-block bg-slate-100 border-2 border-slate-300 rounded-lg px-6 py-3 font-bold text-slate-700 code-font shadow-sm text-sm md:text-base"
-          >
-            type Shape = Circle | Rect | Triangle |
-            <span class="text-purple-600 border-b-2 border-purple-400"
-              >Ellipse</span
-            >;
+        <div
+          class="flex flex-col lg:flex-row gap-6 relative"
+          id="editor-container"
+        >
+          <!-- 左側：型定義ファイル (types.ts) -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-4">
+            <div
+              class="editor-bg rounded-xl p-4 shadow-lg border border-slate-700 relative"
+            >
+              <div
+                class="text-[11px] text-slate-400 mb-3 border-b border-slate-700 pb-2 flex justify-between"
+              >
+                <span><i class="fa-brands fa-js mr-1"></i>types.ts</span>
+              </div>
+
+              <div class="code-font text-[13px] leading-loose">
+                <span class="ts-keyword">type</span>
+                <span class="ts-type">Circle</span> = { kind:
+                <span class="ts-string">"circle"</span> };<br />
+                <span class="ts-keyword">type</span>
+                <span class="ts-type">Rect</span> = { kind:
+                <span class="ts-string">"rect"</span> };<br />
+                <span class="ts-keyword">type</span>
+                <span class="ts-type">Triangle</span> = { kind:
+                <span class="ts-string">"triangle"</span> };<br />
+
+                <!-- Ellipseの追加行 (最初は非表示) -->
+                <div
+                  id="line-ellipse-type"
+                  class="opacity-0 h-0 overflow-hidden transition-all duration-500 bg-purple-900/30 border-l-2 border-purple-500 pl-2 -ml-2"
+                >
+                  <span class="ts-keyword">type</span>
+                  <span class="ts-type">Ellipse</span> = { kind:
+                  <span class="ts-string">"ellipse"</span> };
+                </div>
+
+                <br />
+                <span class="ts-keyword">type</span>
+                <span class="ts-type">Shape</span> = <br />
+                &nbsp;&nbsp;| <span class="ts-type">Circle</span><br />
+                &nbsp;&nbsp;| <span class="ts-type">Rect</span><br />
+                &nbsp;&nbsp;| <span class="ts-type">Triangle</span><br />
+                <!-- Shapeユニオンへの追加行 -->
+                <div
+                  id="line-ellipse-union"
+                  class="opacity-0 h-0 overflow-hidden transition-all duration-500"
+                >
+                  &nbsp;&nbsp;|
+                  <span
+                    id="anchor-ellipse-def"
+                    class="ts-type font-bold text-purple-400 bg-purple-900/50 px-1 rounded border border-purple-500/50"
+                    >Ellipse</span
+                  >;
+                </div>
+                <span id="semi-colon">;</span>
+              </div>
+            </div>
+
+            <!-- アクションボタン -->
+            <div
+              class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center"
+            >
+              <div
+                class="text-xs font-bold text-slate-500 mb-3"
+                id="action-title"
+              >
+                👇 ここからスタート
+              </div>
+              <button
+                id="btn-add"
+                onclick="simulateAddEllipse()"
+                class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all active:scale-95 flex justify-center items-center gap-2"
+              >
+                <i class="fa-solid fa-code-pull-request"></i> 仕様変更：Ellipse
+                型を追加する
+              </button>
+              <button
+                id="btn-reset"
+                onclick="resetSimulation()"
+                class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 px-4 rounded-lg shadow-sm transition-all active:scale-95 flex justify-center items-center gap-2 hidden"
+              >
+                <i class="fa-solid fa-rotate-left"></i> 初期状態に戻す
+              </button>
+            </div>
+          </div>
+
+          <!-- 右側：関数ファイル (utils.ts) -->
+          <div class="w-full lg:w-[65%] flex flex-col">
+            <div
+              id="editor-func"
+              class="editor-bg rounded-xl p-4 shadow-lg border border-slate-700 relative flex-1 overflow-hidden"
+            >
+              <!-- コンパイラのスキャンライン -->
+              <div class="scanner-line"></div>
+
+              <!-- ヘッダーとステータス -->
+              <div
+                class="text-[11px] text-slate-400 mb-3 border-b border-slate-700 pb-2 flex justify-between items-center relative z-20 bg-[#1e1e1e]"
+              >
+                <span><i class="fa-brands fa-js mr-1"></i>utils.ts</span>
+                <span
+                  id="ts-status"
+                  class="text-emerald-400 font-bold px-2 py-0.5 rounded transition-colors"
+                  ><i class="fa-solid fa-check"></i> No Errors</span
+                >
+              </div>
+
+              <div class="code-font text-[13px] leading-loose relative z-10">
+                <span class="ts-keyword">function</span>
+                <span class="ts-func">getArea</span>(shape:
+                <span class="ts-type">Shape</span>):
+                <span class="ts-type">number</span> {<br />
+                &nbsp;&nbsp;<span class="ts-keyword">switch</span> (<span
+                  class="ts-var"
+                  >shape</span
+                >.kind) {<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword">case</span>
+                <span class="ts-string">"circle"</span>:<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword"
+                  >return</span
+                >
+                Math.PI * <span class="ts-var">shape</span>.radius **
+                <span class="ts-num">2</span>;<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword">case</span>
+                <span class="ts-string">"rect"</span>:<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword"
+                  >return</span
+                >
+                <span class="ts-var">shape</span>.width *
+                <span class="ts-var">shape</span>.height;<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword">case</span>
+                <span class="ts-string">"triangle"</span>:<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword"
+                  >return</span
+                >
+                (<span class="ts-var">shape</span>.base *
+                <span class="ts-var">shape</span>.height) /
+                <span class="ts-num">2</span>;<br />
+
+                <!-- 追加されるcase行 (最初は非表示) -->
+                <div
+                  id="line-case-ellipse"
+                  class="opacity-0 h-0 overflow-hidden transition-all duration-500 bg-emerald-900/30 border-l-2 border-emerald-500 pl-2 -ml-2"
+                >
+                  &nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword">case</span>
+                  <span class="ts-string">"ellipse"</span>:
+                  <span
+                    id="anchor-case-ellipse"
+                    class="inline-block w-1 h-1"
+                  ></span
+                  ><br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword"
+                    >return</span
+                  >
+                  Math.PI * <span class="ts-var">shape</span>.rx *
+                  <span class="ts-var">shape</span>.ry;<br />
+                </div>
+
+                &nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword">default</span
+                >:<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-comment"
+                  >// 未処理の型が残っていればここでエラーになる！</span
+                ><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ts-keyword"
+                  >return</span
+                >
+                <span class="ts-func">assertNever</span>(<span
+                  id="target-shape"
+                  class="transition-colors px-1 rounded inline-block"
+                  >shape</span
+                >);<br />
+                &nbsp;&nbsp;}<br />
+                }
+              </div>
+
+              <!-- エラーポップアップツールチップ -->
+              <div
+                id="error-popup"
+                class="absolute bg-slate-800 border border-slate-600 rounded-lg p-3 shadow-2xl hidden z-30 animate-pop max-w-[90%]"
+                style="bottom: 20px; right: 20px"
+              >
+                <div
+                  class="text-rose-400 font-bold mb-1 text-xs border-b border-slate-600 pb-1 flex items-center gap-1"
+                >
+                  <i class="fa-solid fa-circle-xmark"></i> TypeScript Error
+                  (TS2345)
+                </div>
+                <div
+                  class="code-font text-xs text-slate-300 mt-2 leading-relaxed"
+                >
+                  Argument of type
+                  <span class="text-purple-400 font-bold">'Ellipse'</span> is
+                  not assignable to parameter of type
+                  <span class="text-rose-400 font-bold">'never'</span>.
+                </div>
+                <div class="mt-3 text-right">
+                  <button
+                    id="btn-fix"
+                    onclick="simulateFixCode()"
+                    class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded text-xs transition-colors"
+                  >
+                    case "ellipse" を書き足して修正する
+                  </button>
+                </div>
+              </div>
+
+              <!-- 完了ポップアップ -->
+              <div
+                id="success-popup"
+                class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-800 border border-emerald-500 rounded-lg p-4 shadow-2xl hidden z-30 text-center animate-pop"
+              >
+                <div class="text-emerald-400 text-4xl mb-2">
+                  <i class="fa-solid fa-shield-check"></i>
+                </div>
+                <div class="font-bold text-white mb-1">
+                  修正完了・コンパイル成功！
+                </div>
+                <div class="text-xs text-slate-400">
+                  すべての型が安全に処理されています
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- 2. 動く！getArea関数の仕組み -->
+      <!-- 解説セクション -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-2 flex items-center gap-2"
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-4 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-shield-halved text-green-500"></i> 2.
-          網羅性チェックのシミュレーション
+          <i class="fa-solid fa-graduation-cap text-rose-500"></i> なぜ
+          assertNever を使うの？
         </h2>
-        <p class="mb-8 text-slate-600 text-sm">
-          各ボタンを押してデータを送信してください。一番下の<span
-            class="text-red-600 font-bold"
-            >「未知の図形（想定外のデータ）」</span
-          >ボタンを押すと、<code class="bg-slate-100 px-1 rounded"
-            >assertNever</code
-          >
-          がどのように機能するか確認できます。
-        </p>
-
-        <!-- インタラクティブ・エリア -->
-        <div
-          class="flex flex-col lg:flex-row gap-4 items-stretch justify-between bg-slate-50 p-6 rounded-xl border border-slate-200"
-        >
-          <!-- STEP 1: 入力（データ送信） -->
-          <div class="w-full lg:w-[28%] flex flex-col gap-2">
-            <div class="text-sm font-bold text-slate-500 text-center mb-1">
-              ① データを渡す
-            </div>
-
-            <button
-              onclick="runSimulation('circle', { r: 5 })"
-              class="hover:scale-[1.02] transition-transform bg-white border-2 border-rose-300 hover:border-rose-500 rounded-lg p-2 text-left shadow-sm group"
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-slate-50 border border-slate-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-slate-800 mb-2 text-sm flex items-center gap-2"
             >
-              <div
-                class="font-bold text-rose-600 flex justify-between items-center text-sm"
-              >
-                <span><i class="fa-regular fa-circle w-5"></i> Circle</span>
-                <i
-                  class="fa-solid fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"
-                ></i>
-              </div>
-            </button>
-
-            <button
-              onclick="runSimulation('rect', { w: 4, h: 3 })"
-              class="hover:scale-[1.02] transition-transform bg-white border-2 border-sky-300 hover:border-sky-500 rounded-lg p-2 text-left shadow-sm group"
-            >
-              <div
-                class="font-bold text-sky-600 flex justify-between items-center text-sm"
-              >
-                <span><i class="fa-regular fa-square w-5"></i> Rect</span>
-                <i
-                  class="fa-solid fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"
-                ></i>
-              </div>
-            </button>
-
-            <button
-              onclick="runSimulation('triangle', { b: 6, h: 4 })"
-              class="hover:scale-[1.02] transition-transform bg-white border-2 border-amber-300 hover:border-amber-500 rounded-lg p-2 text-left shadow-sm group"
-            >
-              <div
-                class="font-bold text-amber-600 flex justify-between items-center text-sm"
-              >
-                <span
-                  ><i class="fa-solid fa-play -rotate-90 w-5"></i>
-                  Triangle</span
-                >
-                <i
-                  class="fa-solid fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"
-                ></i>
-              </div>
-            </button>
-
-            <button
-              onclick="runSimulation('ellipse', { rx: 5, ry: 3 })"
-              class="hover:scale-[1.02] transition-transform bg-purple-50 border-2 border-purple-400 hover:border-purple-600 rounded-lg p-2 text-left shadow-sm group"
-            >
-              <div
-                class="font-bold text-purple-700 flex justify-between items-center text-sm"
-              >
-                <span
-                  ><span class="inline-block scale-x-150 mr-2"
-                    ><i class="fa-regular fa-circle w-3"></i
-                  ></span>
-                  Ellipse</span
-                >
-                <i
-                  class="fa-solid fa-arrow-right opacity-0 group-hover:opacity-100 transition-opacity"
-                ></i>
-              </div>
-            </button>
-
-            <div class="h-px bg-slate-300 my-1"></div>
-
-            <button
-              onclick="runSimulation('star', { points: 5 })"
-              class="mt-1 hover:scale-[1.02] transition-transform bg-red-50 border-2 border-red-400 hover:border-red-600 rounded-lg p-2 text-left shadow-sm group relative overflow-hidden"
-            >
-              <div
-                class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-bl font-bold"
-              >
-                想定外データ
-              </div>
-              <div
-                class="font-bold text-red-600 flex justify-between items-center text-sm mt-1"
-              >
-                <span
-                  ><i class="fa-solid fa-star w-5"></i> 未知の図形 (Star)</span
-                >
-                <i
-                  class="fa-solid fa-bolt opacity-0 group-hover:opacity-100 transition-opacity"
-                ></i>
-              </div>
-              <div class="text-[10px] code-font text-slate-500 mt-1">
-                kind: "star"
-              </div>
-            </button>
-          </div>
-
-          <!-- STEP 2: 分岐ルーター (switch) -->
-          <div class="w-full lg:w-[22%] relative flex flex-col justify-center">
-            <div class="text-sm font-bold text-slate-500 text-center mb-2">
-              ② switch分岐
-            </div>
-
-            <div
-              id="switch-box"
-              class="transition-all-custom bg-slate-800 text-white p-4 rounded-xl shadow-lg border-2 border-slate-800 text-center z-20"
-            >
-              <div class="code-font font-bold text-lg text-blue-300">
-                switch
-              </div>
-              <div
-                class="code-font text-sm mt-1 bg-slate-700 rounded py-1 px-2 border border-slate-600 break-all"
-              >
-                (shape.<span id="current-kind" class="text-yellow-300 font-bold"
-                  >kind</span
-                >)
-              </div>
-            </div>
-          </div>
-
-          <!-- 矢印群 (PCのみ) -->
-          <div
-            class="hidden lg:flex flex-col justify-between h-[340px] w-8 relative z-10"
-          >
-            <div
-              id="flow-circle"
-              class="absolute w-full h-1 top-[20px] transition-all duration-300 opacity-0 text-rose-400"
-            ></div>
-            <div
-              id="flow-rect"
-              class="absolute w-full h-1 top-[85px] transition-all duration-300 opacity-0 text-sky-400"
-            ></div>
-            <div
-              id="flow-triangle"
-              class="absolute w-full h-1 top-[150px] transition-all duration-300 opacity-0 text-amber-400"
-            ></div>
-            <div
-              id="flow-ellipse"
-              class="absolute w-full h-1 top-[215px] transition-all duration-300 opacity-0 text-purple-400"
-            ></div>
-            <div
-              id="flow-star"
-              class="absolute w-full h-1 bottom-[35px] transition-all duration-300 opacity-0 text-red-500"
-            ></div>
-          </div>
-
-          <!-- STEP 3: 計算と出力 -->
-          <div class="w-full lg:w-[48%] flex flex-col gap-2">
-            <div class="text-sm font-bold text-slate-500 text-center mb-1">
-              ③ ケースごとの処理
-            </div>
-
-            <!-- 計算式ブロック -->
-            <div class="flex flex-col gap-1.5 relative">
-              <div
-                id="calc-circle"
-                class="transition-all-custom bg-white border border-slate-200 rounded p-2 opacity-50 flex items-center gap-2"
-              >
-                <div
-                  class="bg-rose-100 text-rose-600 font-bold code-font px-2 py-0.5 rounded text-xs w-24 text-center"
-                >
-                  case "circle"
-                </div>
-                <div class="code-font text-xs text-slate-700">
-                  return Math.PI * radius**2;
-                </div>
-              </div>
-
-              <div
-                id="calc-rect"
-                class="transition-all-custom bg-white border border-slate-200 rounded p-2 opacity-50 flex items-center gap-2"
-              >
-                <div
-                  class="bg-sky-100 text-sky-600 font-bold code-font px-2 py-0.5 rounded text-xs w-24 text-center"
-                >
-                  case "rect"
-                </div>
-                <div class="code-font text-xs text-slate-700">
-                  return width * height;
-                </div>
-              </div>
-
-              <div
-                id="calc-triangle"
-                class="transition-all-custom bg-white border border-slate-200 rounded p-2 opacity-50 flex items-center gap-2"
-              >
-                <div
-                  class="bg-amber-100 text-amber-600 font-bold code-font px-2 py-0.5 rounded text-xs w-24 text-center"
-                >
-                  case "triangle"
-                </div>
-                <div class="code-font text-xs text-slate-700">
-                  return (base * height) / 2;
-                </div>
-              </div>
-
-              <div
-                id="calc-ellipse"
-                class="transition-all-custom bg-purple-50 border-2 border-purple-200 rounded p-2 opacity-50 flex items-center gap-2"
-              >
-                <div
-                  class="bg-purple-200 text-purple-700 font-bold code-font px-2 py-0.5 rounded text-xs w-24 text-center"
-                >
-                  case "ellipse"
-                </div>
-                <div class="code-font text-xs text-slate-700">
-                  return Math.PI * rx * ry;
-                </div>
-              </div>
-
-              <!-- default & assertNever -->
-              <div
-                id="calc-star"
-                class="transition-all-custom bg-slate-100 border-2 border-slate-300 border-dashed rounded p-2 mt-2 opacity-50 flex flex-col gap-1 relative"
-              >
-                <div class="flex items-center gap-2">
-                  <div
-                    class="bg-slate-300 text-slate-700 font-bold code-font px-2 py-0.5 rounded text-xs w-24 text-center"
-                  >
-                    default
-                  </div>
-                  <div class="code-font text-xs text-slate-700">
-                    <span class="text-blue-600">return</span>
-                    <span class="font-bold text-red-500">assertNever</span
-                    >(shape);
-                  </div>
-                </div>
-                <div
-                  class="text-[10px] text-slate-500 ml-26 italic text-center"
-                >
-                  ※ ここに到達する値は全て never 型として扱われる
-                </div>
-              </div>
-            </div>
-
-            <!-- 最終結果 -->
-            <div
-              id="result-box"
-              class="mt-3 bg-slate-800 transition-colors duration-300 rounded-xl p-4 shadow-inner relative overflow-hidden"
-            >
-              <div
-                id="result-gradient"
-                class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"
-              ></div>
-              <div class="text-xs text-slate-400 code-font mb-1">
-                > 実行結果
-              </div>
-              <div class="flex items-center gap-3">
-                <span
-                  id="final-result"
-                  class="text-lg font-bold text-white code-font break-all min-h-[1.5rem]"
-                  >---</span
-                >
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 解説メッセージ -->
-        <div
-          class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-5 rounded-r-lg shadow-sm"
-        >
-          <h3
-            class="font-bold text-blue-800 mb-2 flex items-center gap-2 text-lg"
-          >
-            <i class="fa-solid fa-graduation-cap text-blue-600"></i> なぜ
-            assertNever が必要なのか？
-          </h3>
-          <div class="space-y-3 text-sm text-blue-900 leading-relaxed">
-            <p>
-              もしあなたがプログラムを改修し、<code
-                class="bg-blue-100 px-1 rounded font-bold"
-                >Shape</code
-              >
-              型の中に新しく
-              <strong>Ellipse（楕円）</strong>
-              を追加したとします。しかし、うっかり
-              <code class="bg-blue-100 px-1 rounded">getArea</code> 関数の中に
-              <code class="bg-blue-100 px-1 rounded">case "ellipse":</code>
-              を書き忘れてしまったらどうなるでしょうか？
-            </p>
-            <p class="bg-white/60 p-3 rounded border border-blue-200">
+              <i class="fa-solid fa-code-branch text-blue-500"></i> default 句と
+              never 型の性質
+            </h3>
+            <p class="text-xs text-slate-600 leading-relaxed">
               TypeScriptの
-              <code class="bg-blue-100 px-1 rounded">switch</code>
-              文は、すべての処理を終えた後、<code
-                class="bg-blue-100 px-1 rounded"
+              <code
+                class="bg-white px-1 rounded code-font border border-slate-200"
+                >switch</code
+              >
+              文は、全ての
+              <code
+                class="bg-white px-1 rounded code-font border border-slate-200"
+                >case</code
+              >
+              を通り抜けて
+              <code
+                class="bg-white px-1 rounded code-font border border-slate-200"
                 >default</code
               >
-              に流れ着いたデータの型を
-              <strong
-                ><code class="text-red-600 font-bold bg-red-50 px-1 rounded"
+              に到達した変数の型を、<strong
+                >「絶対に存在してはいけない型＝
+                <code
+                  class="bg-white px-1 rounded code-font text-rose-500 font-bold border border-slate-200"
                   >never</code
                 >
-                型（絶対に存在してはいけない型）</strong
+                型」</strong
+              >として推論します。<br />
+              もし全てのケース（Circle, Rect,
+              Triangle）が正しく書かれていれば、<code
+                class="bg-white px-1 rounded code-font border border-slate-200"
+                >shape</code
               >
-              として推論しようとします。
+              は全て処理されるため、defaultに到達する値は「何もない（never）」になります。
             </p>
-            <p>
-              <code class="bg-blue-100 px-1 rounded"
-                >assertNever(x: never)</code
+          </div>
+          <div class="bg-rose-50 border border-rose-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-rose-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-shield-halved text-rose-600"></i>
+              コンパイルエラーで未然に防ぐ
+            </h3>
+            <p class="text-xs text-rose-900 leading-relaxed">
+              そこに新しい型（Ellipse）が追加されると、処理されなかったEllipse型が
+              <code
+                class="bg-white border border-rose-200 px-1 rounded code-font"
+                >default</code
               >
-              関数は、<strong>引数に never 型しか受け付けない</strong
-              >関数です。<br />
-              もし
-              <code class="bg-blue-100 px-1 rounded">case "ellipse"</code>
-              を書き忘れると、楕円データが
-              <code class="bg-blue-100 px-1 rounded">default</code>
-              まで到達してしまい、「Ellipse型は never型
-              に代入できません！」という<strong
-                >真っ赤なエラーをプログラムを書いている最中（コンパイル時）に出して教えてくれます。</strong
+              に流れ着きます。<br />
+              <code
+                class="bg-white border border-rose-200 px-1 rounded code-font font-bold"
+                >assertNever</code
               >
-              これにより、ケースの追加忘れを100%防ぐことができるのです。
+              は意図的に「never型しか受け付けない」ように作られた関数です。そのため、Ellipse型が渡されると<strong>「neverじゃない型が来たぞ！」とTypeScriptが即座にコンパイルエラーを出し、ケースの書き忘れを開発中に気づかせてくれる</strong>のです。
             </p>
           </div>
         </div>
@@ -545,143 +467,241 @@
     </div>
 
     <script>
-      function resetUI() {
-        const switchBox = document.getElementById("switch-box");
-        switchBox.className =
-          "transition-all-custom bg-slate-800 text-white p-4 rounded-xl shadow-lg border-2 border-slate-800 text-center z-20";
-        document.getElementById("current-kind").innerText = "kind";
-        document.getElementById("current-kind").className =
-          "text-yellow-300 font-bold";
+      let isAnimating = false;
 
-        const types = ["circle", "rect", "triangle", "ellipse", "star"];
-        types.forEach((t) => {
-          const el = document.getElementById(`calc-${t}`);
-          if (el) {
-            el.classList.remove("path-active", "path-error", "opacity-100");
-            el.classList.add("opacity-50");
-          }
-          const flow = document.getElementById(`flow-${t}`);
-          if (flow) {
-            flow.style.opacity = "0";
-            flow.classList.remove("flowing-dot");
-          }
-        });
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-        const resultBox = document.getElementById("result-box");
-        resultBox.classList.remove("bg-red-950");
-        resultBox.classList.add("bg-slate-800");
+      // パケットの絶対座標を設定するヘルパー
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = document
+          .getElementById("editor-container")
+          .getBoundingClientRect();
 
-        const gradient = document.getElementById("result-gradient");
-        gradient.className =
-          "absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500";
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
 
-        const resultText = document.getElementById("final-result");
-        resultText.innerText = "---";
-        resultText.className =
-          "text-lg font-bold text-white code-font break-all min-h-[1.5rem]";
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
       }
 
-      function runSimulation(type, data) {
-        resetUI();
+      // --- 1. 仕様変更（Ellipse追加）のアニメーション ---
+      async function simulateAddEllipse() {
+        if (isAnimating) return;
+        isAnimating = true;
 
-        const config = {
-          circle: {
-            border: "border-rose-400",
-            text: "text-rose-300",
-            hex: "#fb7185",
-          },
-          rect: {
-            border: "border-sky-400",
-            text: "text-sky-300",
-            hex: "#38bdf8",
-          },
-          triangle: {
-            border: "border-amber-400",
-            text: "text-amber-300",
-            hex: "#fbbf24",
-          },
-          ellipse: {
-            border: "border-purple-400",
-            text: "text-purple-300",
-            hex: "#c084fc",
-          },
-          star: {
-            border: "border-red-500",
-            text: "text-red-400",
-            hex: "#ef4444",
-          },
-        };
+        const btnAdd = document.getElementById("btn-add");
+        const lineEllipseType = document.getElementById("line-ellipse-type");
+        const lineEllipseUnion = document.getElementById("line-ellipse-union");
+        const semiColon = document.getElementById("semi-colon");
+        const editorFunc = document.getElementById("editor-func");
+        const flyingType = document.getElementById("flying-type");
+        const targetShape = document.getElementById("target-shape");
+        const errorPopup = document.getElementById("error-popup");
+        const tsStatus = document.getElementById("ts-status");
 
-        // 1. ルーター到達
-        setTimeout(() => {
-          const switchBox = document.getElementById("switch-box");
-          switchBox.classList.remove("border-slate-800");
-          switchBox.classList.add(config[type].border);
-          switchBox.style.boxShadow = `0 0 15px ${config[type].hex}55`;
+        // ボタンを無効化
+        btnAdd.disabled = true;
+        btnAdd.classList.add("opacity-50", "cursor-not-allowed");
+        btnAdd.innerHTML =
+          '<i class="fa-solid fa-spinner fa-spin"></i> 追加中...';
 
-          const kindText = document.getElementById("current-kind");
-          kindText.innerText = `"${type}"`;
-          kindText.className = `font-bold ${config[type].text}`;
-        }, 200);
+        // 1. types.ts へのコード追加アニメーション
+        await sleep(300);
+        lineEllipseType.classList.remove("opacity-0", "h-0");
+        lineEllipseType.classList.add("h-[1.5rem]");
 
-        // 2. 分岐・ハイライト
-        setTimeout(() => {
-          const targetCalc = document.getElementById(`calc-${type}`);
-          targetCalc.classList.remove("opacity-50");
+        await sleep(500);
+        semiColon.style.display = "none";
+        lineEllipseUnion.classList.remove("opacity-0", "h-0");
+        lineEllipseUnion.classList.add("h-[1.5rem]");
 
-          if (type === "star") {
-            targetCalc.classList.add("opacity-100", "path-error");
-          } else {
-            targetCalc.classList.add("opacity-100", "path-active");
-          }
+        // 2. TypeScriptコンパイラのスキャン開始
+        await sleep(800);
+        editorFunc.classList.add("scanning");
+        tsStatus.innerHTML =
+          '<i class="fa-solid fa-rotate fa-spin"></i> Checking...';
+        tsStatus.className = "text-blue-400 font-bold px-2 py-0.5 rounded";
 
-          const flowLine = document.getElementById(`flow-${type}`);
-          if (flowLine) {
-            flowLine.style.opacity = "1";
-            flowLine.classList.add("flowing-dot");
-          }
-        }, 700);
+        // 3. 型の流出（処理漏れ）アニメーション
+        // 型定義の場所からスタート
+        flyingType.style.transition = "none";
+        flyingType.style.opacity = "0";
+        setPacketPosAbsolute(
+          flyingType,
+          document.getElementById("anchor-ellipse-def"),
+        );
 
-        // 3. 結果出力
-        setTimeout(() => {
-          const resultBox = document.getElementById("result-box");
-          const gradient = document.getElementById("result-gradient");
-          const resultEl = document.getElementById("final-result");
+        await sleep(100);
+        flyingType.style.opacity = "1";
 
-          if (type === "star") {
-            // エラー表現
-            resultBox.classList.remove("bg-slate-800");
-            resultBox.classList.add("bg-red-950");
-            gradient.className = "absolute top-0 left-0 w-full h-1 bg-red-500";
+        // スキャナーの動きに合わせて default句へ落ちていく
+        flyingType.style.transition =
+          "transform 1.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s";
+        setPacketPosAbsolute(flyingType, targetShape, 0, -20);
 
-            resultEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2"></i>Error: Unexpected value: {"kind":"star","points":5}`;
-            resultEl.className =
-              "text-[15px] font-bold text-red-400 code-font break-all min-h-[1.5rem]";
+        await sleep(1800);
 
-            // エラーアニメーション
-            resultBox.style.transform = "translateY(2px)";
-            setTimeout(
-              () => (resultBox.style.transform = "translateY(0)"),
-              100,
-            );
-          } else {
-            // 正常計算
-            let result = 0;
-            if (type === "circle") result = (Math.PI * data.r ** 2).toFixed(2);
-            if (type === "rect") result = data.w * data.h;
-            if (type === "triangle") result = (data.b * data.h) / 2;
-            if (type === "ellipse")
-              result = (Math.PI * data.rx * data.ry).toFixed(2);
+        // 4. default句に到達し、エラー発生！
+        flyingType.style.opacity = "0";
+        editorFunc.classList.remove("scanning");
 
-            resultEl.innerText = result;
-            resultEl.className =
-              "text-2xl font-bold text-cyan-400 code-font break-all min-h-[1.5rem]";
+        // 赤い波線
+        targetShape.classList.add("error-squiggle");
 
-            resultEl.style.transform = "scale(1.2)";
-            resultEl.style.transition = "transform 0.2s ease-out";
-            setTimeout(() => (resultEl.style.transform = "scale(1)"), 200);
-          }
-        }, 1400);
+        // ステータス更新
+        tsStatus.innerHTML = '<i class="fa-solid fa-xmark"></i> 1 Error';
+        tsStatus.className =
+          "text-rose-400 font-bold bg-rose-900/30 px-2 py-0.5 rounded border border-rose-500/50";
+
+        // ポップアップ表示
+        await sleep(200);
+        errorPopup.classList.remove("hidden");
+
+        isAnimating = false;
+      }
+
+      // --- 2. エラー修正（case追加）のアニメーション ---
+      async function simulateFixCode() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const errorPopup = document.getElementById("error-popup");
+        const targetShape = document.getElementById("target-shape");
+        const lineCaseEllipse = document.getElementById("line-case-ellipse");
+        const editorFunc = document.getElementById("editor-func");
+        const flyingType = document.getElementById("flying-type");
+        const tsStatus = document.getElementById("ts-status");
+        const successPopup = document.getElementById("success-popup");
+
+        // エラー表示を一旦消す
+        errorPopup.classList.add("hidden");
+        targetShape.classList.remove("error-squiggle");
+
+        // 1. コードの追加
+        await sleep(300);
+        lineCaseEllipse.classList.remove("opacity-0", "h-0");
+        lineCaseEllipse.classList.add("h-[3rem]"); // 2行分
+
+        // 2. 再スキャン
+        await sleep(800);
+        editorFunc.classList.add("scanning");
+        tsStatus.innerHTML =
+          '<i class="fa-solid fa-rotate fa-spin"></i> Checking...';
+        tsStatus.className = "text-blue-400 font-bold px-2 py-0.5 rounded";
+
+        // 3. 型の流出（今度はcaseでキャッチされる）
+        flyingType.style.transition = "none";
+        flyingType.style.opacity = "0";
+        setPacketPosAbsolute(
+          flyingType,
+          document.getElementById("anchor-ellipse-def"),
+        );
+
+        await sleep(100);
+        flyingType.style.opacity = "1";
+
+        // 追加したcase文へ向かう
+        flyingType.style.transition =
+          "transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s";
+        setPacketPosAbsolute(
+          flyingType,
+          document.getElementById("anchor-case-ellipse"),
+          20,
+          0,
+        );
+
+        await sleep(1200);
+
+        // case文に吸収されて消える
+        flyingType.style.transform = flyingType.style.transform.replace(
+          "scale(1)",
+          "scale(0.5)",
+        );
+        flyingType.style.opacity = "0";
+
+        // スキャン完了
+        await sleep(800);
+        editorFunc.classList.remove("scanning");
+
+        // 4. 成功表示
+        tsStatus.innerHTML = '<i class="fa-solid fa-check"></i> No Errors';
+        tsStatus.className =
+          "text-emerald-400 font-bold bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-500/50";
+
+        successPopup.classList.remove("hidden");
+
+        // リセットボタンを表示する
+        document.getElementById("btn-add").classList.add("hidden");
+        document.getElementById("btn-reset").classList.remove("hidden");
+        document.getElementById("action-title").innerText = "🎉 修正完了！";
+
+        isAnimating = false;
+      }
+
+      // --- 3. 初期状態に戻す（リセット） ---
+      function resetSimulation() {
+        if (isAnimating) return;
+
+        const btnAdd = document.getElementById("btn-add");
+        const btnReset = document.getElementById("btn-reset");
+        const actionTitle = document.getElementById("action-title");
+
+        const lineEllipseType = document.getElementById("line-ellipse-type");
+        const lineEllipseUnion = document.getElementById("line-ellipse-union");
+        const semiColon = document.getElementById("semi-colon");
+        const lineCaseEllipse = document.getElementById("line-case-ellipse");
+
+        const flyingType = document.getElementById("flying-type");
+        const targetShape = document.getElementById("target-shape");
+        const errorPopup = document.getElementById("error-popup");
+        const successPopup = document.getElementById("success-popup");
+        const tsStatus = document.getElementById("ts-status");
+
+        // UIの表示状態を元に戻す
+        lineEllipseType.classList.add("opacity-0", "h-0");
+        lineEllipseType.classList.remove("h-[1.5rem]");
+
+        lineEllipseUnion.classList.add("opacity-0", "h-0");
+        lineEllipseUnion.classList.remove("h-[1.5rem]");
+        semiColon.style.display = "inline";
+
+        lineCaseEllipse.classList.add("opacity-0", "h-0");
+        lineCaseEllipse.classList.remove("h-[3rem]");
+
+        targetShape.classList.remove("error-squiggle");
+        errorPopup.classList.add("hidden");
+        successPopup.classList.add("hidden");
+
+        flyingType.style.opacity = "0";
+        flyingType.style.transform = "none";
+
+        tsStatus.innerHTML = '<i class="fa-solid fa-check"></i> No Errors';
+        tsStatus.className =
+          "text-emerald-400 font-bold px-2 py-0.5 rounded transition-colors";
+
+        // ボタンを初期状態に戻す
+        btnAdd.disabled = false;
+        btnAdd.classList.remove("opacity-50", "cursor-not-allowed", "hidden");
+        btnAdd.innerHTML =
+          '<i class="fa-solid fa-code-pull-request"></i> 仕様変更：Ellipse 型を追加する';
+
+        btnReset.classList.add("hidden");
+        actionTitle.innerText = "👇 ここからスタート";
       }
     </script>
   </body>

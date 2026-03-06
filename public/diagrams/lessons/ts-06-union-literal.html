@@ -3,54 +3,679 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: ユニオン型・リテラル型</title>
+    <title>TypeScript 図解: ユニオン型とリテラル型</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* データの飛行アニメーション (ゆっくり) */
+      @keyframes fly-packet {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(
+              calc(var(--tx) * 0.4),
+              calc(var(--ty) * 0.4 - 20px)
+            )
+            scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes reject-packet {
+        0% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        10% {
+          transform: translate(calc(var(--tx) - 15px), var(--ty));
+          opacity: 1;
+        }
+        30% {
+          transform: translate(calc(var(--tx) + 15px), var(--ty));
+          opacity: 1;
+        }
+        50% {
+          transform: translate(calc(var(--tx) - 15px), var(--ty));
+          opacity: 1;
+        }
+        100% {
+          transform: translate(0, 0) scale(0.5) rotate(15deg);
+          opacity: 0;
+        }
+      }
+
+      .action-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+      }
+
+      .flying {
+        animation: fly-packet 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      .rejected {
+        animation: reject-packet 1.2s ease-in forwards;
+      }
+
+      /* ゲートの判定アニメーション */
+      @keyframes gate-accept {
+        0% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #94a3b8;
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+          border-color: #10b981;
+          background-color: #ecfdf5;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #94a3b8;
+        }
+      }
+      .gate-ok {
+        animation: gate-accept 1s ease-out;
+        border-color: #10b981 !important;
+      }
+
+      @keyframes gate-reject {
+        0%,
+        100% {
+          transform: translateX(0);
+          border-color: #94a3b8;
+        }
+        20% {
+          transform: translateX(-10px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+        }
+        40% {
+          transform: translateX(10px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+        }
+        60% {
+          transform: translateX(-10px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+        }
+        80% {
+          transform: translateX(10px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+        }
+      }
+      .gate-ng {
+        animation: gate-reject 0.8s ease-in-out;
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+      }
+
+      /* switchのケース行ハイライト */
+      .case-active {
+        background-color: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        transform: scale(1.02) translateX(10px);
+        z-index: 10;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      .case-loading-active {
+        border-left: 4px solid #3b82f6 !important;
+      }
+      .case-success-active {
+        border-left: 4px solid #10b981 !important;
+      }
+      .case-error-active {
+        border-left: 4px solid #f43f5e !important;
+      }
+
+      /* エラーツールチップ */
+      .tooltip-fade {
+        animation: fadeInOut 3s ease-in-out forwards;
+      }
+      @keyframes fadeInOut {
+        0% {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        10% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        90% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-teal-100 text-teal-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-teal-200"
+        >
+          TypeScript 型の絞り込み
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >ユニオン型・リテラル型</span
+          特定の値だけを許可する：<br class="md:hidden" /><span
+            class="text-teal-600"
+            >ユニオン型 と リテラル型</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          複数の型を組み合わせたり、特定の値だけを許可する型を学びましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">"文字列"</code>
+          そのものを型として扱い（リテラル型）、それを
+          <code class="bg-slate-200 px-1 rounded code-font">|</code
+          >（ユニオン型）で繋ぐことで、<strong>「絶対にこの中から選ばなければならない専用ゲート」</strong>を作ることができます。
         </p>
       </header>
 
+      <!-- インタラクティブ・シミュレーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative z-10"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-filter text-teal-500"></i> 1.
+          型ゲートと安全な振り分けシミュレーション
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-12 items-center lg:items-stretch justify-center relative min-h-[450px]"
+        >
+          <!-- 左側：呼び出し元（入力） -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              関数に文字列を渡す
+            </div>
+
+            <!-- 正常な呼び出し -->
+            <button
+              onclick="runSimulation('loading', this)"
+              class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-400 rounded-xl p-3 text-left shadow-sm transition-all group relative"
+            >
+              <span class="code-font font-bold text-slate-700"
+                >showMessage(<span class="text-blue-500">"loading"</span>)</span
+              >
+              <i
+                class="fa-solid fa-paper-plane absolute right-4 top-1/2 transform -translate-y-1/2 text-blue-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <button
+              onclick="runSimulation('success', this)"
+              class="bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-400 rounded-xl p-3 text-left shadow-sm transition-all group relative mt-2"
+            >
+              <span class="code-font font-bold text-slate-700"
+                >showMessage(<span class="text-emerald-500">"success"</span
+                >)</span
+              >
+              <i
+                class="fa-solid fa-paper-plane absolute right-4 top-1/2 transform -translate-y-1/2 text-emerald-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <button
+              onclick="runSimulation('error', this)"
+              class="bg-white hover:bg-rose-50 border-2 border-slate-200 hover:border-rose-400 rounded-xl p-3 text-left shadow-sm transition-all group relative mt-2"
+            >
+              <span class="code-font font-bold text-slate-700"
+                >showMessage(<span class="text-rose-500">"error"</span>)</span
+              >
+              <i
+                class="fa-solid fa-paper-plane absolute right-4 top-1/2 transform -translate-y-1/2 text-rose-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <div class="w-full h-px bg-slate-200 my-2"></div>
+
+            <!-- エラー（許可されていない文字列） -->
+            <button
+              onclick="runSimulation('unknown', this)"
+              class="bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 hover:border-slate-500 rounded-xl p-3 text-left shadow-sm transition-all group relative overflow-hidden"
+            >
+              <div
+                class="absolute top-0 right-0 bg-slate-500 text-white text-[10px] px-2 py-0.5 rounded-bl font-bold"
+              >
+                想定外の値
+              </div>
+              <span class="code-font font-bold text-slate-700"
+                >showMessage(<span class="text-slate-500">"unknown"</span
+                >)</span
+              >
+              <i
+                class="fa-solid fa-bolt absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+          </div>
+
+          <!-- 飛行するデータパケット -->
+          <div
+            id="data-packet"
+            class="action-packet code-font text-sm border-2"
+          >
+            <!-- JSで内容を注入 -->
+          </div>
+
+          <!-- 右側：関数と型ゲート -->
+          <div class="w-full lg:w-[60%] flex flex-col items-center">
+            <div
+              id="func-box"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-6 relative shadow-xl transition-all duration-300 flex flex-col items-center"
+            >
+              <!-- Status 型の定義 (ゲートの設計図) -->
+              <div
+                class="bg-slate-900 border border-slate-600 rounded-lg p-3 w-full mb-6 relative"
+              >
+                <div
+                  class="absolute -top-3 left-4 bg-teal-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow"
+                >
+                  ユニオン型 (Union Types)
+                </div>
+                <div class="code-font text-sm font-bold text-center">
+                  <span class="text-blue-400">type</span>
+                  <span class="text-teal-300">Status</span> =
+                  <span class="text-blue-300 bg-blue-900/30 px-1 rounded"
+                    >"loading"</span
+                  >
+                  <span class="text-slate-500">|</span>
+                  <span class="text-emerald-300 bg-emerald-900/30 px-1 rounded"
+                    >"success"</span
+                  >
+                  <span class="text-slate-500">|</span>
+                  <span class="text-rose-300 bg-rose-900/30 px-1 rounded"
+                    >"error"</span
+                  >;
+                </div>
+              </div>
+
+              <!-- 実際の関数の引数ゲート -->
+              <div
+                id="arg-gate"
+                class="border-4 border-slate-400 border-dashed bg-slate-800 rounded-xl p-3 mb-6 transition-all duration-300 relative"
+              >
+                <div
+                  class="text-[10px] font-bold text-slate-400 absolute -top-4 left-1/2 transform -translate-x-1/2 whitespace-nowrap"
+                >
+                  引数チェックゲート
+                </div>
+                <div class="code-font text-sm font-bold text-white">
+                  <span class="text-purple-400">function</span>
+                  showMessage(<span class="text-slate-300">status</span>:
+                  <span class="text-teal-300 bg-teal-900/40 px-2 py-0.5 rounded"
+                    >Status</span
+                  >)
+                </div>
+
+                <!-- エラーメッセージ用 (折り返しを許可し、最前面に表示する) -->
+                <div
+                  id="func-error-msg"
+                  class="absolute top-[120%] left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-xs p-3 rounded-lg shadow-2xl hidden z-[100] code-font border-2 border-red-300 w-[260px] text-center leading-relaxed break-words"
+                >
+                  Argument of type '"unknown"' is not assignable to parameter of
+                  type 'Status'.
+                </div>
+              </div>
+
+              <!-- 関数の処理 (switch文) -->
+              <div
+                class="bg-slate-900 rounded-xl p-4 border border-slate-600 w-full relative"
+              >
+                <div class="code-font text-sm text-slate-300 mb-2">
+                  <span class="text-blue-400">switch</span> (status) {
+                </div>
+
+                <div class="flex flex-col gap-1 pl-4">
+                  <div
+                    id="case-loading"
+                    class="transition-all-custom border border-transparent rounded p-2 bg-slate-800/50"
+                  >
+                    <div class="code-font text-xs text-blue-300 font-bold mb-1">
+                      case "loading":
+                    </div>
+                    <div class="code-font text-sm pl-4">
+                      <span class="text-blue-400">return</span>
+                      <span class="text-amber-300">"読み込み中..."</span>;
+                    </div>
+                  </div>
+
+                  <div
+                    id="case-success"
+                    class="transition-all-custom border border-transparent rounded p-2 bg-slate-800/50"
+                  >
+                    <div
+                      class="code-font text-xs text-emerald-300 font-bold mb-1"
+                    >
+                      case "success":
+                    </div>
+                    <div class="code-font text-sm pl-4">
+                      <span class="text-blue-400">return</span>
+                      <span class="text-amber-300">"完了しました"</span>;
+                    </div>
+                  </div>
+
+                  <div
+                    id="case-error"
+                    class="transition-all-custom border border-transparent rounded p-2 bg-slate-800/50"
+                  >
+                    <div class="code-font text-xs text-rose-300 font-bold mb-1">
+                      case "error":
+                    </div>
+                    <div class="code-font text-sm pl-4">
+                      <span class="text-blue-400">return</span>
+                      <span class="text-amber-300">"エラーが発生しました"</span
+                      >;
+                    </div>
+                  </div>
+                </div>
+
+                <div class="code-font text-sm text-slate-300 mt-2">}</div>
+              </div>
+            </div>
+
+            <!-- 出力結果 -->
+            <div
+              id="output-box"
+              class="mt-6 bg-slate-100 border-2 border-slate-200 rounded-xl w-full p-4 text-center shadow-sm transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                戻り値 (string)
+              </div>
+              <div
+                id="output-val"
+                class="code-font text-xl font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 解説セクション -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-shield-check text-emerald-500"></i> 2.
+          なぜこの書き方が安全なのか？
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+            <div
+              class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-triangle-exclamation text-amber-500"></i>
+              string 型の場合（危険）
+            </div>
+            <div
+              class="code-font text-[12px] bg-white p-3 rounded border border-slate-300 text-slate-600 leading-relaxed mb-3"
+            >
+              <span class="text-blue-500">function</span> show(status:
+              <span class="text-pink-500 font-bold">string</span>) {<br />
+              &nbsp;&nbsp;...<br />
+              }<br />
+              <span class="text-slate-400">// タイポしても気付けない！</span
+              ><br />
+              show(<span class="text-amber-600">"succes"</span>);
+              <span class="text-slate-400">// バグの温床</span>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              引数を単なる
+              <code class="bg-slate-200 px-1 rounded font-bold">string</code>
+              にしてしまうと、どんな文字列でも関数に渡せてしまいます。もしスペルミスをしてもエラーにならないため、switch文のどのケースにも当てはまらず、原因不明のバグを生み出してしまいます。
+            </p>
+          </div>
+
+          <div class="bg-teal-50 p-5 rounded-xl border border-teal-200">
+            <div
+              class="text-sm font-bold text-teal-800 mb-2 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-lock text-teal-500"></i>
+              ユニオン＋リテラル型の場合（安全）
+            </div>
+            <div
+              class="code-font text-[12px] bg-white p-3 rounded border border-teal-300 text-slate-700 leading-relaxed mb-3 shadow-sm"
+            >
+              <span class="text-blue-500">function</span> show(status:
+              <span class="text-teal-600 font-bold">Status</span>) {<br />
+              &nbsp;&nbsp;...<br />
+              }<br />
+              <span class="text-slate-400"
+                >// 実行前にエディタが赤線で教えてくれる！</span
+              ><br />
+              <span class="underline decoration-red-500 decoration-wavy"
+                >show(<span class="text-amber-600">"succes"</span>);</span
+              >
+            </div>
+            <p class="text-xs text-teal-800 leading-relaxed">
+              特定のリテラル（文字そのもの）を
+              <code class="bg-teal-100 px-1 rounded font-bold">|</code>
+              で繋いだ型を指定することで、TypeScriptは<strong>「この3つ以外の文字列は絶対に許さない」</strong>という強力なバリデーションを行ってくれます。エディタの入力補完（サジェスト）も効くため、開発体験も劇的に向上します。
+            </p>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+
+      function runSimulation(statusType, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        // DOM Elements
+        const packet = document.getElementById("data-packet");
+        const argGate = document.getElementById("arg-gate");
+        const errMsg = document.getElementById("func-error-msg");
+        const funcBox = document.getElementById("func-box");
+
+        const caseLoading = document.getElementById("case-loading");
+        const caseSuccess = document.getElementById("case-success");
+        const caseError = document.getElementById("case-error");
+
+        const outputBox = document.getElementById("output-box");
+        const outputVal = document.getElementById("output-val");
+
+        // UIリセット
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        packet.className = "action-packet code-font text-sm border-2";
+        argGate.className =
+          "border-4 border-slate-400 border-dashed bg-slate-800 rounded-xl p-3 mb-6 transition-all duration-300 relative";
+        errMsg.classList.add("hidden");
+
+        [caseLoading, caseSuccess, caseError].forEach((el) => {
+          el.className =
+            "transition-all-custom border border-transparent rounded p-2 bg-slate-800/50";
+        });
+
+        outputBox.classList.add("opacity-50");
+        outputBox.className =
+          "mt-6 bg-slate-100 border-2 border-slate-200 rounded-xl w-full p-4 text-center shadow-sm transition-all opacity-50";
+        outputVal.innerText = "---";
+        outputVal.className = "code-font text-xl font-bold text-slate-400";
+
+        // パケットのスタイルとテキスト設定
+        let colorClass = "";
+        let borderClass = "";
+        if (statusType === "loading") {
+          colorClass = "text-blue-500";
+          borderClass = "border-blue-400";
+        } else if (statusType === "success") {
+          colorClass = "text-emerald-500";
+          borderClass = "border-emerald-400";
+        } else if (statusType === "error") {
+          colorClass = "text-rose-500";
+          borderClass = "border-rose-400";
+        } else {
+          colorClass = "text-slate-500";
+          borderClass = "border-slate-400";
+        }
+
+        packet.innerHTML = `"${statusType}"`;
+        packet.classList.add(colorClass, borderClass);
+
+        // 1. 飛行アニメーションの計算と実行 (ゆったり1.5秒)
+        const btnRect = btnEl.getBoundingClientRect();
+        const gateRect = argGate.getBoundingClientRect();
+        const containerRect = packet.parentElement.getBoundingClientRect();
+
+        // パケットの開始位置をボタンの中央に設定
+        packet.style.top = `${btnRect.top - containerRect.top + btnRect.height / 2 - packet.offsetHeight / 2}px`;
+        packet.style.left = `${btnRect.left - containerRect.left + btnRect.width / 2 - packet.offsetWidth / 2}px`;
+
+        const tx =
+          gateRect.left +
+          gateRect.width / 2 -
+          (btnRect.left + btnRect.width / 2);
+        const ty = gateRect.top - (btnRect.top + btnRect.height / 2);
+
+        packet.style.setProperty("--tx", `${tx}px`);
+        packet.style.setProperty("--ty", `${ty}px`);
+
+        packet.style.opacity = "1";
+        packet.classList.add("flying");
+
+        // 2. ゲート到着時の判定 (1.5秒後)
+        setTimeout(() => {
+          if (statusType === "unknown") {
+            // エラー：弾かれるアニメーション (ゆっくり)
+            packet.classList.remove("flying");
+            packet.classList.add("rejected");
+
+            argGate.classList.add("gate-ng");
+
+            errMsg.classList.remove("hidden");
+            errMsg.classList.remove("tooltip-fade");
+            void errMsg.offsetWidth;
+            errMsg.classList.add("tooltip-fade");
+
+            // リセット処理
+            setTimeout(() => {
+              argGate.classList.remove("gate-ng");
+              setTimeout(() => {
+                errMsg.classList.add("hidden");
+                packet.classList.remove("rejected");
+                packet.style.opacity = "0";
+                isAnimating = false;
+              }, 2500); // ツールチップが消えるまで待つ
+            }, 800);
+          } else {
+            // 成功：ゲート通過
+            packet.style.opacity = "0";
+            argGate.classList.add("gate-ok");
+
+            // 3. Switch文のケースに移動＆ハイライト (ゲート通過の1秒後)
+            setTimeout(() => {
+              const targetCase = document.getElementById(`case-${statusType}`);
+              targetCase.classList.add(
+                "case-active",
+                `case-${statusType}-active`,
+              );
+
+              // 4. 出力結果の表示 (ケースハイライトの1秒後)
+              setTimeout(() => {
+                let resultStr = "";
+                let resultColor = "";
+                if (statusType === "loading") {
+                  resultStr = '"読み込み中..."';
+                  resultColor = "text-blue-600";
+                  outputBox.classList.add("border-blue-300", "bg-blue-50");
+                }
+                if (statusType === "success") {
+                  resultStr = '"完了しました"';
+                  resultColor = "text-emerald-600";
+                  outputBox.classList.add(
+                    "border-emerald-300",
+                    "bg-emerald-50",
+                  );
+                }
+                if (statusType === "error") {
+                  resultStr = '"エラーが発生しました"';
+                  resultColor = "text-rose-600";
+                  outputBox.classList.add("border-rose-300", "bg-rose-50");
+                }
+
+                outputBox.classList.remove("opacity-50");
+                outputVal.innerText = resultStr;
+                outputVal.className = `code-font text-2xl font-black ${resultColor}`;
+
+                // 全体のリセット処理 (結果を見せてからゆっくり戻す)
+                setTimeout(() => {
+                  argGate.classList.remove("gate-ok");
+                  targetCase.classList.remove(
+                    "case-active",
+                    `case-${statusType}-active`,
+                  );
+                  packet.classList.remove("flying");
+                  packet.style.opacity = "0";
+
+                  setTimeout(() => {
+                    outputBox.className =
+                      "mt-6 bg-slate-100 border-2 border-slate-200 rounded-xl w-full p-4 text-center shadow-sm transition-all opacity-50";
+                    outputVal.innerText = "---";
+                    outputVal.className =
+                      "code-font text-xl font-bold text-slate-400";
+                    isAnimating = false;
+                  }, 1000);
+                }, 3000); // 結果を3秒間見せる
+              }, 1000);
+            }, 1000);
+          }
+        }, 1500); // 飛行が終わるタイミング
+      }
+    </script>
   </body>
 </html>

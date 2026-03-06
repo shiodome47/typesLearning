@@ -3,54 +3,785 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: フォーム入力</title>
+    <title>React 図解: フォームとイベントの型</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Reactカラー */
+      .react-blue {
+        color: #06b6d4;
+      }
+      .bg-react-blue {
+        background-color: #06b6d4;
+      }
+
+      /* データパケットのスタイル */
+      .data-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+        transition:
+          transform 1s cubic-bezier(0.34, 1.56, 0.64, 1),
+          opacity 0.5s;
+        transform-origin: center;
+      }
+
+      /* 実行中の行のハイライト */
+      .exec-line {
+        transition:
+          background-color 0.5s,
+          border-color 0.5s,
+          transform 0.5s;
+        border-left: 4px solid transparent;
+      }
+      .exec-active {
+        background-color: #eff6ff; /* blue-50 */
+        border-left-color: #3b82f6 !important; /* blue-500 */
+        transform: translateX(5px);
+      }
+
+      /* ポップアニメーション */
+      @keyframes popIn {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .animate-pop {
+        animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+
+      /* 処理中パルス */
+      @keyframes pulse-ring {
+        0% {
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(6, 182, 212, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+        }
+      }
+      .pulse-active {
+        animation: pulse-ring 0.8s ease-out;
+        border-color: #06b6d4 !important;
+      }
+
+      /* Shield Flash (preventDefault) */
+      @keyframes shield-flash {
+        0% {
+          color: #cbd5e1;
+          transform: scale(1);
+        }
+        50% {
+          color: #10b981;
+          transform: scale(1.5);
+          text-shadow: 0 0 10px #10b981;
+        }
+        100% {
+          color: #10b981;
+          transform: scale(1.2);
+        }
+      }
+      .shield-active {
+        animation: shield-flash 1s ease-out forwards;
+      }
+
+      /* 処理中パルス */
+      @keyframes pulse-ring {
+        0% {
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(6, 182, 212, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+        }
+      }
+      .pulse-active {
+        animation: pulse-ring 0.5s ease-out;
+        border-color: #06b6d4 !important;
+      }
+
+      /* Shield Flash (preventDefault) */
+      @keyframes shield-flash {
+        0% {
+          color: #cbd5e1;
+          transform: scale(1);
+        }
+        50% {
+          color: #10b981;
+          transform: scale(1.5);
+          text-shadow: 0 0 10px #10b981;
+        }
+        100% {
+          color: #10b981;
+          transform: scale(1.2);
+        }
+      }
+      .shield-active {
+        animation: shield-flash 0.8s ease-out forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-cyan-100 text-cyan-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-cyan-200"
+        >
+          React × TypeScript フォームハンドリング
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >フォーム入力</span
+          データの流れとイベントの型：<br class="md:hidden" /><span
+            class="react-blue"
+            >ChangeEvent と FormEvent</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          フォームの onChange や onSubmit を型安全に扱う方法を学びましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          Reactで入力フォームを扱う際、文字を入力するたびに
+          <strong>「イベント発生 → State更新 → 画面に反映」</strong>
+          というデータの一方向のループが発生します。TypeScriptでは、このイベント（<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >e</code
+          >）に対して正確な型をつけることで、<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >e.target.value</code
+          >
+          などを安全に取り出せるようになります。
         </p>
       </header>
 
+      <!-- メイン・シミュレーション -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 mb-10 overflow-hidden relative"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700 relative z-10"
+        >
+          <i class="fa-solid fa-arrows-rotate react-blue"></i> 1.
+          データの一方向ループ (Controlled Component)
+        </h2>
+
+        <div
+          class="flex flex-col xl:flex-row gap-8 items-stretch relative"
+          id="animation-area"
+        >
+          <!-- 飛行用パケットのダミー -->
+          <div
+            id="fly-packet"
+            class="data-packet bg-white rounded-lg p-2 text-sm text-center border-2 border-slate-300"
+          ></div>
+
+          <!-- 左側：ブラウザの画面 (UI) -->
+          <div class="w-full xl:w-[30%] flex flex-col relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4 flex items-center justify-between"
+            >
+              <span
+                ><i class="fa-regular fa-window-maximize"></i> ブラウザ画面
+                (UI)</span
+              >
+            </div>
+
+            <div
+              class="bg-slate-50 border-2 border-slate-200 rounded-xl p-5 shadow-sm flex flex-col gap-6"
+            >
+              <!-- Name Input -->
+              <div class="relative">
+                <label class="text-xs font-bold text-slate-500 mb-1 block"
+                  >お名前</label
+                >
+                <div class="flex gap-2">
+                  <!-- 実際のinputではなく、シミュレーション用の表示要素 -->
+                  <div
+                    id="ui-name-input"
+                    class="w-full bg-white border-2 border-slate-300 rounded-lg px-3 py-2 text-slate-700 code-font flex items-center h-[42px] transition-colors"
+                  >
+                    <span id="ui-name-text" class="opacity-50">名前を入力</span>
+                    <span
+                      id="ui-name-cursor"
+                      class="w-[2px] h-4 bg-blue-500 animate-pulse ml-0.5 hidden"
+                    ></span>
+                  </div>
+                  <button
+                    onclick="simulateType('A')"
+                    id="btn-type"
+                    class="bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300 font-bold px-3 rounded-lg shadow-sm transition-all flex items-center justify-center whitespace-nowrap active:scale-95"
+                  >
+                    "A" を入力
+                  </button>
+                </div>
+                <div
+                  class="text-[10px] text-blue-500 font-bold mt-1 text-right"
+                >
+                  value={name}
+                </div>
+                <div
+                  id="input-anchor"
+                  class="absolute right-1/2 top-1/2 w-2 h-2"
+                ></div>
+              </div>
+
+              <!-- Email Input (ダミー) -->
+              <div>
+                <label class="text-xs font-bold text-slate-500 mb-1 block"
+                  >メールアドレス</label
+                >
+                <div
+                  class="w-full bg-slate-200 border-2 border-slate-300 rounded-lg px-3 py-2 text-slate-400 code-font h-[42px] cursor-not-allowed"
+                >
+                  email@example.com
+                </div>
+              </div>
+
+              <!-- Submit Button -->
+              <div class="relative mt-2 border-t border-slate-200 pt-4">
+                <button
+                  onclick="simulateSubmit()"
+                  id="btn-submit"
+                  class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2 active:scale-95"
+                >
+                  <i class="fa-solid fa-paper-plane"></i> 送信 (Submit)
+                </button>
+                <div
+                  id="submit-anchor"
+                  class="absolute right-1/2 top-1/2 w-2 h-2"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 中央：コンポーネント内のロジック -->
+          <div class="w-full xl:w-[45%] flex flex-col relative z-10">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4 flex items-center justify-between"
+            >
+              <span
+                ><i class="fa-solid fa-code text-blue-500"></i> function
+                SimpleForm()</span
+              >
+            </div>
+
+            <div
+              class="bg-slate-800 text-white rounded-xl p-5 shadow-inner code-font text-[12px] leading-relaxed border-2 border-slate-700 flex-1 relative"
+            >
+              <!-- イベントハンドラ (onChange) -->
+              <div class="mb-4 relative">
+                <div
+                  id="line-handle-change"
+                  class="exec-line p-2 rounded transition-colors bg-slate-900 border border-transparent"
+                >
+                  <div class="text-blue-300 mb-1 flex justify-between">
+                    <span
+                      ><span class="text-blue-400">const</span> handleNameChange
+                      = (</span
+                    >
+                    <div id="handler-anchor" class="w-4 h-4"></div>
+                  </div>
+                  <div class="pl-4">
+                    <span class="text-amber-300 font-bold">e</span>:
+                    <span
+                      class="text-teal-300 bg-teal-900/30 px-1 rounded border border-teal-500/50"
+                      >React.ChangeEvent&lt;HTMLInputElement&gt;</span
+                    >
+                  </div>
+                  <div>) => {</div>
+                  <div class="pl-4 py-1" id="line-set-name">
+                    <span class="text-cyan-300 font-bold">setName</span>(<span
+                      class="text-amber-300 font-bold"
+                      >e.target.value</span
+                    >);
+                  </div>
+                  <div>};</div>
+                </div>
+              </div>
+
+              <!-- イベントハンドラ (onSubmit) -->
+              <div class="mb-4 relative">
+                <div
+                  id="line-handle-submit"
+                  class="exec-line p-2 rounded transition-colors bg-slate-900 border border-transparent"
+                >
+                  <div class="text-blue-300 mb-1 flex justify-between">
+                    <span
+                      ><span class="text-blue-400">const</span> handleSubmit =
+                      (</span
+                    >
+                    <div id="submit-handler-anchor" class="w-4 h-4"></div>
+                  </div>
+                  <div class="pl-4">
+                    <span class="text-amber-300 font-bold">e</span>:
+                    <span
+                      class="text-purple-300 bg-purple-900/30 px-1 rounded border border-purple-500/50"
+                      >React.FormEvent&lt;HTMLFormElement&gt;</span
+                    >
+                  </div>
+                  <div>) => {</div>
+                  <div
+                    class="pl-4 py-1 flex items-center justify-between"
+                    id="line-prevent-default"
+                  >
+                    <span
+                      ><span class="text-amber-300 font-bold">e</span>.<span
+                        class="text-emerald-400"
+                        >preventDefault</span
+                      >();</span
+                    >
+                    <i
+                      class="fa-solid fa-shield-halved text-slate-400 text-lg mr-2"
+                      id="shield-icon"
+                    ></i>
+                  </div>
+                  <div class="pl-4 py-1" id="line-console-log">
+                    console.log({ name, email });
+                  </div>
+                  <div>};</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側：Stateメモリ と コンソール -->
+          <div class="w-full xl:w-[25%] flex flex-col gap-6 relative z-0">
+            <!-- React State -->
+            <div class="flex flex-col">
+              <div
+                class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4"
+              >
+                <i class="fa-solid fa-microchip text-slate-600"></i> React State
+              </div>
+
+              <div
+                id="state-box"
+                class="bg-white border-4 border-cyan-200 rounded-2xl p-4 flex flex-col items-center justify-center relative shadow-sm transition-all duration-300"
+              >
+                <div
+                  class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-cyan-500 text-white text-[10px] font-bold px-3 py-0.5 rounded shadow"
+                >
+                  useState
+                </div>
+
+                <div
+                  class="w-full bg-slate-50 border border-slate-200 rounded p-3 text-center mb-2"
+                >
+                  <div
+                    class="text-[10px] font-bold text-slate-400 mb-1 code-font"
+                  >
+                    name
+                  </div>
+                  <div
+                    id="state-name-val"
+                    class="code-font text-xl font-black text-cyan-600 transition-all"
+                  >
+                    ""
+                  </div>
+                </div>
+                <div
+                  id="state-anchor"
+                  class="absolute left-0 top-1/2 transform -translate-y-1/2 w-4 h-4"
+                ></div>
+              </div>
+            </div>
+
+            <!-- コンソール出力 -->
+            <div
+              id="console-box"
+              class="h-32 w-full bg-slate-900 border border-slate-700 rounded-xl p-4 font-mono text-[13px] text-slate-300 shadow-inner relative transition-colors duration-300 mt-auto"
+            >
+              <div
+                class="text-slate-500 text-[10px] absolute top-1 right-2 font-sans font-bold"
+              >
+                Console
+              </div>
+              <div class="flex items-start gap-2 mt-2">
+                <span class="text-slate-500">></span>
+                <div id="console-output" class="flex flex-col gap-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. コード解説と型の安全性 -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-graduation-cap text-indigo-500"></i>
+          実務で必須の型と知識
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- ChangeEvent の解説 -->
+          <div class="bg-teal-50 border border-teal-200 rounded-xl p-5">
+            <div
+              class="text-sm font-bold text-teal-800 mb-2 flex items-center gap-2"
+            >
+              <i class="fa-regular fa-keyboard text-teal-600"></i>
+              ChangeEvent&lt;HTMLInputElement&gt;
+            </div>
+            <p class="text-xs text-teal-900 leading-relaxed">
+              入力欄（<code class="bg-teal-100 px-1 rounded code-font"
+                >input</code
+              >）の値が変わった時に発生するイベントの型です。<br />
+              ジェネリクス
+              <code class="bg-teal-100 px-1 rounded code-font"
+                >&lt;HTMLInputElement&gt;</code
+              >
+              を指定することで、TypeScriptは「あ、これは入力欄から来たイベントだね！」と理解し、<code
+                class="bg-teal-100 px-1 rounded code-font font-bold"
+                >e.target.value</code
+              >
+              というプロパティが「文字列
+              (string)」として安全に存在することを保証してくれます。<br />
+              ※
+              <code class="bg-teal-100 px-1 rounded code-font">textarea</code>
+              の場合は
+              <code class="bg-teal-100 px-1 rounded code-font"
+                >&lt;HTMLTextAreaElement&gt;</code
+              >
+              になります。
+            </p>
+          </div>
+
+          <!-- FormEvent と preventDefault の解説 -->
+          <div class="bg-purple-50 border border-purple-200 rounded-xl p-5">
+            <div
+              class="text-sm font-bold text-purple-800 mb-2 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-shield-halved text-purple-600"></i>
+              FormEvent と e.preventDefault()
+            </div>
+            <p class="text-xs text-purple-900 leading-relaxed">
+              フォームが送信（Submit）された時のイベント型です。<br />
+              HTMLのフォームには、本来<strong>「送信ボタンを押すとページ全体をリロード（再読み込み）してサーバーにデータを送る」という初期設定（デフォルトの動作）</strong>があります。しかし、ReactのようなSPA（単一ページアプリ）では、画面がリロードされるとStateなどのデータが全て消えてしまいます。<br />
+              そのため、<code
+                class="bg-purple-100 px-1 rounded code-font font-bold text-purple-700"
+                >e.preventDefault()</code
+              >
+              を呼んで「デフォルトの送信動作をキャンセル（防御）」し、JavaScript側で独自にデータ処理を行うのが定石です。
+            </p>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+      let currentInputValue = "";
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      function resetUI() {
+        // パケットのリセット
+        const packet = document.getElementById("fly-packet");
+        packet.className =
+          "data-packet bg-white rounded-lg p-2 text-sm text-center border-2 border-slate-300";
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        packet.innerHTML = "";
+
+        // ハイライトのリセット
+        [
+          "line-handle-change",
+          "line-set-name",
+          "line-handle-submit",
+          "line-prevent-default",
+          "line-console-log",
+        ].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.classList.remove(
+              "exec-active",
+              "border-blue-500",
+              "bg-slate-800",
+            );
+            if (id.includes("handle")) {
+              el.classList.replace("border-blue-500", "border-transparent");
+            }
+          }
+        });
+
+        document.getElementById("state-box").classList.remove("pulse-active");
+        document
+          .getElementById("shield-icon")
+          .classList.remove("shield-active");
+
+        const conOut = document.getElementById("console-output");
+        conOut.innerHTML = "";
+      }
+
+      // 親コンテナ（animation-area）基準で絶対座標を設定するヘルパー
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = document
+          .getElementById("animation-area")
+          .getBoundingClientRect();
+
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+        return { x, y };
+      }
+
+      // --- 1. onChange イベントのシミュレーション ---
+      async function simulateType(char) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        const packet = document.getElementById("fly-packet");
+        const inputUI = document.getElementById("ui-name-input");
+        const inputText = document.getElementById("ui-name-text");
+        const cursor = document.getElementById("ui-name-cursor");
+
+        const lineHandleChange = document.getElementById("line-handle-change");
+        const lineSetName = document.getElementById("line-set-name");
+        const stateBox = document.getElementById("state-box");
+        const stateVal = document.getElementById("state-name-val");
+
+        const nextValue = currentInputValue + char;
+
+        // UI: 入力状態の表現
+        inputUI.classList.replace("border-slate-300", "border-blue-400");
+        cursor.classList.remove("hidden");
+        if (currentInputValue === "") {
+          inputText.innerText = nextValue;
+          inputText.classList.remove("opacity-50");
+        } else {
+          inputText.innerText = nextValue;
+        }
+
+        await sleep(500);
+
+        // 1. イベントオブジェクト (e) の発生と飛行
+        packet.innerHTML = `<div class="flex flex-col items-center"><div class="text-[10px] font-bold text-teal-600">ChangeEvent (e)</div><div class="code-font font-bold text-slate-700 text-xs">e.target.value: "${nextValue}"</div></div>`;
+        packet.className =
+          "data-packet bg-teal-50 border-2 border-teal-400 rounded-lg p-2 text-xs shadow-md";
+        packet.style.opacity = "0";
+        void packet.offsetWidth;
+
+        setPacketPosAbsolute(packet, document.getElementById("input-anchor"));
+        packet.style.opacity = "1";
+
+        await sleep(200);
+
+        // ハンドラへ移動
+        packet.style.transition =
+          "transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s";
+        setPacketPosAbsolute(packet, document.getElementById("handler-anchor"));
+
+        await sleep(1000);
+
+        lineHandleChange.classList.replace(
+          "border-transparent",
+          "border-blue-500",
+        );
+        lineHandleChange.classList.add("bg-slate-800");
+
+        await sleep(600);
+
+        // 2. setName() の呼び出し
+        lineSetName.classList.add("exec-active");
+
+        packet.innerHTML = `<span class="code-font font-bold text-cyan-700">"${nextValue}"</span>`;
+        packet.className =
+          "data-packet bg-cyan-50 border-2 border-cyan-400 rounded-lg py-1 px-3 text-sm shadow-md";
+        void packet.offsetWidth;
+
+        await sleep(500);
+
+        // Stateへ飛行
+        setPacketPosAbsolute(packet, document.getElementById("state-anchor"));
+
+        await sleep(1200);
+        packet.style.opacity = "0";
+
+        // 3. State の更新
+        stateBox.classList.add("pulse-active");
+        stateVal.innerText = `"${nextValue}"`;
+        stateVal.classList.add("animate-pop");
+
+        currentInputValue = nextValue; // 状態を確定
+
+        await sleep(1000);
+
+        // 4. 再レンダリング（データがUIに戻る）
+        lineHandleChange.classList.replace(
+          "border-blue-500",
+          "border-transparent",
+        );
+        lineHandleChange.classList.remove("bg-slate-800");
+        lineSetName.classList.remove("exec-active");
+
+        packet.innerHTML = `<span class="code-font font-bold text-cyan-700">value="${nextValue}"</span>`;
+        setPacketPosAbsolute(packet, document.getElementById("state-anchor"));
+        packet.style.opacity = "1";
+
+        await sleep(200);
+        setPacketPosAbsolute(packet, document.getElementById("input-anchor"));
+
+        await sleep(1200);
+        packet.style.opacity = "0";
+
+        inputUI.classList.replace("border-blue-400", "border-slate-300");
+        inputUI.classList.add("bg-cyan-50");
+        setTimeout(() => inputUI.classList.remove("bg-cyan-50"), 600);
+
+        await sleep(600);
+        stateVal.classList.remove("animate-pop");
+        cursor.classList.add("hidden");
+
+        isAnimating = false;
+      }
+
+      // --- 2. onSubmit イベントのシミュレーション ---
+      async function simulateSubmit() {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        const packet = document.getElementById("fly-packet");
+        const btnSubmit = document.getElementById("btn-submit");
+        const lineHandleSubmit = document.getElementById("line-handle-submit");
+        const linePrevent = document.getElementById("line-prevent-default");
+        const lineLog = document.getElementById("line-console-log");
+        const shieldIcon = document.getElementById("shield-icon");
+        const conOut = document.getElementById("console-output");
+
+        // 1. Submit イベント発生
+        packet.innerHTML = `<div class="flex flex-col items-center"><div class="text-[10px] font-bold text-purple-600">FormEvent (e)</div><div class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-rotate-right"></i> リロード命令あり</div></div>`;
+        packet.className =
+          "data-packet bg-purple-50 border-2 border-purple-400 rounded-lg p-2 text-xs shadow-md";
+        packet.style.opacity = "0";
+        void packet.offsetWidth;
+
+        setPacketPosAbsolute(packet, document.getElementById("submit-anchor"));
+        packet.style.opacity = "1";
+
+        await sleep(200);
+
+        // ハンドラへ移動
+        packet.style.transition =
+          "transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s";
+        setPacketPosAbsolute(
+          packet,
+          document.getElementById("submit-handler-anchor"),
+        );
+
+        await sleep(1200);
+
+        lineHandleSubmit.classList.replace(
+          "border-transparent",
+          "border-blue-500",
+        );
+        lineHandleSubmit.classList.add("bg-slate-800");
+
+        await sleep(600);
+
+        // 2. preventDefault() でリロードを阻止
+        linePrevent.classList.add("exec-active");
+
+        packet.style.transform = packet.style.transform.replace(
+          "scale(1)",
+          "scale(1.1)",
+        );
+        await sleep(500);
+
+        shieldIcon.classList.add("shield-active");
+
+        packet.innerHTML = `<div class="flex flex-col items-center"><div class="text-[10px] font-bold text-purple-600">FormEvent (e)</div><div class="text-xs text-emerald-600 mt-1 font-bold"><i class="fa-solid fa-shield"></i> リロード阻止済</div></div>`;
+        packet.className =
+          "data-packet bg-emerald-50 border-2 border-emerald-400 rounded-lg p-2 text-xs shadow-md";
+        void packet.offsetWidth;
+
+        await sleep(1200);
+        linePrevent.classList.remove("exec-active");
+
+        // 3. console.log の実行
+        lineLog.classList.add("exec-active");
+        await sleep(600);
+
+        // パケットが消える
+        packet.style.opacity = "0";
+
+        const dispName = currentInputValue || "";
+        conOut.innerHTML = `<div class="animate-pop text-slate-300">{ name: <span class="text-emerald-400">"${dispName}"</span>, email: <span class="text-emerald-400">""</span> }</div>`;
+
+        await sleep(1500);
+        lineLog.classList.remove("exec-active");
+        lineHandleSubmit.classList.replace(
+          "border-blue-500",
+          "border-transparent",
+        );
+        lineHandleSubmit.classList.remove("bg-slate-800");
+        shieldIcon.classList.remove("shield-active");
+
+        // 名前リセット（擬似的な送信完了）
+        currentInputValue = "";
+        document.getElementById("ui-name-text").innerText = "名前を入力";
+        document.getElementById("ui-name-text").classList.add("opacity-50");
+        document.getElementById("state-name-val").innerText = '""';
+
+        isAnimating = false;
+      }
+    </script>
   </body>
 </html>

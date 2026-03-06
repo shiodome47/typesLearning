@@ -3,54 +3,760 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: コンポーネントのProps</title>
+    <title>React 図解: Propsの型定義とオプショナル</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
-        background-color: #f8fafc;
+        background-color: #f0f9ff; /* sky-50 */
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* データパケットのスタイル */
+      .data-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+        transition:
+          transform 1s cubic-bezier(0.34, 1.56, 0.64, 1),
+          opacity 0.5s;
+        transform-origin: center;
+        border-radius: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        font-weight: bold;
+        font-family: "Fira Code", monospace;
+        border-width: 2px;
+      }
+
+      /* ゲート通過時のハイライト */
+      .gate-active {
+        background-color: #f0fdf4 !important; /* emerald-50 */
+        border-color: #10b981 !important; /* emerald-500 */
+        transform: scale(1.05);
+        z-index: 10;
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+      }
+
+      /* ゲートでのエラー（不足） */
+      @keyframes shake-error {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-8px);
+        }
+        40% {
+          transform: translateX(8px);
+        }
+        60% {
+          transform: translateX(-8px);
+        }
+        80% {
+          transform: translateX(8px);
+        }
+      }
+      .gate-error {
+        background-color: #fef2f2 !important;
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
+        animation: shake-error 0.5s ease-in-out;
+        z-index: 10;
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+      }
+
+      /* 実行行のハイライト */
+      .exec-active {
+        background-color: #eff6ff; /* blue-50 */
+        border-left-color: #3b82f6 !important; /* blue-500 */
+        transform: translateX(5px);
+      }
+
+      /* ポップアニメーション */
+      @keyframes popIn {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        60% {
+          transform: scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .animate-pop {
+        animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+
+      .react-blue {
+        color: #06b6d4;
+      }
+      .bg-react-blue {
+        background-color: #06b6d4;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-cyan-100 text-cyan-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-cyan-200"
+        >
+          React コンポーネントの基礎
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >コンポーネントのProps</span
+          安全にデータを受け渡す：<br class="md:hidden" /><span
+            class="react-blue"
+            >Props と オプショナル型</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          React コンポーネントの props に型を付けて、安全に再利用しましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          コンポーネントが受け取るデータ（Props）の形を
+          <code class="bg-slate-200 px-1 rounded code-font">type</code>
+          で定義することで、呼び出し側のミス（渡し忘れや型の間違い）をコンパイル時に防ぐことができます。<br
+            class="hidden md:block"
+          />
+          また、<code class="bg-slate-200 px-1 rounded code-font font-bold"
+            >?</code
+          >
+          をつけることで、「渡しても渡さなくても良い」柔軟な設計が可能になります。
         </p>
       </header>
 
+      <!-- インタラクティブ・シミュレーション -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 mb-10 overflow-hidden relative"
+      >
+        <div
+          class="flex flex-col xl:flex-row gap-8 items-stretch relative"
+          id="animation-area"
+        >
+          <!-- 飛行用パケット (Props) -->
+          <div
+            id="packet-name"
+            class="data-packet bg-blue-50 border-blue-400 text-blue-700"
+          ></div>
+          <div
+            id="packet-age"
+            class="data-packet bg-amber-50 border-amber-400 text-amber-700"
+          ></div>
+          <div
+            id="packet-isadmin"
+            class="data-packet bg-emerald-50 border-emerald-400 text-emerald-700"
+          ></div>
+
+          <!-- 左側：呼び出し側 (親コンポーネント) -->
+          <div class="w-full xl:w-[35%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-mobile-screen react-blue"></i> 呼び出し側
+              (親コンポーネント)
+            </div>
+
+            <button
+              onclick="runSimulation('alice', this)"
+              class="bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-cyan-400 rounded-xl p-4 text-left shadow-sm transition-all group relative"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-2">
+                ① 必須Propsのみ渡す
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                &lt;<span class="text-cyan-600">Greeting</span><br />
+                &nbsp;&nbsp;<span class="text-blue-500">name</span>=<span
+                  class="text-blue-600"
+                  >"Alice"</span
+                ><br />
+                &nbsp;&nbsp;<span class="text-amber-500">age</span>={<span
+                  class="text-amber-600"
+                  >25</span
+                >}<br />
+                /&gt;
+              </div>
+              <i
+                class="fa-solid fa-play absolute right-4 top-1/2 transform -translate-y-1/2 text-cyan-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <button
+              onclick="runSimulation('bob', this)"
+              class="bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-cyan-400 rounded-xl p-4 text-left shadow-sm transition-all group relative mt-1"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-2">
+                ② 全てのPropsを渡す (isAdmin省略記法)
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                &lt;<span class="text-cyan-600">Greeting</span><br />
+                &nbsp;&nbsp;<span class="text-blue-500">name</span>=<span
+                  class="text-blue-600"
+                  >"Bob"</span
+                ><br />
+                &nbsp;&nbsp;<span class="text-amber-500">age</span>={<span
+                  class="text-amber-600"
+                  >30</span
+                >}<br />
+                &nbsp;&nbsp;<span
+                  class="text-emerald-600 border-b-2 border-dashed border-emerald-300"
+                  >isAdmin</span
+                ><br />
+                /&gt;
+              </div>
+              <i
+                class="fa-solid fa-play absolute right-4 top-1/2 transform -translate-y-1/2 text-cyan-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <div class="h-px bg-slate-200 my-1"></div>
+
+            <button
+              onclick="runSimulation('error', this)"
+              class="bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-400 rounded-xl p-4 text-left shadow-sm transition-all group relative overflow-hidden"
+            >
+              <div
+                class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-bl font-bold"
+              >
+                わざと失敗
+              </div>
+              <div class="text-[10px] font-bold text-red-600 mb-2">
+                ③ 必須Props(age)を渡し忘れる
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                &lt;<span class="text-cyan-600">Greeting</span><br />
+                &nbsp;&nbsp;<span class="text-blue-500">name</span>=<span
+                  class="text-blue-600"
+                  >"Carol"</span
+                ><br />
+                <span class="text-slate-400 line-through text-xs"
+                  >&nbsp;&nbsp;/* age が無い！ */</span
+                ><br />
+                /&gt;
+              </div>
+              <i
+                class="fa-solid fa-bolt absolute right-4 top-1/2 transform -translate-y-1/2 text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+          </div>
+
+          <!-- 中央：型定義ゲート (GreetingProps) -->
+          <div
+            class="w-full xl:w-[25%] flex flex-col relative z-10 justify-center"
+          >
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4 text-center"
+            >
+              <i class="fa-solid fa-shield-halved text-emerald-500"></i>
+              型チェックゲート
+            </div>
+
+            <div
+              class="bg-slate-800 text-white border-4 border-slate-700 rounded-2xl p-5 shadow-lg code-font text-[13px] relative transition-colors duration-300"
+            >
+              <div class="text-purple-400 font-bold mb-3">
+                type <span class="text-cyan-300">GreetingProps</span> = {
+              </div>
+
+              <div class="flex flex-col gap-3 pl-4 relative">
+                <!-- name gate -->
+                <div
+                  id="gate-name"
+                  class="border-2 border-slate-600 bg-slate-900 rounded-lg p-2 transition-colors relative flex justify-between items-center"
+                >
+                  <div><span class="text-blue-300">name</span>: string;</div>
+                  <div id="anchor-name" class="w-2 h-2"></div>
+                </div>
+
+                <!-- age gate -->
+                <div
+                  id="gate-age"
+                  class="border-2 border-slate-600 bg-slate-900 rounded-lg p-2 transition-colors relative flex justify-between items-center"
+                >
+                  <div><span class="text-amber-300">age</span>: number;</div>
+                  <div id="anchor-age" class="w-2 h-2"></div>
+                </div>
+
+                <!-- isAdmin gate -->
+                <div
+                  id="gate-isadmin"
+                  class="border-2 border-slate-600 border-dashed bg-slate-900 rounded-lg p-2 transition-colors relative flex justify-between items-center"
+                >
+                  <div>
+                    <span class="text-emerald-300">isAdmin</span
+                    ><span
+                      class="text-pink-400 font-bold text-base leading-none"
+                      >?</span
+                    >: boolean;
+                  </div>
+                  <div id="anchor-isadmin" class="w-2 h-2"></div>
+                </div>
+              </div>
+
+              <div class="text-purple-400 font-bold mt-3">};</div>
+
+              <!-- エラーメッセージ用 -->
+              <div
+                id="type-error-msg"
+                class="absolute -bottom-16 left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-[10px] p-2 rounded shadow-lg hidden w-max z-30 code-font"
+              >
+                Property 'age' is missing in type '{ name: string; }'
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側：コンポーネント内部 (Greeting) と出力 -->
+          <div class="w-full xl:w-[40%] flex flex-col relative z-0">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-code text-blue-500"></i> 子コンポーネント
+              (Greeting)
+            </div>
+
+            <div
+              class="bg-slate-50 border-2 border-slate-300 rounded-xl p-5 shadow-sm code-font text-[13px] relative flex-1 flex flex-col justify-between"
+            >
+              <div>
+                <div
+                  class="text-blue-600 font-bold mb-3 flex flex-wrap gap-1 items-center"
+                >
+                  <span class="text-purple-600">function</span> Greeting({
+                  <span
+                    id="destruct-name"
+                    class="bg-white border border-slate-200 px-1 rounded transition-colors"
+                    >name</span
+                  >,
+                  <span
+                    id="destruct-age"
+                    class="bg-white border border-slate-200 px-1 rounded transition-colors"
+                    >age</span
+                  >,
+                  <span
+                    id="destruct-isadmin"
+                    class="bg-white border border-slate-200 px-1 rounded transition-colors"
+                    >isAdmin</span
+                  >
+                  }: <span class="text-cyan-600">GreetingProps</span>) {
+                </div>
+
+                <div
+                  class="pl-4 border-l-4 border-transparent transition-colors mb-4"
+                  id="line-logic"
+                >
+                  <div class="text-slate-400 text-[10px] mb-1">
+                    // undefined の場合は false 扱いになる
+                  </div>
+                  <span class="text-blue-600">const</span> adminLabel =
+                  <span
+                    id="logic-eval"
+                    class="transition-colors rounded px-1 font-bold"
+                    >isAdmin ?
+                    <span class="text-emerald-600">" [Admin]"</span> :
+                    <span class="text-slate-400">""</span></span
+                  >;
+                </div>
+
+                <div
+                  class="pl-4 border-l-4 border-transparent transition-colors"
+                  id="line-return"
+                >
+                  <span class="text-purple-600 font-bold">return</span> (<br />
+                  &nbsp;&nbsp;&lt;<span class="text-rose-500">p</span>&gt;<br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;Hello, {<span
+                    id="render-name"
+                    class="text-blue-600 font-bold transition-colors"
+                    >name</span
+                  >} ({<span
+                    id="render-age"
+                    class="text-amber-600 font-bold transition-colors"
+                    >age</span
+                  >}){<span
+                    id="render-label"
+                    class="text-emerald-600 font-bold transition-colors"
+                    >adminLabel</span
+                  >}<br />
+                  &nbsp;&nbsp;&lt;/<span class="text-rose-500">p</span
+                  >&gt;<br />
+                  );
+                </div>
+                <div class="text-blue-600 font-bold mt-2">}</div>
+              </div>
+
+              <!-- ブラウザの描画結果 -->
+              <div class="mt-6 border-t-2 border-dashed border-slate-300 pt-4">
+                <div class="text-[10px] font-bold text-slate-400 mb-2">
+                  ブラウザへの描画結果 (DOM)
+                </div>
+                <div
+                  id="dom-output"
+                  class="bg-white border border-slate-200 rounded-lg p-4 text-center text-slate-800 text-lg shadow-inner min-h-[60px] flex items-center justify-center transition-all"
+                >
+                  <span class="opacity-30">---</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 解説セクション -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-4 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-graduation-cap text-cyan-500"></i> React + TS
+          の実務ポイント
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-cyan-50 border border-cyan-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-cyan-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-check text-cyan-600"></i>
+              boolean型の省略記法
+            </h3>
+            <p class="text-xs text-cyan-900 leading-relaxed">
+              JSXで
+              <code
+                class="bg-white border border-cyan-200 px-1 rounded code-font"
+                >isAdmin={true}</code
+              >
+              と書く代わりに、単に
+              <code
+                class="bg-white border border-cyan-200 px-1 rounded code-font font-bold"
+                >isAdmin</code
+              >
+              と書くだけで「trueを渡した」ことになります。<br />
+              逆に、何も渡さなかった場合は
+              <code
+                class="bg-white border border-cyan-200 px-1 rounded code-font text-slate-500"
+                >undefined</code
+              >
+              として扱われます。三項演算子（<code
+                class="bg-white border border-cyan-200 px-1 rounded code-font"
+                >isAdmin ? A : B</code
+              >）では undefined は「偽
+              (false)」と判定されるため、デフォルト値のような安全な動作をします。
+            </p>
+          </div>
+          <div class="bg-amber-50 border border-amber-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-amber-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-curly-brackets text-amber-600"></i> age={25}
+              の波括弧はなぜ必要？
+            </h3>
+            <p class="text-xs text-amber-900 leading-relaxed">
+              <code
+                class="bg-white border border-amber-200 px-1 rounded code-font"
+                >name="Alice"</code
+              >
+              のようにダブルクォーテーションで囲むと「文字列
+              (string)」として渡されます。<br />
+              しかし、数値や真偽値、配列などを渡したい場合は、JSXの中でJavaScriptの世界を開くための
+              <strong
+                >波括弧
+                <code
+                  class="bg-white border border-amber-200 px-1 rounded code-font font-bold"
+                  >{}</code
+                ></strong
+              >
+              が必要になります。もし
+              <code
+                class="bg-white border border-amber-200 px-1 rounded code-font"
+                >age="25"</code
+              >
+              と書いてしまうと、TypeScriptが「number型にstring型は入れられないよ！」とエラーを出してくれます。
+            </p>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      function resetUI() {
+        // パケットのリセット
+        const packets = ["name", "age", "isadmin"];
+        packets.forEach((id) => {
+          const el = document.getElementById(`packet-${id}`);
+          el.style.opacity = "0";
+          el.style.transform = "none";
+          el.innerText = "";
+        });
+
+        // ゲートのリセット
+        ["name", "age", "isadmin"].forEach((id) => {
+          const el = document.getElementById(`gate-${id}`);
+          el.classList.remove("gate-active", "gate-error");
+        });
+        document.getElementById("type-error-msg").classList.add("hidden");
+
+        // 分割代入のリセット
+        ["name", "age", "isadmin"].forEach((id) => {
+          const el = document.getElementById(`destruct-${id}`);
+          el.classList.remove(
+            "bg-blue-100",
+            "bg-amber-100",
+            "bg-emerald-100",
+            "bg-slate-200",
+            "border-blue-300",
+            "border-amber-300",
+            "border-emerald-300",
+            "border-slate-300",
+          );
+        });
+
+        // ロジック行のリセット
+        document
+          .getElementById("line-logic")
+          .classList.remove("border-l-blue-400", "bg-blue-50");
+        const evalEl = document.getElementById("logic-eval");
+        evalEl.classList.remove("bg-emerald-100", "bg-slate-200");
+
+        // Return行のリセット
+        document
+          .getElementById("line-return")
+          .classList.remove("border-l-rose-400", "bg-rose-50");
+
+        // レンダリング変数のリセット
+        ["name", "age", "label"].forEach((id) => {
+          document
+            .getElementById(`render-${id}`)
+            .classList.remove("bg-white", "px-1", "rounded", "shadow-sm");
+        });
+
+        // DOM出力のリセット
+        const domOut = document.getElementById("dom-output");
+        domOut.innerHTML = '<span class="opacity-30">---</span>';
+        domOut.classList.remove(
+          "bg-green-50",
+          "border-green-300",
+          "text-green-800",
+          "animate-pop",
+        );
+      }
+
+      // 絶対座標計算ヘルパー
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = document
+          .getElementById("animation-area")
+          .getBoundingClientRect();
+
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+      }
+
+      async function runSimulation(type, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        const pName = document.getElementById("packet-name");
+        const pAge = document.getElementById("packet-age");
+        const pAdmin = document.getElementById("packet-isadmin");
+
+        const gName = document.getElementById("gate-name");
+        const gAge = document.getElementById("gate-age");
+        const gAdmin = document.getElementById("gate-isadmin");
+
+        const dName = document.getElementById("destruct-name");
+        const dAge = document.getElementById("destruct-age");
+        const dAdmin = document.getElementById("destruct-isadmin");
+
+        // 1. パケットの準備と発射位置設定
+        pName.innerText =
+          type === "error" ? '"Carol"' : type === "alice" ? '"Alice"' : '"Bob"';
+        setPacketPosAbsolute(pName, btnEl, 0, -20);
+        pName.style.opacity = "1";
+
+        if (type !== "error") {
+          pAge.innerText = type === "alice" ? "25" : "30";
+          setPacketPosAbsolute(pAge, btnEl, 0, 10);
+          pAge.style.opacity = "1";
+        }
+
+        if (type === "bob") {
+          pAdmin.innerText = "true";
+          setPacketPosAbsolute(pAdmin, btnEl, 0, 40);
+          pAdmin.style.opacity = "1";
+        }
+
+        // トランジション設定（飛行時間）
+        await sleep(50);
+        [pName, pAge, pAdmin].forEach(
+          (p) =>
+            (p.style.transition =
+              "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s"),
+        );
+
+        // 2. ゲートへ飛行
+        setPacketPosAbsolute(pName, document.getElementById("anchor-name"));
+        if (type !== "error")
+          setPacketPosAbsolute(pAge, document.getElementById("anchor-age"));
+        if (type === "bob")
+          setPacketPosAbsolute(
+            pAdmin,
+            document.getElementById("anchor-isadmin"),
+          );
+
+        await sleep(1000); // 飛行完了待ち
+
+        // パケットを消す
+        pName.style.opacity = "0";
+        if (type !== "error") pAge.style.opacity = "0";
+        if (type === "bob") pAdmin.style.opacity = "0";
+
+        // 3. ゲートでの型チェック
+        gName.classList.add("gate-active");
+
+        if (type === "error") {
+          // エラー時の挙動
+          await sleep(200);
+          gAge.classList.add("gate-error"); // ageが来てない！
+
+          const errMsg = document.getElementById("type-error-msg");
+          errMsg.classList.remove("hidden");
+
+          await sleep(2000);
+          errMsg.classList.add("hidden");
+          gAge.classList.remove("gate-error");
+          gName.classList.remove("gate-active");
+
+          isAnimating = false;
+          return; // ここで終了
+        }
+
+        // 正常系の続き
+        gAge.classList.add("gate-active");
+        if (type === "bob") {
+          gAdmin.classList.add("gate-active");
+        } else {
+          // optional なのでエラーにはならず、undefined扱い
+          gAdmin.classList.add("bg-slate-700"); // 少し暗く反応
+        }
+
+        await sleep(800);
+
+        // ゲートのハイライト解除
+        gName.classList.remove("gate-active");
+        gAge.classList.remove("gate-active");
+        gAdmin.classList.remove("gate-active", "bg-slate-700");
+
+        // 4. 子コンポーネント内部（分割代入）へ到達
+        dName.classList.add("bg-blue-100", "border-blue-300");
+        dAge.classList.add("bg-amber-100", "border-amber-300");
+
+        if (type === "bob") {
+          dAdmin.classList.add("bg-emerald-100", "border-emerald-300");
+        } else {
+          dAdmin.classList.add("bg-slate-200", "border-slate-300"); // undefined
+        }
+
+        await sleep(600);
+
+        // 5. ロジック行 (isAdmin の判定)
+        const lineLogic = document.getElementById("line-logic");
+        const evalEl = document.getElementById("logic-eval");
+
+        lineLogic.classList.add("border-l-blue-400", "bg-blue-50");
+
+        await sleep(400);
+
+        if (type === "bob") {
+          evalEl.classList.add("bg-emerald-100"); // true の方が選ばれた
+        } else {
+          evalEl.classList.add("bg-slate-200"); // false ("") の方が選ばれた
+        }
+
+        await sleep(800);
+        lineLogic.classList.remove("border-l-blue-400", "bg-blue-50");
+
+        // 6. Return (JSX) 行
+        const lineReturn = document.getElementById("line-return");
+        lineReturn.classList.add("border-l-rose-400", "bg-rose-50");
+
+        document
+          .getElementById("render-name")
+          .classList.add("bg-white", "px-1", "rounded", "shadow-sm");
+        document
+          .getElementById("render-age")
+          .classList.add("bg-white", "px-1", "rounded", "shadow-sm");
+        document
+          .getElementById("render-label")
+          .classList.add("bg-white", "px-1", "rounded", "shadow-sm");
+
+        await sleep(800);
+
+        // 7. DOM への出力
+        const domOut = document.getElementById("dom-output");
+        const finalName = type === "alice" ? "Alice" : "Bob";
+        const finalAge = type === "alice" ? "25" : "30";
+        const finalAdmin =
+          type === "bob"
+            ? '<span class="text-emerald-600 font-black ml-1"> [Admin]</span>'
+            : "";
+
+        domOut.innerHTML = `<span>Hello, <span class="text-blue-600 font-bold">${finalName}</span> (<span class="text-amber-600 font-bold">${finalAge}</span>)${finalAdmin}</span>`;
+        domOut.classList.add(
+          "bg-green-50",
+          "border-green-300",
+          "text-green-800",
+          "animate-pop",
+        );
+
+        await sleep(1000);
+        lineReturn.classList.remove("border-l-rose-400", "bg-rose-50");
+
+        isAnimating = false;
+      }
+    </script>
   </body>
 </html>

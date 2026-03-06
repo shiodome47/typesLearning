@@ -3,54 +3,657 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: 変数の型</title>
+    <title>TypeScript 図解: 基本の型と関数</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 成功時の箱のアニメーション */
+      @keyframes success-pop {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+        50% {
+          transform: scale(1.05);
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+          border-color: #10b981;
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+      }
+      .box-success {
+        animation: success-pop 0.6s ease-out;
+        border-color: #10b981 !important;
+      }
+
+      /* エラー時の箱のシェイクアニメーション */
+      @keyframes error-shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-10px);
+        }
+        40% {
+          transform: translateX(10px);
+        }
+        60% {
+          transform: translateX(-10px);
+        }
+        80% {
+          transform: translateX(10px);
+        }
+      }
+      .box-error {
+        animation: error-shake 0.5s ease-in-out;
+        border-color: #ef4444 !important;
+        background-color: #fef2f2 !important;
+      }
+
+      /* 値が飛んでいくアニメーション */
+      @keyframes fly-value {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(var(--tx), var(--ty)) scale(1.2);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0.5);
+          opacity: 0;
+        }
+      }
+      .flying-value {
+        position: absolute;
+        z-index: 100;
+        pointer-events: none;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        font-family: "Fira Code", monospace;
+        font-weight: bold;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        background-color: white;
+        border: 2px solid #cbd5e1;
+      }
+
+      /* エラーツールチップのフェード */
+      .tooltip-fade {
+        animation: fadeInOut 2.5s ease-in-out forwards;
+      }
+      @keyframes fadeInOut {
+        0% {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        15% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        85% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+      }
+
+      /* データの流れの線 */
+      .flow-line {
+        position: relative;
+        width: 2px;
+        background-color: #cbd5e1;
+        margin: 0 auto;
+      }
+      .flow-line::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -2px;
+        width: 6px;
+        height: 100%;
+        background: linear-gradient(
+          to bottom,
+          transparent,
+          #3b82f6,
+          transparent
+        );
+        opacity: 0;
+      }
+      .flow-active::after {
+        animation: flowDown 1s ease-in-out;
+        opacity: 1;
+      }
+      @keyframes flowDown {
+        0% {
+          transform: translateY(-100%);
+        }
+        100% {
+          transform: translateY(100%);
+        }
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-blue-200"
+        >
+          TypeScriptの第一歩
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >変数の型</span
+          「箱の形」を厳密に決める：<br class="md:hidden" /><span
+            class="text-blue-600"
+            >基本の型 (Primitive Types)</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          変数に型を付けることで、安全にコードを書くための基礎を学びましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          変数や関数に
+          <code class="bg-slate-200 px-1 rounded code-font">: string</code>
+          のように<strong>「型のアノテーション（注釈）」</strong>をつけることで、TypeScriptは「その箱には何が入るべきか」を理解し、間違ったデータが混入するのを未然に防いでくれます。
         </p>
       </header>
 
+      <!-- 1. 変数と型アノテーション -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-box text-blue-500"></i> 1. 変数への代入チェック
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
+
+        <p class="mb-6 text-slate-600 text-sm text-center">
+          下のボタンを押して、変数（箱）に新しい値を代入してみましょう。<br />指定された「型」と違うものを入れようとするとどうなるでしょうか？
         </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <!-- username (string) -->
+          <div
+            id="box-username"
+            class="transition-all-custom bg-slate-50 border-2 border-slate-300 rounded-xl p-5 flex flex-col items-center relative shadow-sm"
+          >
+            <div
+              class="absolute -top-3 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded shadow-md border border-blue-600"
+            >
+              : string (文字列)
+            </div>
+            <div class="text-sm font-bold text-slate-500 mb-2 mt-2 code-font">
+              let username
+            </div>
+            <div
+              id="val-username"
+              class="code-font text-2xl font-black text-blue-600 bg-white px-4 py-2 rounded-lg border border-slate-200 w-full text-center transition-colors"
+            >
+              "Alice"
+            </div>
+            <!-- エラーツールチップ -->
+            <div
+              id="err-username"
+              class="absolute -bottom-14 bg-red-600 text-white text-[10px] p-2 rounded shadow-lg hidden z-20 code-font whitespace-nowrap"
+            >
+              Type 'number' is not assignable to type 'string'.
+            </div>
+          </div>
+
+          <!-- age (number) -->
+          <div
+            id="box-age"
+            class="transition-all-custom bg-slate-50 border-2 border-slate-300 rounded-xl p-5 flex flex-col items-center relative shadow-sm"
+          >
+            <div
+              class="absolute -top-3 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded shadow-md border border-amber-600"
+            >
+              : number (数値)
+            </div>
+            <div class="text-sm font-bold text-slate-500 mb-2 mt-2 code-font">
+              let age
+            </div>
+            <div
+              id="val-age"
+              class="code-font text-2xl font-black text-amber-600 bg-white px-4 py-2 rounded-lg border border-slate-200 w-full text-center transition-colors"
+            >
+              25
+            </div>
+            <div
+              id="err-age"
+              class="absolute -bottom-14 bg-red-600 text-white text-[10px] p-2 rounded shadow-lg hidden z-20 code-font whitespace-nowrap"
+            >
+              Type 'string' is not assignable to type 'number'.
+            </div>
+          </div>
+
+          <!-- isLoggedIn (boolean) -->
+          <div
+            id="box-isLoggedIn"
+            class="transition-all-custom bg-slate-50 border-2 border-slate-300 rounded-xl p-5 flex flex-col items-center relative shadow-sm"
+          >
+            <div
+              class="absolute -top-3 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded shadow-md border border-emerald-600"
+            >
+              : boolean (真偽値)
+            </div>
+            <div class="text-sm font-bold text-slate-500 mb-2 mt-2 code-font">
+              let isLoggedIn
+            </div>
+            <div
+              id="val-isLoggedIn"
+              class="code-font text-2xl font-black text-emerald-600 bg-white px-4 py-2 rounded-lg border border-slate-200 w-full text-center transition-colors"
+            >
+              false
+            </div>
+            <div
+              id="err-isLoggedIn"
+              class="absolute -bottom-14 bg-red-600 text-white text-[10px] p-2 rounded shadow-lg hidden z-20 code-font whitespace-nowrap"
+            >
+              Type 'string' is not assignable to type 'boolean'.
+            </div>
+          </div>
+        </div>
+
+        <!-- 代入アクションボタン -->
+        <div
+          class="bg-slate-100 p-4 rounded-xl border border-slate-200 flex flex-wrap justify-center gap-3 relative"
+          id="action-panel"
+        >
+          <div class="w-full text-center text-xs font-bold text-slate-500 mb-1">
+            代入コマンドを実行
+          </div>
+
+          <button
+            onclick="
+              assignVar(
+                'username',
+                '&quot;Bob&quot;',
+                'string',
+                'text-blue-600',
+                this,
+              )
+            "
+            class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold py-2 px-4 rounded shadow-sm transition-all text-sm code-font flex items-center gap-2"
+          >
+            username = <span class="text-blue-600">"Bob"</span>
+          </button>
+
+          <button
+            onclick="assignVar('age', '30', 'number', 'text-amber-600', this)"
+            class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold py-2 px-4 rounded shadow-sm transition-all text-sm code-font flex items-center gap-2"
+          >
+            age = <span class="text-amber-600">30</span>
+          </button>
+
+          <button
+            onclick="
+              assignVar(
+                'isLoggedIn',
+                'true',
+                'boolean',
+                'text-emerald-600',
+                this,
+              )
+            "
+            class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold py-2 px-4 rounded shadow-sm transition-all text-sm code-font flex items-center gap-2"
+          >
+            isLoggedIn = <span class="text-emerald-600">true</span>
+          </button>
+
+          <div class="w-px bg-slate-300 mx-2"></div>
+
+          <button
+            onclick="
+              assignVar(
+                'age',
+                '&quot;Secret&quot;',
+                'string',
+                'text-blue-600',
+                this,
+              )
+            "
+            class="bg-red-50 hover:bg-red-100 border border-red-300 text-slate-700 font-bold py-2 px-4 rounded shadow-sm transition-all text-sm code-font flex items-center gap-2 relative group"
+          >
+            <div
+              class="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded shadow"
+            >
+              罠
+            </div>
+            age = <span class="text-blue-600">"Secret"</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. 関数の型アノテーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-right-to-bracket text-purple-500"></i> 2.
+          関数の「入口」と「出口」の型
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-center justify-center"
+        >
+          <!-- 引数を渡す側 -->
+          <div
+            class="w-full lg:w-1/3 flex flex-col gap-3 relative"
+            id="func-caller"
+          >
+            <div class="text-sm font-bold text-slate-500 text-center mb-1">
+              関数を呼び出す
+            </div>
+
+            <button
+              onclick="
+                callGreet('&quot;Taro&quot;', 'string', 'text-blue-600', this)
+              "
+              class="bg-white border-2 border-slate-200 hover:border-blue-400 rounded-xl p-3 text-center shadow-sm font-bold text-slate-700 code-font transition-colors relative z-10"
+            >
+              greet(<span class="text-blue-600">"Taro"</span>)
+            </button>
+
+            <button
+              onclick="callGreet('123', 'number', 'text-amber-600', this)"
+              class="bg-white border-2 border-slate-200 hover:border-red-400 rounded-xl p-3 text-center shadow-sm font-bold text-slate-700 code-font transition-colors relative z-10"
+            >
+              greet(<span class="text-amber-600">123</span>)
+            </button>
+          </div>
+
+          <!-- 関数本体の可視化 -->
+          <div class="w-full lg:w-1/2 flex flex-col items-center relative">
+            <!-- データの通り道 (上) -->
+            <div id="func-in-line" class="h-8 flow-line overflow-hidden"></div>
+
+            <!-- 関数の箱 -->
+            <div
+              id="func-box"
+              class="w-full transition-all-custom bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 shadow-xl relative z-10 text-white text-center"
+            >
+              <div
+                class="code-font text-[13px] leading-relaxed text-left inline-block"
+              >
+                <span class="text-purple-400">function</span> greet(<br />
+                &nbsp;&nbsp;<span
+                  id="arg-name"
+                  class="text-slate-300 transition-colors"
+                  >name</span
+                >:
+                <span
+                  class="bg-blue-500/20 border border-blue-500 text-blue-300 px-1 rounded font-bold"
+                  >string</span
+                >
+                <span class="text-[10px] text-slate-400">← 入口(引数)の型</span
+                ><br />
+                ):
+                <span
+                  class="bg-emerald-500/20 border border-emerald-500 text-emerald-300 px-1 rounded font-bold"
+                  >string</span
+                >
+                <span class="text-[10px] text-slate-400"
+                  >← 出口(戻り値)の型</span
+                >
+                {<br />
+                &nbsp;&nbsp;<span class="text-purple-400">return</span>
+                <span class="text-amber-300">"Hello, "</span> +
+                <span id="arg-use" class="text-slate-300 transition-colors"
+                  >name</span
+                >;<br />
+                }
+              </div>
+
+              <!-- 関数入口でのエラー表示 -->
+              <div
+                id="func-err-msg"
+                class="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-[10px] p-2 rounded shadow-lg hidden z-20 code-font whitespace-nowrap"
+              >
+                Argument of type 'number' is not assignable to parameter of type
+                'string'.
+              </div>
+            </div>
+
+            <!-- データの通り道 (下) -->
+            <div id="func-out-line" class="h-8 flow-line overflow-hidden"></div>
+
+            <!-- 戻り値の出力 -->
+            <div
+              id="func-output"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl w-full p-4 text-center shadow-sm transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                戻り値 (string)
+              </div>
+              <div
+                id="func-result-val"
+                class="code-font text-xl font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
+
+    <!-- 飛行用ダミーエレメント -->
+    <div id="flying-dummy" class="flying-value hidden"></div>
+
+    <script>
+      let isAnimating = false;
+
+      // --- セクション1: 変数代入のアニメーション ---
+      function assignVar(targetVar, valStr, valType, colorClass, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const boxEl = document.getElementById(`box-${targetVar}`);
+        const valEl = document.getElementById(`val-${targetVar}`);
+        const errEl = document.getElementById(`err-${targetVar}`);
+        const dummy = document.getElementById("flying-dummy");
+
+        // 箱の期待する型
+        const expectedType =
+          targetVar === "username"
+            ? "string"
+            : targetVar === "age"
+              ? "number"
+              : "boolean";
+
+        // ボタンの位置から箱の位置への飛行アニメーション設定
+        const btnRect = btnEl.getBoundingClientRect();
+        const boxRect = boxEl.getBoundingClientRect();
+
+        dummy.innerHTML = `<span class="${colorClass}">${valStr}</span>`;
+        dummy.style.top = `${btnRect.top + window.scrollY}px`;
+        dummy.style.left = `${btnRect.left + btnRect.width / 2 - 30}px`; // ざっくり中央
+
+        // 移動量の計算
+        const tx =
+          boxRect.left + boxRect.width / 2 - (btnRect.left + btnRect.width / 2);
+        const ty = boxRect.top + boxRect.height / 2 - btnRect.top;
+
+        dummy.style.setProperty("--tx", `${tx}px`);
+        dummy.style.setProperty("--ty", `${ty}px`);
+
+        dummy.classList.remove("hidden");
+        dummy.style.animation = "none";
+        void dummy.offsetWidth; // リフロー
+        dummy.style.animation =
+          "fly-value 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards";
+
+        setTimeout(() => {
+          dummy.classList.add("hidden");
+
+          // 型チェック
+          if (valType === expectedType) {
+            // 成功
+            boxEl.classList.add("box-success");
+            valEl.innerText = valStr;
+            valEl.className = `code-font text-2xl font-black ${colorClass} bg-white px-4 py-2 rounded-lg border border-slate-200 w-full text-center transition-colors`;
+
+            setTimeout(() => {
+              boxEl.classList.remove("box-success");
+              isAnimating = false;
+            }, 600);
+          } else {
+            // 失敗 (エラー)
+            boxEl.classList.add("box-error");
+
+            errEl.classList.remove("hidden");
+            errEl.classList.remove("tooltip-fade");
+            void errEl.offsetWidth;
+            errEl.classList.add("tooltip-fade");
+
+            setTimeout(() => {
+              boxEl.classList.remove("box-error");
+              setTimeout(() => {
+                errEl.classList.add("hidden");
+                isAnimating = false;
+              }, 2000);
+            }, 500);
+          }
+        }, 550); // 飛行が終わる少し前
+      }
+
+      // --- セクション2: 関数呼び出しのアニメーション ---
+      function callGreet(valStr, valType, colorClass, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const funcBox = document.getElementById("func-box");
+        const inLine = document.getElementById("func-in-line");
+        const outLine = document.getElementById("func-out-line");
+        const outputBox = document.getElementById("func-output");
+        const resultVal = document.getElementById("func-result-val");
+        const errMsg = document.getElementById("func-err-msg");
+        const argName = document.getElementById("arg-name");
+        const argUse = document.getElementById("arg-use");
+        const dummy = document.getElementById("flying-dummy");
+
+        // UIリセット
+        outputBox.classList.add("opacity-50");
+        outputBox.classList.remove("border-emerald-400", "bg-emerald-50");
+        resultVal.innerText = "---";
+        resultVal.className = "code-font text-xl font-bold text-slate-400";
+        argName.className = "text-slate-300 transition-colors";
+        argUse.className = "text-slate-300 transition-colors";
+
+        // 飛行アニメーション
+        const btnRect = btnEl.getBoundingClientRect();
+        const boxRect = funcBox.getBoundingClientRect();
+
+        dummy.innerHTML = `<span class="${colorClass}">${valStr}</span>`;
+        dummy.style.top = `${btnRect.top + window.scrollY}px`;
+        dummy.style.left = `${btnRect.left + btnRect.width / 2 - 30}px`;
+
+        const tx =
+          boxRect.left + boxRect.width / 2 - (btnRect.left + btnRect.width / 2);
+        const ty = boxRect.top - btnRect.top; // 箱の上辺へ
+
+        dummy.style.setProperty("--tx", `${tx}px`);
+        dummy.style.setProperty("--ty", `${ty}px`);
+
+        dummy.classList.remove("hidden");
+        dummy.style.animation = "none";
+        void dummy.offsetWidth;
+        dummy.style.animation =
+          "fly-value 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards";
+
+        setTimeout(() => {
+          dummy.classList.add("hidden");
+
+          // 型チェック (引数はstringを期待)
+          if (valType === "string") {
+            // 成功：関数の処理開始
+            inLine.classList.add("flow-active");
+            funcBox.style.boxShadow = "0 0 20px rgba(16, 185, 129, 0.4)";
+            funcBox.style.borderColor = "#10b981";
+
+            argName.innerText = valStr;
+            argName.className = `${colorClass} font-bold transition-colors`;
+
+            setTimeout(() => {
+              argUse.innerText = valStr;
+              argUse.className = `${colorClass} font-bold transition-colors`;
+
+              outLine.classList.add("flow-active");
+
+              setTimeout(() => {
+                // 出力結果
+                outputBox.classList.remove("opacity-50");
+                outputBox.classList.add("border-emerald-400", "bg-emerald-50");
+
+                // "を取り除いて結合し、再度"をつける
+                const cleanStr = valStr.replace(/"/g, "");
+                resultVal.innerText = `"Hello, ${cleanStr}"`;
+                resultVal.className =
+                  "code-font text-2xl font-black text-emerald-600";
+
+                // 完了リセット
+                setTimeout(() => {
+                  funcBox.style.boxShadow = "";
+                  funcBox.style.borderColor = "";
+                  inLine.classList.remove("flow-active");
+                  outLine.classList.remove("flow-active");
+                  argName.innerText = "name";
+                  argName.className = "text-slate-300 transition-colors";
+                  argUse.innerText = "name";
+                  argUse.className = "text-slate-300 transition-colors";
+                  isAnimating = false;
+                }, 1000);
+              }, 500);
+            }, 500);
+          } else {
+            // 失敗：コンパイルエラーで弾かれる
+            funcBox.classList.add("box-error");
+
+            errMsg.classList.remove("hidden");
+            errMsg.classList.remove("tooltip-fade");
+            void errMsg.offsetWidth;
+            errMsg.classList.add("tooltip-fade");
+
+            setTimeout(() => {
+              funcBox.classList.remove("box-error");
+              setTimeout(() => {
+                errMsg.classList.add("hidden");
+                isAnimating = false;
+              }, 2000);
+            }, 500);
+          }
+        }, 550);
+      }
+    </script>
   </body>
 </html>

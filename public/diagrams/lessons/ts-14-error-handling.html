@@ -3,54 +3,872 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: エラーハンドリング</title>
+    <title>TypeScript 図解: unknown型とエラーハンドリング</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* データパケットのスタイル */
+      .data-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+        border-width: 2px;
+        transform-origin: center;
+      }
+
+      /* 実行中の行のハイライト */
+      .exec-line {
+        transition:
+          background-color 0.3s,
+          border-color 0.3s,
+          transform 0.3s;
+        border-left: 4px solid transparent;
+      }
+      .exec-active {
+        background-color: #eff6ff; /* blue-50 */
+        border-left-color: #3b82f6; /* blue-500 */
+        transform: translateX(5px);
+      }
+      .exec-error {
+        background-color: #fef2f2; /* red-50 */
+        border-left-color: #ef4444; /* red-500 */
+        transform: translateX(5px);
+      }
+
+      /* JSON.parseゲートの成功/失敗アニメーション */
+      @keyframes parse-success {
+        0% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #3b82f6;
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+          border-color: #10b981;
+          background-color: #ecfdf5;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #3b82f6;
+        }
+      }
+      .gate-success {
+        animation: parse-success 0.8s ease-out;
+      }
+
+      @keyframes parse-error {
+        0%,
+        100% {
+          transform: translateX(0);
+          border-color: #3b82f6;
+        }
+        20% {
+          transform: translateX(-10px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+          box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+        }
+        40% {
+          transform: translateX(10px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+        }
+        60% {
+          transform: translateX(-10px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+        }
+        80% {
+          transform: translateX(10px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+          box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+        }
+      }
+      .gate-error {
+        animation: parse-error 0.6s ease-in-out;
+      }
+
+      /* エラーのスロー（ワープ）アニメーション */
+      @keyframes throw-warp {
+        0% {
+          transform: translate(var(--startX), var(--startY)) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(var(--startX), calc(var(--startY) - 30px))
+            scale(1.2);
+          opacity: 1;
+          filter: blur(2px);
+        }
+        50% {
+          transform: translate(var(--startX), calc(var(--startY) - 30px))
+            scale(0);
+          opacity: 0;
+        }
+        60% {
+          transform: translate(var(--endX), calc(var(--endY) - 30px)) scale(0);
+          opacity: 0;
+        }
+        70% {
+          transform: translate(var(--endX), calc(var(--endY) - 30px)) scale(1.2);
+          opacity: 1;
+          filter: blur(2px);
+        }
+        100% {
+          transform: translate(var(--endX), var(--endY)) scale(1);
+          opacity: 1;
+          filter: blur(0);
+        }
+      }
+      .throwing {
+        animation: throw-warp 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* ポップアニメーション */
+      @keyframes popIn {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .animate-pop {
+        animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-teal-100 text-teal-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-teal-200"
+        >
+          安全なデータの受け取り方
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >エラーハンドリング</span
+          正体不明のデータを扱う：<br class="md:hidden" /><span
+            class="text-teal-600"
+            >unknown</span
           >
-          の図解
+          と <span class="text-rose-500">try/catch</span>
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          try/catch や Result 型など、エラーを型安全に扱う方法を学びましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          外部から来るJSONデータや、キャッチしたエラーオブジェクトは「何が入っているか分からない」ため、TypeScriptでは安全な
+          <code
+            class="bg-slate-200 px-1 rounded code-font font-bold text-teal-600"
+            >unknown</code
+          >
+          型として扱います。<br class="hidden md:block" />
+          使う前に「型のチェック（<code
+            class="bg-slate-200 px-1 rounded code-font font-bold"
+            >instanceof Error</code
+          >
+          など）」を行うことで、安全にプロパティへアクセスできます。
         </p>
       </header>
 
+      <!-- メインのインタラクティブエリア -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 mb-10 overflow-hidden"
+      >
+        <div
+          class="flex flex-col lg:flex-row gap-10 items-stretch relative"
+          id="animation-area"
+        >
+          <!-- 飛行用パケットのダミー -->
+          <div
+            id="fly-packet"
+            class="data-packet bg-white rounded-lg p-2 text-sm text-center"
+          ></div>
+
+          <!-- 左側：呼び出し側コントロール -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-6 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2"
+            >
+              <i class="fa-solid fa-terminal text-blue-500"></i> 関数を呼び出す
+            </div>
+
+            <div class="flex flex-col gap-4">
+              <button
+                onclick="runSimulation(true, this)"
+                id="btn-success"
+                class="bg-white hover:bg-teal-50 border-2 border-slate-300 hover:border-teal-400 rounded-xl p-4 text-left shadow-sm transition-all group relative"
+              >
+                <div class="text-[10px] font-bold text-teal-600 mb-1">
+                  正常なJSON (パース成功)
+                </div>
+                <div class="code-font font-bold text-slate-700 text-sm">
+                  parseJSON(<br />
+                  &nbsp;&nbsp;<span class="text-teal-600"
+                    >'{"name":"Alice"}'</span
+                  ><br />
+                  )
+                </div>
+                <i
+                  class="fa-solid fa-paper-plane absolute right-4 top-1/2 transform -translate-y-1/2 text-teal-300 opacity-0 group-hover:opacity-100 transition-all"
+                ></i>
+              </button>
+
+              <button
+                onclick="runSimulation(false, this)"
+                id="btn-error"
+                class="bg-white hover:bg-rose-50 border-2 border-slate-300 hover:border-rose-400 rounded-xl p-4 text-left shadow-sm transition-all group relative"
+              >
+                <div class="text-[10px] font-bold text-rose-600 mb-1">
+                  不正なJSON (パース失敗)
+                </div>
+                <div class="code-font font-bold text-slate-700 text-sm">
+                  parseJSON(<br />
+                  &nbsp;&nbsp;<span class="text-rose-500">"invalid json"</span
+                  ><br />
+                  )
+                </div>
+                <i
+                  class="fa-solid fa-bolt absolute right-4 top-1/2 transform -translate-y-1/2 text-rose-300 opacity-0 group-hover:opacity-100 transition-all"
+                ></i>
+              </button>
+            </div>
+
+            <!-- 出力結果表示エリア -->
+            <div class="mt-auto">
+              <div class="text-xs font-bold text-slate-500 mb-2">
+                関数の戻り値 (Result)
+              </div>
+              <div
+                id="output-box"
+                class="bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50 min-h-[80px] flex items-center justify-center"
+              >
+                <span
+                  id="output-val"
+                  class="code-font text-lg font-bold text-slate-400"
+                  >---</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側：関数の内部ロジック -->
+          <div class="w-full lg:w-[65%] flex flex-col relative z-0">
+            <div
+              class="text-sm font-bold text-slate-500 mb-2 flex items-center justify-between border-b border-slate-200 pb-2"
+            >
+              <span
+                ><i class="fa-regular fa-file-code"></i> function
+                parseJSON(jsonStr)</span
+              >
+              <span
+                class="text-[10px] bg-slate-200 px-2 py-0.5 rounded text-slate-600"
+                >戻り値: unknown</span
+              >
+            </div>
+
+            <div
+              class="bg-slate-800 text-white rounded-xl p-5 shadow-inner code-font text-[13px] leading-relaxed border-2 border-slate-700 relative h-full flex flex-col justify-between"
+            >
+              <!-- try ブロック -->
+              <div class="mb-4">
+                <div class="text-emerald-400 font-bold mb-2">try {</div>
+                <div
+                  class="pl-4 border-l-2 border-slate-600 flex flex-col gap-2 relative"
+                >
+                  <div
+                    id="line-parse"
+                    class="exec-line p-2 rounded bg-slate-900 border border-blue-500/30 flex items-center justify-between"
+                  >
+                    <span>
+                      <span class="text-blue-400">const</span> result:
+                      <span
+                        class="text-teal-300 font-bold bg-teal-900/50 px-1 rounded"
+                        >unknown</span
+                      >
+                      = JSON.<span class="text-blue-300">parse</span>(<span
+                        class="text-slate-300"
+                        >jsonStr</span
+                      >);
+                    </span>
+                    <div id="parse-gate-anchor" class="w-4 h-4 mr-2"></div>
+                  </div>
+
+                  <div
+                    id="line-log-success"
+                    class="exec-line pl-2 py-1 rounded"
+                  >
+                    console.log(<span class="text-amber-300">"パース成功:"</span
+                    >, result);
+                  </div>
+
+                  <div
+                    id="line-return-success"
+                    class="exec-line pl-2 py-1 rounded"
+                  >
+                    <span class="text-purple-400 font-bold">return</span>
+                    result;
+                  </div>
+                </div>
+                <div class="text-emerald-400 font-bold mt-2">}</div>
+              </div>
+
+              <!-- catch ブロック -->
+              <div>
+                <div
+                  id="line-catch-start"
+                  class="exec-line p-1 rounded inline-block"
+                >
+                  <span class="text-rose-400 font-bold">catch</span> (<span
+                    id="catch-arg"
+                    class="text-slate-300"
+                    >error</span
+                  >:
+                  <span
+                    class="text-teal-300 font-bold bg-teal-900/50 px-1 rounded"
+                    >unknown</span
+                  >) {
+                </div>
+                <div
+                  class="pl-4 border-l-2 border-slate-600 flex flex-col gap-2 mt-1 relative"
+                >
+                  <!-- 型ガード -->
+                  <div
+                    id="line-if-error"
+                    class="exec-line p-2 rounded bg-slate-900 border border-slate-600 flex justify-between items-center transition-colors"
+                  >
+                    <span>
+                      <span class="text-blue-400">if</span> (error
+                      <span class="text-purple-400 font-bold">instanceof</span>
+                      <span class="text-blue-300">Error</span>) {
+                    </span>
+                    <div id="if-error-anchor" class="w-4 h-4 mr-2"></div>
+                  </div>
+
+                  <div
+                    id="line-log-error"
+                    class="exec-line pl-6 py-1 rounded text-slate-400 transition-colors"
+                  >
+                    console.error(<span class="text-amber-300"
+                      >"パースエラー:"</span
+                    >,
+                    <span
+                      class="text-slate-200 border-b border-dashed border-slate-400"
+                      >error.message</span
+                    >);
+                  </div>
+
+                  <div class="text-blue-400 pl-2">
+                    } <span class="text-blue-400">else</span> {
+                  </div>
+
+                  <div
+                    id="line-log-unknown"
+                    class="exec-line pl-6 py-1 rounded text-slate-400 transition-colors"
+                  >
+                    console.error(<span class="text-amber-300"
+                      >"Unknown error"</span
+                    >);
+                  </div>
+
+                  <div class="text-blue-400 pl-2">}</div>
+
+                  <div
+                    id="line-return-null"
+                    class="exec-line pl-2 py-1 rounded mt-2"
+                  >
+                    <span class="text-purple-400 font-bold">return</span>
+                    <span class="text-blue-400">null</span>;
+                  </div>
+                </div>
+                <div class="text-rose-400 font-bold mt-2">}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- コンソール出力 (下部に配置) -->
+        <div
+          id="console-box"
+          class="mt-6 w-full bg-slate-900 border border-slate-700 rounded-xl p-4 font-mono text-sm text-slate-300 shadow-inner relative transition-colors duration-300 min-h-[80px]"
+        >
+          <div
+            class="text-slate-500 text-[10px] absolute top-1 right-2 font-sans font-bold"
+          >
+            Console
+          </div>
+          <div class="flex items-start gap-2 mt-2">
+            <span class="text-slate-500">></span>
+            <span id="console-output" class="break-all font-bold"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 解説セクション -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-4 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-graduation-cap text-teal-500"></i> ポイント解説
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-teal-50 border border-teal-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-teal-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-box-open text-teal-600"></i> any と unknown
+              の違い
+            </h3>
+            <p class="text-xs text-teal-900 leading-relaxed">
+              <code
+                class="bg-white border border-teal-200 px-1 rounded code-font text-red-500 font-bold"
+                >any</code
+              >
+              は「型チェックを放棄する」無法地帯です。<br />
+              一方
+              <code
+                class="bg-white border border-teal-200 px-1 rounded code-font text-teal-600 font-bold"
+                >unknown</code
+              >
+              は「中身が何かわからない箱」です。箱を開けて中身を確認する（型チェックする）までは、プロパティへのアクセスやメソッドの呼び出しをコンパイラが許してくれません。これにより、実行時エラーを未然に防ぎます。
+            </p>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-blue-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-shield-halved text-blue-600"></i> instanceof
+              による「型ガード」
+            </h3>
+            <p class="text-xs text-blue-900 leading-relaxed">
+              JavaScriptの
+              <code
+                class="bg-white border border-blue-200 px-1 rounded code-font"
+                >catch (error)</code
+              >
+              には、Errorオブジェクト以外にも単なる文字列や数字が投げられる可能性があります（例:
+              <code
+                class="bg-white border border-blue-200 px-1 rounded code-font text-slate-500"
+                >throw "エラーです"</code
+              >）。<br />
+              そのため、<code
+                class="bg-white border border-blue-200 px-1 rounded code-font font-bold text-blue-600"
+                >if (error instanceof Error)</code
+              >
+              とチェックすることで、TypeScriptは「このブロック内なら確実に
+              <code
+                class="bg-white border border-blue-200 px-1 rounded code-font"
+                >error.message</code
+              >
+              が存在する！」と推論（型を絞り込み）してくれます。
+            </p>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      function resetUI() {
+        // Exec lines
+        const lines = [
+          "line-parse",
+          "line-log-success",
+          "line-return-success",
+          "line-if-error",
+          "line-log-error",
+          "line-log-unknown",
+          "line-return-null",
+        ];
+        lines.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.classList.remove("exec-active", "exec-error");
+        });
+
+        document
+          .getElementById("line-catch-start")
+          .classList.remove("exec-error");
+
+        // ゲートのリセット
+        const parseGate = document.getElementById("line-parse");
+        parseGate.classList.remove("gate-success", "gate-error");
+        parseGate.style.boxShadow = "";
+        parseGate.style.borderColor = "";
+
+        const ifGate = document.getElementById("line-if-error");
+        ifGate.classList.replace("border-blue-400", "border-slate-600");
+        ifGate.classList.remove("bg-blue-900/30");
+
+        document
+          .getElementById("line-log-error")
+          .classList.add("text-slate-400");
+        document
+          .getElementById("line-log-error")
+          .classList.remove("text-white");
+        document
+          .getElementById("line-log-unknown")
+          .classList.add("text-slate-400");
+        document
+          .getElementById("line-log-unknown")
+          .classList.remove("text-white");
+
+        // Console
+        const conBox = document.getElementById("console-box");
+        conBox.className =
+          "mt-6 w-full bg-slate-900 border border-slate-700 rounded-xl p-4 font-mono text-sm text-slate-300 shadow-inner relative transition-colors duration-300 min-h-[80px]";
+        document.getElementById("console-output").innerHTML = "";
+
+        // Output
+        const outBox = document.getElementById("output-box");
+        outBox.className =
+          "bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50 min-h-[80px] flex items-center justify-center";
+        const outVal = document.getElementById("output-val");
+        outVal.innerText = "---";
+        outVal.className = "code-font text-lg font-bold text-slate-400";
+
+        // Packet
+        const packet = document.getElementById("fly-packet");
+        packet.className =
+          "data-packet bg-white rounded-lg p-2 text-sm text-center";
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        packet.style.animation = "none";
+        packet.style.filter = "none";
+      }
+
+      // 親コンテナ（animation-area）基準で絶対座標を設定するヘルパー
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = document
+          .getElementById("animation-area")
+          .getBoundingClientRect();
+
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+        return { x, y };
+      }
+
+      // ワープ用の中間地点計算
+      function calculateWarpPos(packet, startEl, endEl) {
+        const startRect = startEl.getBoundingClientRect();
+        const endRect = endEl.getBoundingClientRect();
+        const containerRect = document
+          .getElementById("animation-area")
+          .getBoundingClientRect();
+
+        const startX =
+          startRect.left -
+          containerRect.left +
+          startRect.width / 2 -
+          packet.offsetWidth / 2;
+        const startY =
+          startRect.top -
+          containerRect.top +
+          startRect.height / 2 -
+          packet.offsetHeight / 2;
+
+        const endX =
+          endRect.left -
+          containerRect.left +
+          endRect.width / 2 -
+          packet.offsetWidth / 2;
+        const endY =
+          endRect.top -
+          containerRect.top +
+          endRect.height / 2 -
+          packet.offsetHeight / 2;
+
+        packet.style.setProperty("--startX", `${startX}px`);
+        packet.style.setProperty("--startY", `${startY}px`);
+        packet.style.setProperty("--endX", `${endX}px`);
+        packet.style.setProperty("--endY", `${endY}px`);
+      }
+
+      async function runSimulation(isSuccess, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        const packet = document.getElementById("fly-packet");
+        const parseGate = document.getElementById("line-parse");
+        const parseAnchor = document.getElementById("parse-gate-anchor");
+        const catchStart = document.getElementById("line-catch-start");
+        const ifErrorGate = document.getElementById("line-if-error");
+        const ifErrorAnchor = document.getElementById("if-error-anchor");
+
+        const conBox = document.getElementById("console-box");
+        const conOut = document.getElementById("console-output");
+        const outBox = document.getElementById("output-box");
+        const outVal = document.getElementById("output-val");
+
+        // 1. パケットの生成と飛行開始
+        if (isSuccess) {
+          packet.innerHTML = `<span class="text-teal-600 font-bold code-font">'{"name":"Alice"}'</span>`;
+          packet.className =
+            "data-packet bg-white border border-teal-300 rounded-lg p-2 text-sm shadow-md";
+        } else {
+          packet.innerHTML = `<span class="text-rose-500 font-bold code-font">"invalid json"</span>`;
+          packet.className =
+            "data-packet bg-white border border-rose-300 rounded-lg p-2 text-sm shadow-md";
+        }
+
+        packet.style.opacity = "0";
+        setPacketPosAbsolute(packet, btnEl);
+
+        await sleep(50);
+        packet.style.opacity = "1";
+        packet.style.transition =
+          "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+        // JSON.parse行へ移動
+        setPacketPosAbsolute(packet, parseAnchor);
+        parseGate.classList.add("exec-active");
+
+        await sleep(600);
+
+        if (isSuccess) {
+          // ==========================
+          // 正常系 (try)
+          // ==========================
+          parseGate.classList.add("gate-success");
+
+          // パケットがミステリーボックス(unknown)に変化
+          packet.style.transition = "transform 0.3s ease, opacity 0.3s";
+          packet.style.transform = packet.style.transform.replace(
+            "scale(1)",
+            "scale(1.2)",
+          );
+          await sleep(150);
+          packet.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-circle-question text-teal-500 text-xl"></i> <span class="code-font font-bold text-slate-700">{name: "Alice"}</span></div>`;
+          packet.className =
+            "data-packet bg-teal-50 border-2 border-teal-400 rounded-lg p-2 text-sm shadow-lg";
+          void packet.offsetWidth;
+          setPacketPosAbsolute(packet, parseAnchor);
+
+          await sleep(400);
+
+          // console.log 実行
+          parseGate.classList.remove("exec-active");
+          document
+            .getElementById("line-log-success")
+            .classList.add("exec-active");
+
+          await sleep(300);
+          conOut.innerHTML =
+            '<span class="text-slate-300">パース成功: </span><span class="text-teal-400">{ name: "Alice" }</span>';
+          conOut.classList.add("animate-pop");
+
+          await sleep(500);
+
+          // return 実行
+          document
+            .getElementById("line-log-success")
+            .classList.remove("exec-active");
+          document
+            .getElementById("line-return-success")
+            .classList.add("exec-active");
+
+          packet.style.transition =
+            "transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease-in 0.4s";
+          setPacketPosAbsolute(packet, outBox);
+          packet.style.opacity = "0";
+
+          await sleep(700);
+
+          // 出力結果表示
+          outBox.classList.remove("opacity-50");
+          outBox.classList.add("border-teal-400", "bg-teal-50");
+          outVal.innerText = "{ name: 'Alice' }";
+          outVal.className =
+            "code-font text-2xl font-black text-teal-600 animate-pop";
+
+          await sleep(500);
+          document
+            .getElementById("line-return-success")
+            .classList.remove("exec-active");
+        } else {
+          // ==========================
+          // 異常系 (catch)
+          // ==========================
+          parseGate.classList.remove("exec-active");
+          parseGate.classList.add("gate-error", "exec-error");
+
+          // エラー発生 (爆発エフェクト的な変化)
+          packet.style.transition = "transform 0.2s ease, opacity 0.3s";
+          packet.style.transform = packet.style.transform.replace(
+            "scale(1)",
+            "scale(1.3)",
+          );
+          await sleep(100);
+          packet.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-bomb text-rose-500 text-xl"></i> <span class="code-font font-bold text-rose-700">SyntaxError</span></div>`;
+          packet.className =
+            "data-packet bg-rose-50 border-2 border-rose-500 rounded-lg p-2 text-sm shadow-lg";
+          void packet.offsetWidth;
+          setPacketPosAbsolute(packet, parseAnchor);
+
+          await sleep(400);
+
+          // catchブロックへワープ
+          parseGate.classList.remove("exec-error");
+          catchStart.classList.add("exec-error");
+
+          // 飛行アニメーション(ワープ)設定
+          packet.style.transition = "none";
+          calculateWarpPos(
+            packet,
+            parseAnchor,
+            document.getElementById("catch-arg"),
+          );
+          packet.classList.add("throwing");
+
+          await sleep(1200); // ワープ完了待ち
+          packet.classList.remove("throwing");
+          setPacketPosAbsolute(packet, document.getElementById("catch-arg"));
+          catchStart.classList.remove("exec-error");
+
+          // 型ガード (if instanceof Error) 到達
+          ifErrorGate.classList.add("exec-active");
+
+          packet.style.transition =
+            "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)";
+          setPacketPosAbsolute(packet, ifErrorAnchor);
+
+          await sleep(600);
+
+          // 型ガード成功のアニメーション
+          ifErrorGate.classList.replace("border-slate-600", "border-blue-400");
+          ifErrorGate.classList.add("bg-blue-900/30");
+
+          // パケットの中身が「確認済み」になる
+          packet.style.transition = "transform 0.2s ease";
+          packet.style.transform = packet.style.transform.replace(
+            "scale(1)",
+            "scale(1.1)",
+          );
+          await sleep(150);
+          packet.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-shield-check text-blue-500 text-xl"></i> <span class="code-font font-bold text-blue-700">Errorオブジェクト</span></div>`;
+          packet.className =
+            "data-packet bg-blue-50 border-2 border-blue-500 rounded-lg p-2 text-sm shadow-lg";
+          void packet.offsetWidth;
+          setPacketPosAbsolute(packet, ifErrorAnchor);
+
+          await sleep(500);
+
+          // console.error 実行
+          ifErrorGate.classList.remove("exec-active");
+          document
+            .getElementById("line-log-error")
+            .classList.add("exec-error", "text-white");
+          document
+            .getElementById("line-log-error")
+            .classList.remove("text-slate-400");
+
+          await sleep(300);
+          conBox.classList.replace("bg-slate-900", "bg-rose-950");
+          conBox.classList.replace("border-slate-700", "border-rose-800");
+          conOut.innerHTML =
+            '<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation"></i> パースエラー: Unexpected token i in JSON at position 0</span>';
+          conOut.classList.add("animate-pop");
+
+          await sleep(600);
+
+          // return null 実行
+          document
+            .getElementById("line-log-error")
+            .classList.remove("exec-error", "text-white");
+          document
+            .getElementById("line-log-error")
+            .classList.add("text-slate-400");
+          document
+            .getElementById("line-return-null")
+            .classList.add("exec-active");
+
+          // null パケットになって出力へ飛ぶ
+          packet.innerHTML = `<span class="code-font font-bold text-slate-500">null</span>`;
+          packet.className =
+            "data-packet bg-slate-200 border-2 border-slate-400 rounded-lg p-2 text-sm shadow-sm";
+          void packet.offsetWidth;
+
+          packet.style.transition =
+            "transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease-in 0.4s";
+          setPacketPosAbsolute(packet, outBox);
+          packet.style.opacity = "0";
+
+          await sleep(700);
+
+          // 出力結果表示
+          outBox.classList.remove("opacity-50");
+          outBox.classList.add("border-slate-400", "bg-slate-200");
+          outVal.innerText = "null";
+          outVal.className =
+            "code-font text-2xl font-black text-slate-600 animate-pop";
+
+          await sleep(500);
+          document
+            .getElementById("line-return-null")
+            .classList.remove("exec-active");
+        }
+
+        setTimeout(() => {
+          conOut.classList.remove("animate-pop");
+          outVal.classList.remove("animate-pop");
+          isAnimating = false;
+        }, 500);
+      }
+    </script>
   </body>
 </html>

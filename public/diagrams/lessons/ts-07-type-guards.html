@@ -3,54 +3,925 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: 型ガード</title>
+    <title>TypeScript 図解: 型ガード (Type Guard)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* データのゆっくりとした飛行アニメーション（到着後に透過して消えるように修正） */
+      @keyframes fly-packet {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(
+              calc(var(--tx) * 0.4),
+              calc(var(--ty) * 0.4 - 20px)
+            )
+            scale(1.1);
+          opacity: 1;
+        }
+        80% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0.9);
+          opacity: 0;
+        }
+      }
+
+      .data-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+      }
+
+      .flying {
+        animation: fly-packet 2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* 判定ゲートのアニメーション */
+      @keyframes check-flash {
+        0% {
+          background-color: #334155;
+        }
+        50% {
+          background-color: #eab308;
+          box-shadow: 0 0 20px rgba(234, 179, 8, 0.6);
+        }
+        100% {
+          background-color: #334155;
+        }
+      }
+      .checking {
+        animation: check-flash 1.5s ease-in-out forwards;
+      }
+
+      /* 分岐ルートのハイライト */
+      .route-active {
+        background-color: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        transform: scale(1.02);
+        z-index: 10;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .route-string-active {
+        border-left: 4px solid #f59e0b !important;
+      }
+      .route-number-active {
+        border-left: 4px solid #ec4899 !important;
+      }
+      .route-cat-active {
+        border-left: 4px solid #3b82f6 !important;
+      }
+      .route-dog-active {
+        border-left: 4px solid #10b981 !important;
+      }
+
+      /* 「保証書」のスタンプアニメーション */
+      @keyframes stamp-pop {
+        0% {
+          transform: scale(3) rotate(-20deg);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(0.9) rotate(-10deg);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1) rotate(-15deg);
+          opacity: 1;
+        }
+      }
+      .stamp-guarantee {
+        position: absolute;
+        top: -15px;
+        right: -15px;
+        font-size: 10px;
+        font-weight: 900;
+        color: #ef4444;
+        border: 2px solid #ef4444;
+        border-radius: 4px;
+        padding: 2px 4px;
+        background-color: rgba(255, 255, 255, 0.9);
+        opacity: 0;
+      }
+      .stamp-active {
+        animation: stamp-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)
+          forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-slate-800 text-white px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-slate-700"
+        >
+          TypeScript 型の絞り込み
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >型ガード</span
+          曖昧な型を確定させる：<br class="md:hidden" /><span
+            class="text-indigo-600"
+            >型ガード (Type Guard)</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          実行時に型を絞り込んで、安全にコードを書く方法を学びましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          複数の型が混ざった「ユニオン型（<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >A | B</code
+          >）」を受け取ったとき、そのままでは安全に処理できません。<br
+            class="hidden md:block"
+          />
+          JavaScriptの判定機能（<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >typeof</code
+          >
+          や
+          <code class="bg-slate-200 px-1 rounded code-font">in</code
+          >）を使って条件分岐することで、TypeScriptに<strong>「このルートを通ったなら型はAで確定だ！」</strong>と教える技術を型ガードと呼びます。
         </p>
       </header>
 
+      <!-- 1. typeof による型ガード -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative z-30"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-code-branch text-amber-500"></i> 1. typeof
+          を使った基本的な型ガード
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-center lg:items-stretch justify-center relative min-h-[350px]"
+        >
+          <!-- 操作パネル -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              引数 (string | number)
+            </div>
+
+            <button
+              onclick="runTypeof('string', this)"
+              class="bg-white hover:bg-amber-50 border-2 border-slate-200 hover:border-amber-400 rounded-xl p-4 text-left shadow-sm transition-all group relative"
+            >
+              <span class="code-font font-bold text-slate-700"
+                >formatValue(<span class="text-amber-500">"Hello"</span>)</span
+              >
+            </button>
+
+            <button
+              onclick="runTypeof('number', this)"
+              class="bg-white hover:bg-pink-50 border-2 border-slate-200 hover:border-pink-400 rounded-xl p-4 text-left shadow-sm transition-all group relative mt-2"
+            >
+              <span class="code-font font-bold text-slate-700"
+                >formatValue(<span class="text-pink-500">100</span>)</span
+              >
+            </button>
+          </div>
+
+          <!-- 飛行するデータパケット -->
+          <div
+            id="typeof-packet"
+            class="data-packet code-font text-sm border-2"
+          >
+            <!-- JSで注入 -->
+          </div>
+
+          <!-- 関数本体 -->
+          <div class="w-full lg:w-[60%] flex flex-col items-center">
+            <div
+              id="typeof-box"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-6 relative shadow-xl transition-all duration-300"
+            >
+              <div class="code-font text-sm font-bold text-white mb-4">
+                <span class="text-purple-400">function</span> formatValue(<span
+                  class="text-slate-300"
+                  >value</span
+                >: <span class="text-amber-300">string</span> |
+                <span class="text-pink-400">number</span>) {
+              </div>
+
+              <!-- 判定ゲート (if文) -->
+              <div
+                id="typeof-gate"
+                class="bg-slate-700 text-white p-3 rounded-lg code-font text-sm font-bold w-max mx-auto mb-6 transition-all duration-300 relative z-10"
+              >
+                <span class="text-blue-400">if</span> (<span
+                  class="text-purple-400"
+                  >typeof</span
+                >
+                value === <span class="text-amber-300">"string"</span>) {
+              </div>
+
+              <!-- 分岐ルート -->
+              <div
+                class="flex flex-col gap-2 pl-4 border-l-2 border-slate-600 ml-4 relative"
+              >
+                <!-- True (string) ルート -->
+                <div
+                  id="typeof-route-string"
+                  class="transition-all-custom border border-transparent rounded p-3 bg-slate-800/50"
+                >
+                  <div class="text-[10px] text-amber-400 font-bold mb-1">
+                    <i class="fa-solid fa-check"></i> 条件クリア：value は
+                    string に確定！
+                  </div>
+                  <div class="code-font text-sm">
+                    <span class="text-purple-400">return</span>
+                    <span class="text-amber-300">"文字列: "</span> + value;
+                  </div>
+                </div>
+
+                <div class="code-font text-sm font-bold text-white -ml-8 my-1">
+                  }
+                </div>
+
+                <!-- False (number) ルート -->
+                <div
+                  id="typeof-route-number"
+                  class="transition-all-custom border border-transparent rounded p-3 bg-slate-800/50"
+                >
+                  <div class="text-[10px] text-pink-400 font-bold mb-1">
+                    <i class="fa-solid fa-arrow-turn-down"></i> 条件外：消去法で
+                    value は number に確定！
+                  </div>
+                  <div class="code-font text-sm">
+                    <span class="text-purple-400">return</span>
+                    <span class="text-amber-300">"数値: "</span> + value;
+                  </div>
+                </div>
+              </div>
+
+              <div class="code-font text-sm font-bold text-white mt-2">}</div>
+            </div>
+
+            <!-- 出力結果 -->
+            <div
+              id="typeof-output"
+              class="mt-6 bg-slate-100 border-2 border-slate-200 rounded-xl w-full p-4 text-center shadow-sm transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                戻り値 (string)
+              </div>
+              <div
+                id="typeof-result"
+                class="code-font text-xl font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. in 演算子による型ガード -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative z-20"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-magnifying-glass text-blue-500"></i> 2. in
+          演算子を使った型ガード
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-center lg:items-stretch justify-center relative min-h-[350px]"
+        >
+          <div class="w-full lg:w-[35%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              引数 (Cat | Dog)
+            </div>
+
+            <button
+              onclick="runInOp('cat', this)"
+              class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-400 rounded-xl p-3 text-left shadow-sm transition-all group relative"
+            >
+              <div class="text-[10px] font-bold text-blue-500 mb-1">
+                Cat型オブジェクト
+              </div>
+              <div class="code-font text-xs text-slate-700">
+                speakPet({ <br />
+                &nbsp;&nbsp;kind: <span class="text-blue-500">"cat"</span>,
+                <br />
+                &nbsp;&nbsp;meow: () => ... <br />
+                })
+              </div>
+            </button>
+
+            <button
+              onclick="runInOp('dog', this)"
+              class="bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-400 rounded-xl p-3 text-left shadow-sm transition-all group relative mt-2"
+            >
+              <div class="text-[10px] font-bold text-emerald-500 mb-1">
+                Dog型オブジェクト
+              </div>
+              <div class="code-font text-xs text-slate-700">
+                speakPet({ <br />
+                &nbsp;&nbsp;kind: <span class="text-emerald-500">"dog"</span>,
+                <br />
+                &nbsp;&nbsp;bark: () => ... <br />
+                })
+              </div>
+            </button>
+          </div>
+
+          <!-- 飛行するデータパケット -->
+          <div id="in-packet" class="data-packet code-font text-sm border-2">
+            <!-- JSで注入 -->
+          </div>
+
+          <!-- 関数本体 -->
+          <div class="w-full lg:w-[60%] flex flex-col items-center">
+            <div
+              id="in-box"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-6 relative shadow-xl transition-all duration-300"
+            >
+              <div class="code-font text-sm font-bold text-white mb-4">
+                <span class="text-purple-400">function</span> speakPet(<span
+                  class="text-slate-300"
+                  >pet</span
+                >: <span class="text-blue-300">Cat</span> |
+                <span class="text-emerald-400">Dog</span>) {
+              </div>
+
+              <!-- 判定ゲート (if文) -->
+              <div
+                id="in-gate"
+                class="bg-slate-700 text-white p-3 rounded-lg code-font text-sm font-bold w-max mx-auto mb-6 transition-all duration-300 relative z-10 flex items-center gap-2"
+              >
+                <i class="fa-solid fa-radar text-amber-400"></i>
+                <span
+                  ><span class="text-blue-400">if</span> (<span
+                    class="text-amber-300"
+                    >"meow"</span
+                  >
+                  <span class="text-purple-400">in</span> pet) {</span
+                >
+              </div>
+
+              <!-- 分岐ルート -->
+              <div
+                class="flex flex-col gap-2 pl-4 border-l-2 border-slate-600 ml-4 relative"
+              >
+                <!-- True (Cat) ルート -->
+                <div
+                  id="in-route-cat"
+                  class="transition-all-custom border border-transparent rounded p-3 bg-slate-800/50"
+                >
+                  <div class="text-[10px] text-blue-400 font-bold mb-1">
+                    <i class="fa-solid fa-check"></i> meowプロパティを発見！ pet
+                    は Cat に確定！
+                  </div>
+                  <div class="code-font text-sm">
+                    pet.<span class="text-blue-300 font-bold">meow</span>();
+                    <span class="text-slate-400 text-xs">// 補完が効く</span>
+                  </div>
+                </div>
+
+                <div class="code-font text-sm font-bold text-white -ml-8 my-1">
+                  } <span class="text-blue-400">else</span> {
+                </div>
+
+                <!-- False (Dog) ルート -->
+                <div
+                  id="in-route-dog"
+                  class="transition-all-custom border border-transparent rounded p-3 bg-slate-800/50"
+                >
+                  <div class="text-[10px] text-emerald-400 font-bold mb-1">
+                    <i class="fa-solid fa-xmark"></i> meowが無いなら、pet は Dog
+                    に確定！
+                  </div>
+                  <div class="code-font text-sm">
+                    pet.<span class="text-emerald-400 font-bold">bark</span>();
+                    <span class="text-slate-400 text-xs">// 補完が効く</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="code-font text-sm font-bold text-white mt-2">}</div>
+            </div>
+
+            <!-- 出力結果 (擬似コンソール) -->
+            <div
+              id="in-output"
+              class="mt-6 bg-black border border-slate-600 rounded-lg p-3 font-mono text-sm text-green-400 min-h-[60px] w-full relative opacity-50 transition-opacity"
+            >
+              <div class="text-slate-500 text-[10px] absolute top-1 right-2">
+                Console
+              </div>
+              <span class="text-slate-300">></span> <span id="in-result"></span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg shadow-sm"
+        >
+          <p class="text-sm text-blue-900 leading-relaxed">
+            <code class="bg-blue-100 px-1 rounded code-font font-bold"
+              >"プロパティ名" in オブジェクト</code
+            >
+            は、オブジェクトがその名前のプロパティを持っているかを調べるJavaScriptの機能です。<br />TypeScriptはこれを賢く解釈し、<strong
+              >「meowを持っているなら、ユニオン型（Cat |
+              Dog）のうちCatしかありえない！」</strong
+            >と自動的に型を絞り込んでくれます。
+          </p>
+        </div>
+      </section>
+
+      <!-- 3. ユーザー定義の型ガード (is) -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 relative z-10"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-stamp text-indigo-500"></i> 3.
+          カスタム型ガード（"is" キーワード）
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-center lg:items-stretch justify-center relative min-h-[300px]"
+        >
+          <div class="w-full lg:w-[35%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              判定関数に渡す
+            </div>
+
+            <button
+              onclick="runIsGuard(this)"
+              class="bg-white hover:bg-indigo-50 border-2 border-slate-200 hover:border-indigo-400 rounded-xl p-4 text-left shadow-sm transition-all group relative"
+            >
+              <div class="text-[10px] font-bold text-indigo-500 mb-1">
+                Cat判定を依頼する
+              </div>
+              <span class="code-font font-bold text-slate-700"
+                >isCat( <span class="text-blue-500">cat</span> )</span
+              >
+            </button>
+          </div>
+
+          <!-- 飛行するデータパケット -->
+          <div id="is-packet" class="data-packet code-font text-sm border-2">
+            <!-- JSで注入 -->
+          </div>
+
+          <!-- 関数本体 (検査所) -->
+          <div class="w-full lg:w-[60%] flex flex-col items-center">
+            <div
+              id="is-box"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-6 relative shadow-xl transition-all duration-300"
+            >
+              <div
+                class="absolute -top-4 right-6 bg-indigo-500 text-white text-[10px] font-bold px-3 py-1 rounded shadow-sm border border-indigo-400"
+              >
+                型判定専門の検査所
+              </div>
+
+              <div class="code-font text-[13px] leading-relaxed text-white">
+                <span class="text-purple-400">function</span> isCat(pet: Pet):
+                <span
+                  class="bg-indigo-900/50 border border-indigo-500 text-indigo-300 px-2 py-0.5 rounded font-bold"
+                  >pet <span class="text-pink-400">is</span> Cat</span
+                >
+                {<br />
+                &nbsp;&nbsp;
+                <div
+                  id="is-logic"
+                  class="inline-block transition-colors rounded px-1 mt-2 mb-2 p-1 bg-slate-900 border border-slate-600"
+                >
+                  <span class="text-purple-400">return</span> pet.kind ===
+                  <span class="text-amber-300">"cat"</span>;
+                </div>
+                <br />
+                }
+              </div>
+            </div>
+
+            <!-- 出力結果 (boolean + 型保証) -->
+            <div class="mt-8 flex gap-4 w-full">
+              <div
+                id="is-output-bool"
+                class="flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50"
+              >
+                <div class="text-[10px] font-bold text-slate-500 mb-1">
+                  戻り値 (boolean)
+                </div>
+                <div
+                  id="is-result"
+                  class="code-font text-xl font-bold text-slate-400"
+                >
+                  ---
+                </div>
+              </div>
+              <div
+                id="is-output-type"
+                class="flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50 relative"
+              >
+                <div class="text-[10px] font-bold text-slate-500 mb-1">
+                  コンパイラへの伝達
+                </div>
+                <div
+                  id="is-type-result"
+                  class="text-sm font-bold text-slate-400 mt-1"
+                >
+                  ---
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-8 bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg shadow-sm"
+        >
+          <p class="text-sm text-indigo-900 leading-relaxed">
+            戻り値の型に
+            <code class="bg-indigo-100 px-1 rounded code-font font-bold"
+              >pet is Cat</code
+            >
+            と書くことで、<strong
+              >「この関数が true を返したら、渡された pet は間違いなく Cat
+              型だとして扱ってよい」</strong
+            >という「お墨付き（保証書）」をTypeScriptに与えることができます。<br />複雑な判定ロジックを別の関数に切り出したい時に非常に便利です。
+          </p>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating1 = false;
+      let isAnimating2 = false;
+      let isAnimating3 = false;
+
+      // --- セクション1: typeof のアニメーション ---
+      function runTypeof(valType, btnEl) {
+        if (isAnimating1) return;
+        isAnimating1 = true;
+
+        const packet = document.getElementById("typeof-packet");
+        const gate = document.getElementById("typeof-gate");
+        const routeStr = document.getElementById("typeof-route-string");
+        const routeNum = document.getElementById("typeof-route-number");
+        const outBox = document.getElementById("typeof-output");
+        const outVal = document.getElementById("typeof-result");
+
+        // UIリセット
+        packet.className = "data-packet code-font text-sm border-2";
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        gate.style.backgroundColor = "#334155";
+        gate.style.boxShadow = "none";
+        routeStr.className =
+          "transition-all-custom border border-transparent rounded p-3 bg-slate-800/50";
+        routeNum.className =
+          "transition-all-custom border border-transparent rounded p-3 bg-slate-800/50";
+        outBox.className =
+          "mt-6 bg-slate-100 border-2 border-slate-200 rounded-xl w-full p-4 text-center shadow-sm transition-all opacity-50";
+        outVal.innerText = "---";
+        outVal.className = "code-font text-xl font-bold text-slate-400";
+
+        // パケット設定
+        if (valType === "string") {
+          packet.innerHTML = '"Hello"';
+          packet.classList.add("border-amber-400", "text-amber-500");
+        } else {
+          packet.innerHTML = "100";
+          packet.classList.add("border-pink-400", "text-pink-500");
+        }
+
+        // 飛行設定 (ゆっくり 2秒)
+        const btnRect = btnEl.getBoundingClientRect();
+        const gateRect = gate.getBoundingClientRect();
+        // コンテナ(親)からの相対位置を計算して、ボタンの中央から飛び出すようにする
+        const containerRect = packet.parentElement.getBoundingClientRect();
+
+        packet.style.top = `${btnRect.top - containerRect.top + btnRect.height / 2 - packet.offsetHeight / 2}px`;
+        packet.style.left = `${btnRect.left - containerRect.left + btnRect.width / 2 - packet.offsetWidth / 2}px`;
+
+        // ゲートの中央上部へ向かって飛ぶように移動量を計算
+        const tx =
+          gateRect.left +
+          gateRect.width / 2 -
+          (btnRect.left + btnRect.width / 2);
+        const ty = gateRect.top - (btnRect.top + btnRect.height / 2) - 10;
+
+        packet.style.setProperty("--tx", `${tx}px`);
+        packet.style.setProperty("--ty", `${ty}px`);
+
+        packet.style.opacity = "1";
+        packet.classList.add("flying");
+
+        // ゲート判定 (2秒後)
+        setTimeout(() => {
+          packet.style.opacity = "0";
+          gate.classList.add("checking");
+
+          // 分岐・ハイライト (ゲート判定から1.5秒後)
+          setTimeout(() => {
+            if (valType === "string") {
+              routeStr.classList.add("route-active", "route-string-active");
+            } else {
+              routeNum.classList.add("route-active", "route-number-active");
+            }
+
+            // 結果出力 (ハイライトから1.5秒後)
+            setTimeout(() => {
+              outBox.classList.remove("opacity-50");
+              if (valType === "string") {
+                outBox.classList.add("border-amber-300", "bg-amber-50");
+                outVal.innerText = '"文字列: Hello"';
+                outVal.className =
+                  "code-font text-2xl font-black text-amber-600";
+              } else {
+                outBox.classList.add("border-pink-300", "bg-pink-50");
+                outVal.innerText = '"数値: 100"';
+                outVal.className =
+                  "code-font text-2xl font-black text-pink-600";
+              }
+
+              // リセット (ゆっくり見せてから)
+              setTimeout(() => {
+                gate.classList.remove("checking");
+                routeStr.className =
+                  "transition-all-custom border border-transparent rounded p-3 bg-slate-800/50";
+                routeNum.className =
+                  "transition-all-custom border border-transparent rounded p-3 bg-slate-800/50";
+                packet.classList.remove("flying");
+                packet.style.opacity = "0";
+
+                setTimeout(() => {
+                  outBox.className =
+                    "mt-6 bg-slate-100 border-2 border-slate-200 rounded-xl w-full p-4 text-center shadow-sm transition-all opacity-50";
+                  outVal.innerText = "---";
+                  outVal.className =
+                    "code-font text-xl font-bold text-slate-400";
+                  isAnimating1 = false;
+                }, 1000);
+              }, 3000); // 3秒間結果を表示
+            }, 1500);
+          }, 1500);
+        }, 2000);
+      }
+
+      // --- セクション2: in 演算子のアニメーション ---
+      function runInOp(valType, btnEl) {
+        if (isAnimating2) return;
+        isAnimating2 = true;
+
+        const packet = document.getElementById("in-packet");
+        const gate = document.getElementById("in-gate");
+        const routeCat = document.getElementById("in-route-cat");
+        const routeDog = document.getElementById("in-route-dog");
+        const outBox = document.getElementById("in-output");
+        const outVal = document.getElementById("in-result");
+
+        // UIリセット
+        packet.className =
+          "data-packet code-font text-[10px] border-2 flex flex-col gap-1";
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        gate.style.backgroundColor = "#334155";
+        gate.style.boxShadow = "none";
+        routeCat.className =
+          "transition-all-custom border border-transparent rounded p-3 bg-slate-800/50";
+        routeDog.className =
+          "transition-all-custom border border-transparent rounded p-3 bg-slate-800/50";
+        outBox.classList.add("opacity-50");
+        outVal.innerText = "";
+
+        // パケット設定
+        if (valType === "cat") {
+          packet.innerHTML = `<div>kind: <span class="text-blue-500">"cat"</span></div><div class="border border-blue-400 bg-blue-50 px-1 rounded text-blue-600 font-bold">meow()</div>`;
+          packet.classList.add("border-blue-400", "bg-blue-50/80");
+        } else {
+          packet.innerHTML = `<div>kind: <span class="text-emerald-500">"dog"</span></div><div class="border border-emerald-400 bg-emerald-50 px-1 rounded text-emerald-600 font-bold">bark()</div>`;
+          packet.classList.add("border-emerald-400", "bg-emerald-50/80");
+        }
+
+        // 飛行設定 (ゆっくり 2秒)
+        const btnRect = btnEl.getBoundingClientRect();
+        const gateRect = gate.getBoundingClientRect();
+        const containerRect = packet.parentElement.getBoundingClientRect();
+
+        // パケットの開始位置をボタンの中央に設定
+        packet.style.top = `${btnRect.top - containerRect.top + btnRect.height / 2 - packet.offsetHeight / 2}px`;
+        packet.style.left = `${btnRect.left - containerRect.left + btnRect.width / 2 - packet.offsetWidth / 2}px`;
+
+        const tx =
+          gateRect.left +
+          gateRect.width / 2 -
+          (btnRect.left + btnRect.width / 2);
+        const ty = gateRect.top - (btnRect.top + btnRect.height / 2) - 10;
+
+        packet.style.setProperty("--tx", `${tx}px`);
+        packet.style.setProperty("--ty", `${ty}px`);
+
+        packet.style.opacity = "1";
+        packet.classList.add("flying");
+
+        // ゲート判定 (2秒後)
+        setTimeout(() => {
+          packet.style.opacity = "0";
+          gate.classList.add("checking");
+
+          // 分岐・ハイライト (1.5秒後)
+          setTimeout(() => {
+            if (valType === "cat") {
+              routeCat.classList.add("route-active", "route-cat-active");
+            } else {
+              routeDog.classList.add("route-active", "route-dog-active");
+            }
+
+            // 結果出力 (1.5秒後)
+            setTimeout(() => {
+              outBox.classList.remove("opacity-50");
+              if (valType === "cat") {
+                outVal.innerText = "meow";
+                outVal.className = "text-blue-400 font-bold";
+              } else {
+                outVal.innerText = "bark";
+                outVal.className = "text-emerald-400 font-bold";
+              }
+
+              // リセット (3秒後)
+              setTimeout(() => {
+                gate.classList.remove("checking");
+                routeCat.className =
+                  "transition-all-custom border border-transparent rounded p-3 bg-slate-800/50";
+                routeDog.className =
+                  "transition-all-custom border border-transparent rounded p-3 bg-slate-800/50";
+                packet.classList.remove("flying");
+                packet.style.opacity = "0";
+
+                setTimeout(() => {
+                  outBox.classList.add("opacity-50");
+                  outVal.innerText = "";
+                  isAnimating2 = false;
+                }, 1000);
+              }, 3000);
+            }, 1500);
+          }, 1500);
+        }, 2000);
+      }
+
+      // --- セクション3: is (カスタム型ガード) のアニメーション ---
+      function runIsGuard(btnEl) {
+        if (isAnimating3) return;
+        isAnimating3 = true;
+
+        const packet = document.getElementById("is-packet");
+        const logicBox = document.getElementById("is-logic");
+        const outBoolBox = document.getElementById("is-output-bool");
+        const outBoolVal = document.getElementById("is-result");
+        const outTypeBox = document.getElementById("is-output-type");
+        const outTypeVal = document.getElementById("is-type-result");
+
+        // UIリセット
+        packet.className =
+          "data-packet code-font text-[10px] border-2 relative";
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        logicBox.className =
+          "inline-block transition-colors rounded px-1 mt-2 mb-2 p-1 bg-slate-900 border border-slate-600";
+        outBoolBox.className =
+          "flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50";
+        outTypeBox.className =
+          "flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50 relative";
+        outBoolVal.innerText = "---";
+        outBoolVal.className = "code-font text-xl font-bold text-slate-400";
+        outTypeVal.innerText = "---";
+        outTypeVal.className = "text-sm font-bold text-slate-400 mt-1";
+
+        // 以前のスタンプを消す
+        const oldStamp = document.getElementById("guarantee-stamp");
+        if (oldStamp) oldStamp.remove();
+
+        // パケット設定 (cat)
+        packet.innerHTML = `{ kind: <span class="text-blue-500">"cat"</span>... }`;
+        packet.classList.add("border-blue-400");
+
+        // 飛行設定 (ゆっくり 2秒)
+        const btnRect = btnEl.getBoundingClientRect();
+        const logicRect = logicBox.getBoundingClientRect();
+        const containerRect = packet.parentElement.getBoundingClientRect();
+
+        // パケットの開始位置をボタンの中央に設定
+        packet.style.top = `${btnRect.top - containerRect.top + btnRect.height / 2 - packet.offsetHeight / 2}px`;
+        packet.style.left = `${btnRect.left - containerRect.left + btnRect.width / 2 - packet.offsetWidth / 2}px`;
+
+        const tx =
+          logicRect.left +
+          logicRect.width / 2 -
+          (btnRect.left + btnRect.width / 2);
+        const ty = logicRect.top - (btnRect.top + btnRect.height / 2) - 20;
+
+        packet.style.setProperty("--tx", `${tx}px`);
+        packet.style.setProperty("--ty", `${ty}px`);
+
+        packet.style.opacity = "1";
+        packet.classList.add("flying");
+
+        // ロジック判定 (2秒後)
+        setTimeout(() => {
+          packet.style.opacity = "0";
+          logicBox.classList.remove("bg-slate-900", "border-slate-600");
+          logicBox.classList.add("bg-blue-900/50", "border-blue-500");
+
+          // 結果出力 (1.5秒後)
+          setTimeout(() => {
+            // Boolean出力
+            outBoolBox.classList.remove("opacity-50");
+            outBoolBox.classList.add("border-emerald-300", "bg-emerald-50");
+            outBoolVal.innerText = "true";
+            outBoolVal.className =
+              "code-font text-2xl font-black text-emerald-600";
+
+            // 型の保証（スタンプ）出力
+            setTimeout(() => {
+              outTypeBox.classList.remove("opacity-50");
+              outTypeBox.classList.add("border-indigo-300", "bg-indigo-50");
+              outTypeVal.innerHTML =
+                '「<span class="text-blue-600 code-font">Cat</span> 型として扱ってヨシ！」';
+              outTypeVal.className = "text-sm font-bold text-indigo-700 mt-1";
+
+              // 保証書スタンプのアニメーション
+              const stamp = document.createElement("div");
+              stamp.id = "guarantee-stamp";
+              stamp.className = "stamp-guarantee stamp-active";
+              stamp.innerText = "GUARANTEED";
+              outTypeBox.appendChild(stamp);
+
+              // リセット (4秒後)
+              setTimeout(() => {
+                logicBox.className =
+                  "inline-block transition-colors rounded px-1 mt-2 mb-2 p-1 bg-slate-900 border border-slate-600";
+                packet.classList.remove("flying");
+                packet.style.opacity = "0";
+
+                setTimeout(() => {
+                  outBoolBox.className =
+                    "flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50";
+                  outTypeBox.className =
+                    "flex-1 bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50 relative";
+                  outBoolVal.innerText = "---";
+                  outBoolVal.className =
+                    "code-font text-xl font-bold text-slate-400";
+                  outTypeVal.innerText = "---";
+                  outTypeVal.className =
+                    "text-sm font-bold text-slate-400 mt-1";
+                  if (stamp) stamp.remove();
+                  isAnimating3 = false;
+                }, 1000);
+              }, 4000);
+            }, 1000);
+          }, 1500);
+        }, 2000);
+      }
+    </script>
   </body>
 </html>

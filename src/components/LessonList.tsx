@@ -19,7 +19,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   "react-basics": "React",
 };
 
-type PhaseFilter = "all" | "phase1-4" | "phase5";
 type StatusFilter = "all" | "incomplete" | "completed";
 
 interface LessonListProps {
@@ -54,7 +53,6 @@ export function LessonList({ lessons }: LessonListProps) {
   const { progress, isLoaded } = useProgress();
   const router = useRouter();
 
-  const [phaseFilter, setPhaseFilter] = useState<PhaseFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
@@ -63,8 +61,6 @@ export function LessonList({ lessons }: LessonListProps) {
 
   // フィルタ適用
   const filtered = lessons.filter((lesson) => {
-    if (phaseFilter === "phase1-4" && lesson.order > 18) return false;
-    if (phaseFilter === "phase5" && lesson.order < 19) return false;
     if (categoryFilter !== "all" && lesson.category !== categoryFilter) return false;
     if (isLoaded && statusFilter !== "all") {
       const completed = progress.lessons[lesson.id]?.completed ?? false;
@@ -77,14 +73,6 @@ export function LessonList({ lessons }: LessonListProps) {
   // 進捗カウント
   const completedCount = isLoaded
     ? Object.values(progress.lessons).filter((l) => l.completed).length
-    : 0;
-  const phase14Total = lessons.filter((l) => l.order <= 18).length;
-  const phase5Total = lessons.filter((l) => l.order >= 19).length;
-  const phase14Completed = isLoaded
-    ? lessons.filter((l) => l.order <= 18 && (progress.lessons[l.id]?.completed ?? false)).length
-    : 0;
-  const phase5Completed = isLoaded
-    ? lessons.filter((l) => l.order >= 19 && (progress.lessons[l.id]?.completed ?? false)).length
     : 0;
 
   // ランダム1問: 現在の絞り込み結果からランダムに選んで遷移
@@ -99,49 +87,21 @@ export function LessonList({ lessons }: LessonListProps) {
       {/* ── 進捗サマリー ── */}
       <div className="mb-5 bg-white rounded-xl border border-gray-200 p-4">
         {isLoaded ? (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-700">
-                <span className="font-bold text-green-700 text-base">{completedCount}</span>
-                <span className="text-gray-500"> / {lessons.length} 完了</span>
-                <span className="ml-2 text-xs text-gray-400">
-                  ({Math.round((completedCount / lessons.length) * 100)}%)
-                </span>
-              </p>
-              <div className="w-36 h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-green-500 rounded-full transition-all duration-500"
-                  style={{ width: `${(completedCount / lessons.length) * 100}%` }}
-                />
-              </div>
-            </div>
-            <div className="flex gap-4 text-xs text-gray-500">
-              <span>
-                Phase1-4:{" "}
-                <span
-                  className={
-                    phase14Completed === phase14Total
-                      ? "text-green-600 font-semibold"
-                      : "text-gray-700"
-                  }
-                >
-                  {phase14Completed}/{phase14Total}
-                </span>
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-700">
+              <span className="font-bold text-green-700 text-base">{completedCount}</span>
+              <span className="text-gray-500"> / {lessons.length} 完了</span>
+              <span className="ml-2 text-xs text-gray-400">
+                ({Math.round((completedCount / lessons.length) * 100)}%)
               </span>
-              <span>
-                Phase5:{" "}
-                <span
-                  className={
-                    phase5Completed === phase5Total
-                      ? "text-green-600 font-semibold"
-                      : "text-gray-700"
-                  }
-                >
-                  {phase5Completed}/{phase5Total}
-                </span>
-              </span>
+            </p>
+            <div className="w-36 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500 rounded-full transition-all duration-500"
+                style={{ width: `${(completedCount / lessons.length) * 100}%` }}
+              />
             </div>
-          </>
+          </div>
         ) : (
           <span className="text-sm text-gray-400">読み込み中...</span>
         )}
@@ -149,33 +109,9 @@ export function LessonList({ lessons }: LessonListProps) {
 
       {/* ── フィルタ ── */}
       <div className="mb-4 space-y-2">
-        {/* Phase フィルタ */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-gray-400 w-16 flex-shrink-0">フェーズ</span>
-          <FilterButton active={phaseFilter === "all"} onClick={() => setPhaseFilter("all")}>
-            すべて
-          </FilterButton>
-          <FilterButton
-            active={phaseFilter === "phase1-4"}
-            onClick={() => setPhaseFilter("phase1-4")}
-          >
-            Phase1-4
-          </FilterButton>
-          <FilterButton
-            active={phaseFilter === "phase5"}
-            onClick={() => setPhaseFilter("phase5")}
-          >
-            Phase5
-          </FilterButton>
-        </div>
-
-        {/* カテゴリフィルタ */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-gray-400 w-16 flex-shrink-0">カテゴリ</span>
-          <FilterButton
-            active={categoryFilter === "all"}
-            onClick={() => setCategoryFilter("all")}
-          >
+        {/* カテゴリ */}
+        <div className="flex flex-wrap gap-1.5">
+          <FilterButton active={categoryFilter === "all"} onClick={() => setCategoryFilter("all")}>
             すべて
           </FilterButton>
           {categories.map((cat) => (
@@ -189,13 +125,9 @@ export function LessonList({ lessons }: LessonListProps) {
           ))}
         </div>
 
-        {/* 状態フィルタ + ランダムボタン */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-gray-400 w-16 flex-shrink-0">状態</span>
-          <FilterButton
-            active={statusFilter === "all"}
-            onClick={() => setStatusFilter("all")}
-          >
+        {/* 状態 + ランダム1問 */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <FilterButton active={statusFilter === "all"} onClick={() => setStatusFilter("all")}>
             すべて
           </FilterButton>
           <FilterButton
@@ -213,9 +145,9 @@ export function LessonList({ lessons }: LessonListProps) {
           <button
             onClick={handleRandom}
             disabled={filtered.length === 0}
-            className="ml-auto text-xs px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100 disabled:opacity-40 transition-colors"
+            className="ml-auto text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-40 transition-colors"
           >
-            ランダム1問
+            ランダム1問 →
           </button>
         </div>
       </div>

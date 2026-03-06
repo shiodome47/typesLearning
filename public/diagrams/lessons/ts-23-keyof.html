@@ -3,54 +3,569 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: keyof</title>
+    <title>TypeScript 図解: keyof と ジェネリクス</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
-        background-color: #f8fafc;
+        background-color: #f0fdfa; /* teal-50 */
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 型抽出アニメーション用 */
+      .extract-key {
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+        background-color: #fef3c7; /* amber-50 */
+        border-color: #f59e0b; /* amber-500 */
+        transform: scale(1.05);
+        z-index: 10;
+      }
+      .extract-type {
+        box-shadow: 0 0 15px rgba(236, 72, 153, 0.5);
+        background-color: #fdf2f8; /* pink-50 */
+        border-color: #ec4899; /* pink-500 */
+        transform: scale(1.05);
+        z-index: 10;
+      }
+
+      /* エラーアニメーション */
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-5px);
+        }
+        50% {
+          transform: translateX(5px);
+        }
+        75% {
+          transform: translateX(-5px);
+        }
+      }
+      .error-shake {
+        animation: shake 0.4s ease-in-out;
+        border-color: #ef4444 !important;
+        background-color: #fef2f2 !important;
+      }
+
+      /* 浮上アニメーション */
+      @keyframes floatUp {
+        0% {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-float {
+        animation: floatUp 0.3s ease-out forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-teal-100 text-teal-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-teal-200"
+        >
+          TypeScript 型推論の真骨頂
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >keyof</span
+          構造から型を導き出す：<br class="md:hidden" /><span
+            class="text-teal-600"
+            >keyof & ジェネリクス</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          keyof でオブジェクトのキーを型として取得する方法を学びましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">keyof</code>
+          でオブジェクトの「キー一覧」を取得し、ジェネリクス
+          <code class="bg-slate-200 px-1 rounded code-font"
+            >&lt;T, K extends keyof T&gt;</code
+          >
+          を組み合わせることで、「存在しないキーへのアクセス」を弾き、「戻り値の型」まで完璧に特定する関数の仕組みを見てみましょう。
         </p>
       </header>
 
+      <!-- 1. 型の世界 (keyof と Indexed Access) -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-magnifying-glass text-amber-500"></i> 1.
+          型の抽出（型の世界）
+        </h2>
+
+        <div
+          class="flex flex-col md:flex-row gap-8 items-center justify-center"
+        >
+          <!-- 原本の型 -->
+          <div
+            class="bg-slate-800 rounded-xl p-5 w-full md:w-1/3 text-white border-2 border-slate-700 relative"
+          >
+            <div
+              class="absolute -top-3 -left-3 bg-teal-500 text-white text-xs font-bold px-3 py-1 rounded shadow-md"
+            >
+              ベースの型
+            </div>
+            <div class="code-font font-bold text-lg mb-3">
+              <span class="text-blue-400">type</span>
+              <span class="text-teal-400">Product</span> = {
+            </div>
+
+            <div class="flex flex-col gap-2 pl-4">
+              <div
+                id="type-row-name"
+                class="transition-all-custom border border-transparent rounded p-1 flex items-center"
+              >
+                <span class="text-amber-300 font-bold w-20">name</span>
+                <span class="text-slate-400">:</span>
+                <span class="text-pink-400 ml-2">string</span>;
+              </div>
+              <div
+                id="type-row-price"
+                class="transition-all-custom border border-transparent rounded p-1 flex items-center"
+              >
+                <span class="text-amber-300 font-bold w-20">price</span>
+                <span class="text-slate-400">:</span>
+                <span class="text-pink-400 ml-2">number</span>;
+              </div>
+              <div
+                id="type-row-instock"
+                class="transition-all-custom border border-transparent rounded p-1 flex items-center"
+              >
+                <span class="text-amber-300 font-bold w-20">inStock</span>
+                <span class="text-slate-400">:</span>
+                <span class="text-pink-400 ml-2">boolean</span>;
+              </div>
+            </div>
+            <div class="code-font font-bold text-lg mt-3">};</div>
+          </div>
+
+          <!-- 操作ボタンと結果 -->
+          <div class="w-full md:w-1/2 flex flex-col gap-4">
+            <!-- keyof 操作 -->
+            <div
+              class="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 flex flex-col gap-3"
+            >
+              <div class="flex items-center justify-between">
+                <button
+                  onclick="runKeyof()"
+                  class="bg-white hover:bg-amber-100 border border-amber-300 text-amber-700 font-bold py-1.5 px-4 rounded shadow-sm transition-colors text-sm flex items-center gap-2"
+                >
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> 実行:
+                  <code class="code-font">keyof Product</code>
+                </button>
+              </div>
+              <div
+                class="bg-white p-3 rounded border border-amber-100 min-h-[3rem] flex items-center justify-center"
+              >
+                <span id="result-keyof" class="code-font text-slate-400 text-sm"
+                  >キーのユニオン型が抽出されます</span
+                >
+              </div>
+            </div>
+
+            <!-- Indexed Access 操作 -->
+            <div
+              class="bg-pink-50 border-2 border-pink-200 rounded-xl p-4 flex flex-col gap-3"
+            >
+              <div class="flex items-center justify-between">
+                <button
+                  onclick="runIndexedAccess()"
+                  class="bg-white hover:bg-pink-100 border border-pink-300 text-pink-700 font-bold py-1.5 px-4 rounded shadow-sm transition-colors text-sm flex items-center gap-2"
+                >
+                  <i class="fa-solid fa-search"></i> 実行:
+                  <code class="code-font">Product["price"]</code>
+                </button>
+              </div>
+              <div
+                class="bg-white p-3 rounded border border-pink-100 min-h-[3rem] flex items-center justify-center"
+              >
+                <span
+                  id="result-indexed"
+                  class="code-font text-slate-400 text-sm"
+                  >対応する値の型が抽出されます</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. ジェネリクスの魔法 (getProp関数) -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-4 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-shield-halved text-teal-500"></i> 2. 安全な関数
+          getProp の仕組み
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
+        <p class="mb-6 text-slate-600 text-sm">
+          下のボタンを押して、オブジェクトとキーを関数に渡してみてください。ジェネリクスがどのように「型の門番」として働き、戻り値の型を決定するかを確認できます。
         </p>
+
+        <div
+          class="flex flex-col lg:flex-row gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200 items-stretch"
+        >
+          <!-- STEP 1: 入力 -->
+          <div class="w-full lg:w-[30%] flex flex-col gap-3 relative">
+            <div
+              class="absolute -top-3 -left-3 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded shadow-md z-10"
+            >
+              const p: Product = { ... }
+            </div>
+            <div class="text-sm font-bold text-slate-500 text-center mb-1 mt-4">
+              ① getProp(p, <span class="text-amber-500 font-bold">キー</span>)
+              を実行
+            </div>
+
+            <button
+              onclick="runGetProp('name')"
+              class="hover:scale-[1.02] transition-transform bg-white border-2 border-amber-200 hover:border-amber-400 rounded-lg p-3 text-left shadow-sm font-bold text-slate-700 code-font flex justify-between items-center group"
+            >
+              <span
+                >"name"
+                <span class="text-xs text-slate-400 font-normal"
+                  >を渡す</span
+                ></span
+              >
+              <i
+                class="fa-solid fa-arrow-right text-amber-300 group-hover:text-amber-500 transition-colors"
+              ></i>
+            </button>
+
+            <button
+              onclick="runGetProp('price')"
+              class="hover:scale-[1.02] transition-transform bg-white border-2 border-amber-200 hover:border-amber-400 rounded-lg p-3 text-left shadow-sm font-bold text-slate-700 code-font flex justify-between items-center group"
+            >
+              <span
+                >"price"
+                <span class="text-xs text-slate-400 font-normal"
+                  >を渡す</span
+                ></span
+              >
+              <i
+                class="fa-solid fa-arrow-right text-amber-300 group-hover:text-amber-500 transition-colors"
+              ></i>
+            </button>
+
+            <button
+              onclick="runGetProp('weight')"
+              class="hover:scale-[1.02] transition-transform bg-red-50 border-2 border-red-200 hover:border-red-400 rounded-lg p-3 text-left shadow-sm font-bold text-red-600 code-font flex justify-between items-center group relative overflow-hidden mt-2"
+            >
+              <div
+                class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 rounded-bl font-bold"
+              >
+                存在しないキー
+              </div>
+              <span
+                >"weight"
+                <span class="text-xs text-red-400 font-normal"
+                  >を渡す</span
+                ></span
+              >
+              <i
+                class="fa-solid fa-bolt text-red-300 group-hover:text-red-500 transition-colors"
+              ></i>
+            </button>
+          </div>
+
+          <!-- STEP 2: 型の門番 (ジェネリクス) -->
+          <div class="w-full lg:w-[40%] flex flex-col justify-center relative">
+            <div class="text-sm font-bold text-slate-500 text-center mb-2">
+              ② 型チェックと推論 (コンパイル時)
+            </div>
+
+            <!-- 関数ヘッダーとジェネリクス -->
+            <div
+              id="func-box"
+              class="transition-all-custom bg-slate-800 text-white p-4 rounded-xl shadow-lg border-2 border-slate-700 relative z-20"
+            >
+              <div
+                class="text-[11px] text-teal-300 mb-1 border-b border-slate-600 pb-1 flex justify-between"
+              >
+                <span>ジェネリクス（型の変数）</span>
+                <span
+                  id="generic-eval"
+                  class="text-amber-300 opacity-0 transition-opacity code-font"
+                ></span>
+              </div>
+              <div class="code-font text-[13px] leading-relaxed break-all">
+                <span class="text-blue-400">function</span> getProp&lt;<br />
+                &nbsp;&nbsp;<span class="text-teal-400 font-bold">T</span
+                >,<br />
+                &nbsp;&nbsp;<span
+                  id="generic-k"
+                  class="text-amber-400 font-bold transition-colors"
+                  >K extends keyof T</span
+                ><br />
+                &gt;(<br />
+                &nbsp;&nbsp;obj: <span class="text-teal-400">T</span>,<br />
+                &nbsp;&nbsp;key: <span class="text-amber-400">K</span><br />
+                ):
+                <span
+                  id="generic-return"
+                  class="text-pink-400 font-bold transition-colors"
+                  >T[K]</span
+                >
+                {<br />
+                &nbsp;&nbsp;<span class="text-blue-400">return</span>
+                obj[key];<br />
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3: 出力 (戻り値と型) -->
+          <div class="w-full lg:w-[30%] flex flex-col justify-center">
+            <div class="text-sm font-bold text-slate-500 text-center mb-2">
+              ③ 実行結果 ＆ 推論された型
+            </div>
+
+            <div
+              id="output-box"
+              class="bg-white border-2 border-slate-200 rounded-xl p-4 shadow-sm relative overflow-hidden transition-all duration-300 h-[140px] flex flex-col justify-center"
+            >
+              <div
+                class="absolute top-0 left-0 w-full bg-slate-100 p-1 px-3 border-b border-slate-200 text-xs font-bold text-slate-500 flex justify-between items-center"
+              >
+                <span>出力</span>
+                <span
+                  id="output-type"
+                  class="code-font text-pink-500 opacity-0 transition-opacity bg-pink-50 px-2 rounded border border-pink-200 text-[10px]"
+                ></span>
+              </div>
+
+              <div
+                id="output-value"
+                class="text-center text-xl font-bold text-slate-400 code-font mt-4 transition-all"
+              >
+                ---
+              </div>
+
+              <div
+                id="error-tooltip"
+                class="absolute bottom-2 left-2 right-2 bg-red-600 text-white text-[10px] p-2 rounded shadow-md hidden code-font break-all z-30"
+              >
+                Argument of type '"weight"' is not assignable to parameter of
+                type '"name" | "price" | "inStock"'.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 解説メッセージ -->
+        <div
+          class="mt-6 bg-teal-50 border-l-4 border-teal-500 p-4 rounded-r-lg"
+        >
+          <h3
+            class="font-bold text-teal-800 mb-1 flex items-center gap-2 text-sm"
+          >
+            <i class="fa-solid fa-lightbulb text-amber-500"></i> K extends keyof
+            T の意味
+          </h3>
+          <p class="text-xs text-teal-900 leading-relaxed">
+            <code
+              class="bg-teal-100 px-1 rounded code-font font-bold text-teal-700"
+              >extends</code
+            >
+            は「〜を満たす（〜の部分集合である）」という意味です。つまり
+            <code
+              class="bg-teal-100 px-1 rounded code-font font-bold text-amber-600"
+              >K extends keyof T</code
+            >
+            は、<strong
+              >「引数key(K) は、オブジェクト(T) が持っているキー一覧(keyof T)
+              の中に含まれていなければならない！」</strong
+            >という厳しいルール（制約）を設定しています。これにより、タイポや存在しないキーの指定を未然に防ぎます。
+          </p>
+        </div>
       </section>
     </div>
+
+    <script>
+      // Section 1: keyof シミュレーション
+      function runKeyof() {
+        // リセット
+        ["name", "price", "instock"].forEach((id) => {
+          document
+            .getElementById(`type-row-${id}`)
+            .classList.remove("extract-key");
+        });
+
+        // ハイライトアニメーション
+        setTimeout(() => {
+          ["name", "price", "instock"].forEach((id) => {
+            document
+              .getElementById(`type-row-${id}`)
+              .classList.add("extract-key");
+          });
+        }, 100);
+
+        // 結果表示
+        const res = document.getElementById("result-keyof");
+        res.innerHTML = "";
+        setTimeout(() => {
+          res.innerHTML = `<span class="text-amber-600 font-bold animate-float">"name" | "price" | "inStock"</span>`;
+        }, 500);
+
+        // 戻す
+        setTimeout(() => {
+          ["name", "price", "instock"].forEach((id) => {
+            document
+              .getElementById(`type-row-${id}`)
+              .classList.remove("extract-key");
+          });
+        }, 1500);
+      }
+
+      // Section 1: Indexed Access シミュレーション
+      function runIndexedAccess() {
+        // リセット
+        ["name", "price", "instock"].forEach((id) => {
+          document
+            .getElementById(`type-row-${id}`)
+            .classList.remove("extract-key", "extract-type");
+        });
+
+        // ハイライトアニメーション（priceの行）
+        setTimeout(() => {
+          document
+            .getElementById("type-row-price")
+            .classList.add("extract-type");
+        }, 100);
+
+        // 結果表示
+        const res = document.getElementById("result-indexed");
+        res.innerHTML = "";
+        setTimeout(() => {
+          res.innerHTML = `<span class="text-pink-600 font-bold animate-float">number</span>`;
+        }, 500);
+
+        // 戻す
+        setTimeout(() => {
+          document
+            .getElementById("type-row-price")
+            .classList.remove("extract-type");
+        }, 1500);
+      }
+
+      // Section 2: ジェネリクス関数 シミュレーション
+      function runGetProp(keyName) {
+        const funcBox = document.getElementById("func-box");
+        const kEl = document.getElementById("generic-k");
+        const retEl = document.getElementById("generic-return");
+        const evalEl = document.getElementById("generic-eval");
+
+        const outBox = document.getElementById("output-box");
+        const outVal = document.getElementById("output-value");
+        const outType = document.getElementById("output-type");
+        const errTooltip = document.getElementById("error-tooltip");
+
+        // UIリセット
+        funcBox.className =
+          "transition-all-custom bg-slate-800 text-white p-4 rounded-xl shadow-lg border-2 border-slate-700 relative z-20";
+        kEl.className = "text-amber-400 font-bold transition-colors";
+        kEl.innerText = "K extends keyof T";
+        retEl.className = "text-pink-400 font-bold transition-colors";
+        retEl.innerText = "T[K]";
+        evalEl.style.opacity = "0";
+
+        outBox.className =
+          "bg-white border-2 border-slate-200 rounded-xl p-4 shadow-sm relative overflow-hidden transition-all duration-300 h-[140px] flex flex-col justify-center";
+        outVal.className =
+          "text-center text-xl font-bold text-slate-400 code-font mt-4 transition-all";
+        outVal.innerText = "---";
+        outType.style.opacity = "0";
+        errTooltip.classList.add("hidden");
+
+        // 擬似的なデータソース
+        const p = { name: "TypeScript本", price: 3000, inStock: true };
+        const pTypes = { name: "string", price: "number", inStock: "boolean" };
+
+        // 1. 引数到着、Kの評価
+        setTimeout(() => {
+          kEl.innerText = `"${keyName}" extends "name" | "price" | "inStock"`;
+          kEl.classList.add(
+            "text-amber-300",
+            "bg-slate-700",
+            "px-1",
+            "rounded",
+          );
+        }, 300);
+
+        // 2. 判定と結果
+        setTimeout(() => {
+          if (keyName === "weight") {
+            // エラー分岐
+            funcBox.classList.add("error-shake");
+            kEl.classList.replace("text-amber-300", "text-red-400");
+            evalEl.innerHTML =
+              '<i class="fa-solid fa-xmark text-red-500"></i> 型チェック失敗';
+            evalEl.style.opacity = "1";
+
+            outBox.classList.replace("border-slate-200", "border-red-400");
+            outBox.classList.add("bg-red-50");
+
+            errTooltip.classList.remove("hidden");
+            errTooltip.classList.add("animate-float");
+
+            outVal.innerText = "Compile Error";
+            outVal.classList.replace("text-slate-400", "text-red-400");
+          } else {
+            // 成功分岐
+            funcBox.classList.replace("border-slate-700", "border-teal-500");
+            funcBox.style.boxShadow = "0 0 15px rgba(20, 184, 166, 0.3)";
+
+            evalEl.innerHTML =
+              '<i class="fa-solid fa-check text-teal-400"></i> 型チェックOK';
+            evalEl.style.opacity = "1";
+
+            // 戻り値の型推論
+            retEl.innerText = pTypes[keyName];
+            retEl.classList.add("bg-slate-700", "px-1", "rounded");
+
+            // 出力更新
+            outBox.classList.replace("border-slate-200", "border-teal-300");
+
+            outType.innerText = `Type: ${pTypes[keyName]}`;
+            outType.style.opacity = "1";
+
+            let displayVal = p[keyName];
+            if (typeof displayVal === "string") displayVal = `"${displayVal}"`;
+
+            outVal.innerText = displayVal;
+            outVal.classList.replace("text-slate-400", "text-teal-600");
+            outVal.classList.add("animate-float", "text-2xl");
+          }
+        }, 1000);
+      }
+    </script>
   </body>
 </html>

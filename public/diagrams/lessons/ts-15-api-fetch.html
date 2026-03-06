@@ -3,54 +3,873 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: API Fetch</title>
+    <title>TypeScript 図解: API通信と型安全なデータ取得</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 実行中の行のハイライト */
+      .exec-line {
+        transition:
+          background-color 0.3s,
+          border-color 0.3s,
+          transform 0.3s;
+        border-left: 4px solid transparent;
+      }
+      .exec-active {
+        background-color: #eff6ff; /* blue-50 */
+        border-left-color: #3b82f6; /* blue-500 */
+        transform: translateX(5px);
+      }
+      .exec-error {
+        background-color: #fef2f2; /* red-50 */
+        border-left-color: #ef4444; /* red-500 */
+        transform: translateX(5px);
+      }
+
+      /* データパケットのスタイル */
+      .data-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+        transition:
+          transform 1s cubic-bezier(0.34, 1.56, 0.64, 1),
+          opacity 0.5s;
+        transform-origin: center;
+      }
+
+      /* サーバーの処理中アニメーション */
+      @keyframes server-pulse {
+        0% {
+          border-color: #475569;
+          box-shadow: 0 0 0 rgba(71, 85, 105, 0);
+        }
+        50% {
+          border-color: #94a3b8;
+          box-shadow: 0 0 20px rgba(148, 163, 184, 0.5);
+        }
+        100% {
+          border-color: #475569;
+          box-shadow: 0 0 0 rgba(71, 85, 105, 0);
+        }
+      }
+      .server-processing {
+        animation: server-pulse 1s infinite;
+      }
+
+      /* 型アサーション (as User) のスタンプエフェクト */
+      @keyframes cast-stamp {
+        0% {
+          transform: scale(2) rotate(15deg);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(0.9) rotate(-5deg);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1) rotate(0deg);
+          opacity: 1;
+        }
+      }
+      .cast-active {
+        animation: cast-stamp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)
+          forwards;
+      }
+
+      /* エラーのスロー（ワープ）アニメーション */
+      @keyframes throw-warp {
+        0% {
+          transform: translate(var(--startX), var(--startY)) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(var(--startX), calc(var(--startY) - 30px))
+            scale(1.2);
+          opacity: 1;
+          filter: blur(2px);
+        }
+        50% {
+          transform: translate(var(--startX), calc(var(--startY) - 30px))
+            scale(0);
+          opacity: 0;
+        }
+        60% {
+          transform: translate(var(--endX), calc(var(--endY) - 30px)) scale(0);
+          opacity: 0;
+        }
+        70% {
+          transform: translate(var(--endX), calc(var(--endY) - 30px)) scale(1.2);
+          opacity: 1;
+          filter: blur(2px);
+        }
+        100% {
+          transform: translate(var(--endX), var(--endY)) scale(1);
+          opacity: 1;
+          filter: blur(0);
+        }
+      }
+      .throwing {
+        animation: throw-warp 1.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* ポップアニメーション */
+      @keyframes popIn {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .animate-pop {
+        animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-indigo-100 text-indigo-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-indigo-200"
+        >
+          実践的な非同期データ取得
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >API Fetch</span
+          外部のデータに型をつける：<br class="md:hidden" /><span
+            class="text-indigo-600"
+            >fetch API と 型アサーション</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          fetch API で取得したデータに型を付けて、安全に扱いましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          APIから取得したデータは、TypeScriptにとって「中身が何かわからない状態（<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >any</code
+          >
+          または
+          <code class="bg-slate-200 px-1 rounded code-font">unknown</code
+          >）」です。<br class="hidden md:block" />
+          HTTPステータスをチェックし、<code
+            class="bg-slate-200 px-1 rounded code-font font-bold"
+            >as User</code
+          >
+          を使って「これはUser型だよ」と教え込む（キャストする）ことで、安全にプロパティへアクセスできるようになります。
         </p>
       </header>
 
+      <!-- メインのインタラクティブエリア -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 mb-10 overflow-hidden relative"
+      >
+        <div
+          class="flex flex-col xl:flex-row gap-8 items-stretch relative"
+          id="animation-area"
+        >
+          <!-- 飛行用パケットのダミー -->
+          <div
+            id="fly-packet"
+            class="data-packet bg-white rounded-lg p-2 text-sm text-center border-2 border-slate-300"
+          ></div>
+
+          <!-- 左側：呼び出し側 (main) と コントロール -->
+          <div class="w-full xl:w-[25%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2"
+            >
+              <i class="fa-solid fa-play text-indigo-500"></i> 関数を呼び出す
+            </div>
+
+            <button
+              onclick="runSimulation(1)"
+              class="bg-white hover:bg-emerald-50 border-2 border-slate-300 hover:border-emerald-400 rounded-xl p-3 text-left shadow-sm transition-all group relative"
+            >
+              <div class="text-[10px] font-bold text-emerald-600 mb-1">
+                正常系 (ID: 1)
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                fetchUser(<span class="text-emerald-600">1</span>)
+              </div>
+              <i
+                class="fa-solid fa-paper-plane absolute right-4 top-1/2 transform -translate-y-1/2 text-emerald-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <button
+              onclick="runSimulation(404)"
+              class="bg-white hover:bg-rose-50 border-2 border-slate-300 hover:border-rose-400 rounded-xl p-3 text-left shadow-sm transition-all group relative"
+            >
+              <div class="text-[10px] font-bold text-rose-600 mb-1">
+                異常系 (ID: 404)
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                fetchUser(<span class="text-rose-500">404</span>)
+              </div>
+              <i
+                class="fa-solid fa-bolt absolute right-4 top-1/2 transform -translate-y-1/2 text-rose-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <div
+              class="mt-4 bg-slate-800 text-white rounded-xl p-4 shadow-inner code-font text-[12px] leading-relaxed border-2 border-slate-700 flex-1"
+            >
+              <div class="text-blue-400 font-bold mb-1">
+                async <span class="text-purple-400">function</span> main() {
+              </div>
+              <div class="pl-3 border-l-2 border-slate-600">
+                <div class="text-rose-400 font-bold">try {</div>
+                <div
+                  id="line-main-await"
+                  class="exec-line pl-3 py-1 rounded relative"
+                >
+                  <span class="text-blue-400">const</span> user =
+                  <span class="text-blue-300 font-bold">await</span>
+                  fetchUser(<span id="arg-id" class="text-amber-300">1</span>);
+                  <div
+                    id="main-await-anchor"
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 w-2 h-2"
+                  ></div>
+                </div>
+                <div id="line-main-log" class="exec-line pl-3 py-1 rounded">
+                  console.log(<span class="text-slate-300">user.name</span
+                  >);<br />
+                  console.log(<span class="text-slate-300">user.email</span>);
+                </div>
+                <div class="text-rose-400 font-bold">
+                  } <span class="text-rose-400 font-bold">catch</span> (<span
+                    id="catch-arg"
+                    class="text-slate-300"
+                    >error</span
+                  >) {
+                </div>
+                <div
+                  id="line-main-catch"
+                  class="exec-line pl-3 py-1 rounded text-slate-400 transition-colors"
+                >
+                  console.error(<span class="text-slate-200">error.message</span
+                  >);
+                </div>
+                <div class="text-rose-400 font-bold">}</div>
+              </div>
+              <div class="text-blue-400 font-bold">}</div>
+            </div>
+          </div>
+
+          <!-- 中央：APIラッパー関数 (fetchUser) -->
+          <div class="w-full xl:w-[45%] flex flex-col relative z-10">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4 flex items-center justify-between"
+            >
+              <span
+                ><i class="fa-solid fa-code text-blue-500"></i> function
+                fetchUser(userId)</span
+              >
+              <span
+                class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded"
+                >戻り値: Promise&lt;User&gt;</span
+              >
+            </div>
+
+            <div
+              class="bg-slate-50 border-2 border-slate-300 rounded-xl p-4 shadow-md code-font text-[13px] relative transition-colors duration-300 flex-1"
+            >
+              <!-- fetch行 -->
+              <div
+                id="line-fetch"
+                class="exec-line p-2 rounded mb-2 relative bg-white border border-slate-200"
+              >
+                <span class="text-blue-600">const</span> response =
+                <span class="text-blue-600 font-bold">await fetch</span>(<br />
+                &nbsp;&nbsp;<span class="text-amber-600">".../users/"</span> +
+                userId<br />
+                );
+                <div
+                  id="fetch-req-anchor"
+                  class="absolute right-0 top-1/2 transform -translate-y-1/2 w-4 h-4"
+                ></div>
+              </div>
+
+              <!-- error check行 -->
+              <div id="line-check" class="exec-line p-2 rounded mb-2 relative">
+                <span class="text-blue-600">if</span> (!response.<span
+                  class="text-purple-600 font-bold"
+                  >ok</span
+                >) {<br />
+                &nbsp;&nbsp;<span
+                  class="bg-rose-100 text-rose-600 font-bold px-1 rounded border border-rose-300"
+                  >throw</span
+                >
+                <span class="text-blue-600">new Error</span>(<span
+                  class="text-amber-600"
+                  >\`HTTP error: \${response.status}\`</span
+                >);<br />
+                }
+                <div
+                  id="check-anchor"
+                  class="absolute right-2 top-1/2 transform -translate-y-1/2 w-2 h-2"
+                ></div>
+              </div>
+
+              <!-- JSON parse & Cast行 -->
+              <div id="line-json" class="exec-line p-2 rounded mb-2 relative">
+                <div class="text-slate-400 text-[10px] mb-1">
+                  // .json() は unknown (または any) を返す
+                </div>
+                <span class="text-blue-600">const</span> data =
+                <span class="text-blue-600 font-bold">await</span>
+                response.<span class="text-purple-600">json</span>()<br />
+                &nbsp;&nbsp;<span
+                  id="cast-highlight"
+                  class="transition-colors rounded px-1"
+                  ><span class="text-blue-600 font-bold">as</span>
+                  <span
+                    class="text-indigo-600 font-bold bg-indigo-100 px-1 rounded"
+                    >User</span
+                  ></span
+                >;
+                <div
+                  id="json-anchor"
+                  class="absolute right-2 top-1/2 transform -translate-y-1/2 w-2 h-2"
+                ></div>
+              </div>
+
+              <!-- return行 -->
+              <div id="line-return" class="exec-line p-2 rounded relative">
+                <span class="text-purple-600 font-bold">return</span> data;
+                <div
+                  id="return-anchor"
+                  class="absolute right-2 top-1/2 transform -translate-y-1/2 w-2 h-2"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側：外部サーバーとコンソール -->
+          <div class="w-full xl:w-[30%] flex flex-col gap-6 relative z-0">
+            <!-- 外部サーバー -->
+            <div class="flex-1 flex flex-col">
+              <div
+                class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4"
+              >
+                <i class="fa-solid fa-server text-slate-600"></i>
+                外部APIサーバー
+              </div>
+
+              <div
+                id="server-box"
+                class="bg-slate-700 border-4 border-slate-600 rounded-2xl p-5 flex flex-col items-center justify-center text-white relative transition-all flex-1"
+              >
+                <div
+                  id="server-req-anchor"
+                  class="absolute left-0 top-1/2 transform -translate-y-1/2 w-4 h-4"
+                ></div>
+
+                <i
+                  id="server-icon"
+                  class="fa-solid fa-cloud text-4xl text-slate-400 mb-3 transition-colors"
+                ></i>
+                <div
+                  class="code-font text-xs font-bold text-slate-300 text-center"
+                >
+                  jsonplaceholder<br />.typicode.com
+                </div>
+
+                <!-- サーバーステータス表示 -->
+                <div
+                  id="server-status"
+                  class="mt-4 bg-slate-800 border border-slate-500 rounded px-3 py-1 text-xs code-font font-bold opacity-0 transition-opacity"
+                >
+                  ---
+                </div>
+              </div>
+            </div>
+
+            <!-- コンソール出力 -->
+            <div
+              id="console-box"
+              class="h-32 w-full bg-slate-900 border border-slate-700 rounded-xl p-4 font-mono text-[13px] text-slate-300 shadow-inner relative transition-colors duration-300"
+            >
+              <div
+                class="text-slate-500 text-[10px] absolute top-1 right-2 font-sans font-bold"
+              >
+                Console
+              </div>
+              <div class="flex items-start gap-2 mt-2">
+                <span class="text-slate-500">></span>
+                <div id="console-output" class="flex flex-col gap-1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 解説セクション -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-4 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-graduation-cap text-indigo-500"></i>
+          実務で必須のテクニック解説
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-blue-50 border border-blue-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-blue-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-shield-halved text-blue-600"></i> as User
+              (型アサーション) は応急処置
+            </h3>
+            <p class="text-xs text-blue-900 leading-relaxed">
+              <code
+                class="bg-white border border-blue-200 px-1 rounded code-font"
+                >response.json()</code
+              >
+              が返す値は、TypeScriptには中身が推論できないため
+              <code
+                class="bg-white border border-blue-200 px-1 rounded code-font"
+                >any</code
+              >
+              や
+              <code
+                class="bg-white border border-blue-200 px-1 rounded code-font"
+                >unknown</code
+              >
+              になります。<br />
+              <code
+                class="bg-white border border-blue-200 px-1 rounded code-font font-bold"
+                >as User</code
+              >
+              を使うと、コンパイラに「私を信じて。これはUser型だ」と強制的に認識させることができます。手軽ですが、実際のデータがUser型と違っていてもエラーにならないため、より堅牢なアプリでは「Zod」などのバリデーションライブラリを使います。
+            </p>
+          </div>
+          <div class="bg-rose-50 border border-rose-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-rose-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
+              !response.ok のチェックを忘れずに
+            </h3>
+            <p class="text-xs text-rose-900 leading-relaxed">
+              <code
+                class="bg-white border border-rose-200 px-1 rounded code-font"
+                >fetch</code
+              >
+              APIの罠として、<strong
+                >「404 (Not Found) や 500 (Internal Server Error)
+                などのHTTPエラーが返ってきても、Promiseは
+                reject（失敗）されない」</strong
+              >という仕様があります。<br />
+              そのため、<code
+                class="bg-white border border-rose-200 px-1 rounded code-font font-bold"
+                >response.ok</code
+              >
+              (ステータスが200番台か) を自分でチェックし、ダメなら手動で
+              <code
+                class="bg-white border border-rose-200 px-1 rounded code-font"
+                >throw new Error()</code
+              >
+              を投げてあげる必要があります。これを忘れると、エラー画面のHTMLをJSONとしてパースしようとしてアプリがクラッシュします。
+            </p>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      function resetUI() {
+        // クラスのリセット
+        const execLines = [
+          "line-main-await",
+          "line-main-log",
+          "line-main-catch",
+          "line-fetch",
+          "line-check",
+          "line-json",
+          "line-return",
+        ];
+        execLines.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.classList.remove("exec-active", "exec-error");
+        });
+        document
+          .getElementById("line-main-catch")
+          .classList.add("text-slate-400");
+        document
+          .getElementById("cast-highlight")
+          .classList.remove("bg-indigo-100", "border", "border-indigo-300");
+
+        // サーバーリセット
+        const serverBox = document.getElementById("server-box");
+        serverBox.classList.remove(
+          "server-processing",
+          "border-emerald-500",
+          "border-rose-500",
+        );
+        document
+          .getElementById("server-icon")
+          .classList.remove("text-emerald-400", "text-rose-400");
+        document.getElementById("server-status").style.opacity = "0";
+
+        // Console
+        const conBox = document.getElementById("console-box");
+        conBox.className =
+          "h-32 w-full bg-slate-900 border border-slate-700 rounded-xl p-4 font-mono text-[13px] text-slate-300 shadow-inner relative transition-colors duration-300";
+        document.getElementById("console-output").innerHTML = "";
+
+        // Packet
+        const packet = document.getElementById("fly-packet");
+        packet.className =
+          "data-packet bg-white rounded-lg p-2 text-sm text-center border-2 border-slate-300";
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        packet.innerHTML = "";
+      }
+
+      // 親コンテナ（animation-area）基準で絶対座標を設定するヘルパー
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = document
+          .getElementById("animation-area")
+          .getBoundingClientRect();
+
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+        return { x, y };
+      }
+
+      // ワープ用の中間地点計算
+      function calculateWarpPos(packet, startEl, endEl) {
+        const startRect = startEl.getBoundingClientRect();
+        const endRect = endEl.getBoundingClientRect();
+        const containerRect = document
+          .getElementById("animation-area")
+          .getBoundingClientRect();
+
+        const startX =
+          startRect.left -
+          containerRect.left +
+          startRect.width / 2 -
+          packet.offsetWidth / 2;
+        const startY =
+          startRect.top -
+          containerRect.top +
+          startRect.height / 2 -
+          packet.offsetHeight / 2;
+
+        const endX =
+          endRect.left -
+          containerRect.left +
+          endRect.width / 2 -
+          packet.offsetWidth / 2;
+        const endY =
+          endRect.top -
+          containerRect.top +
+          endRect.height / 2 -
+          packet.offsetHeight / 2;
+
+        packet.style.setProperty("--startX", `${startX}px`);
+        packet.style.setProperty("--startY", `${startY}px`);
+        packet.style.setProperty("--endX", `${endX}px`);
+        packet.style.setProperty("--endY", `${endY}px`);
+      }
+
+      async function runSimulation(userId) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        const isSuccess = userId === 1;
+        document.getElementById("arg-id").innerText = userId;
+
+        const packet = document.getElementById("fly-packet");
+        const conBox = document.getElementById("console-box");
+        const conOut = document.getElementById("console-output");
+
+        const lineMainAwait = document.getElementById("line-main-await");
+        const lineFetch = document.getElementById("line-fetch");
+        const lineCheck = document.getElementById("line-check");
+        const lineJson = document.getElementById("line-json");
+        const lineReturn = document.getElementById("line-return");
+
+        const serverBox = document.getElementById("server-box");
+        const serverStatus = document.getElementById("server-status");
+        const serverIcon = document.getElementById("server-icon");
+
+        // 1. main() で await fetchUser() 実行
+        lineMainAwait.classList.add("exec-active");
+        await sleep(800);
+
+        // 2. fetchUser() 内部の fetch 実行
+        lineFetch.classList.add("exec-active");
+
+        // HTTP Request パケット生成
+        packet.innerHTML = `<div class="code-font font-bold text-blue-600"><i class="fa-solid fa-arrow-right-from-bracket"></i> GET /users/${userId}</div>`;
+        packet.className =
+          "data-packet bg-blue-50 border-2 border-blue-400 rounded-lg p-2 text-xs shadow-md";
+        packet.style.opacity = "0";
+        void packet.offsetWidth; // force reflow
+
+        setPacketPosAbsolute(
+          packet,
+          document.getElementById("fetch-req-anchor"),
+        );
+        packet.style.opacity = "1";
+
+        await sleep(200);
+
+        // サーバーへ飛行
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s";
+        setPacketPosAbsolute(
+          packet,
+          document.getElementById("server-req-anchor"),
+        );
+        await sleep(1000);
+        packet.style.opacity = "0";
+
+        // 3. サーバー側の処理
+        serverBox.classList.add("server-processing");
+        await sleep(1500); // 処理待ち
+        serverBox.classList.remove("server-processing");
+
+        if (isSuccess) {
+          // ==========================
+          // 正常系 (200 OK)
+          // ==========================
+          serverIcon.classList.add("text-emerald-400");
+          serverBox.classList.add("border-emerald-500");
+          serverStatus.innerHTML =
+            '<span class="text-emerald-400">200 OK</span>';
+          serverStatus.style.opacity = "1";
+
+          // HTTP Response パケット生成
+          packet.innerHTML = `<div class="flex flex-col items-center"><div class="text-[10px] font-bold text-emerald-600">Response Object</div><div class="code-font font-bold text-slate-600 text-[10px]">ok: true, status: 200...</div></div>`;
+          packet.className =
+            "data-packet bg-emerald-50 border-2 border-emerald-400 rounded-lg p-2 text-xs shadow-md";
+          setPacketPosAbsolute(
+            packet,
+            document.getElementById("server-req-anchor"),
+          );
+          packet.style.opacity = "1";
+
+          await sleep(200);
+          // fetch に戻る
+          setPacketPosAbsolute(
+            packet,
+            document.getElementById("fetch-req-anchor"),
+          );
+          await sleep(1000);
+
+          lineFetch.classList.remove("exec-active");
+          lineCheck.classList.add("exec-active");
+          setPacketPosAbsolute(packet, document.getElementById("check-anchor"));
+
+          await sleep(1000); // if(!response.ok) のチェック（スルー）
+
+          lineCheck.classList.remove("exec-active");
+          lineJson.classList.add("exec-active");
+          setPacketPosAbsolute(packet, document.getElementById("json-anchor"));
+
+          // .json() で中身を取り出すアニメーション
+          packet.style.transform = packet.style.transform.replace(
+            "scale(1)",
+            "scale(1.1)",
+          );
+          await sleep(500);
+          packet.innerHTML = `<div class="code-font text-slate-600 font-bold text-[10px] text-left">{<br>&nbsp;&nbsp;id: 1,<br>&nbsp;&nbsp;name: "Alice",<br>&nbsp;&nbsp;email: "alice@example.com"<br>}</div>`;
+          packet.className =
+            "data-packet bg-slate-50 border-2 border-slate-400 rounded-lg p-2 text-xs shadow-lg";
+          void packet.offsetWidth;
+          setPacketPosAbsolute(packet, document.getElementById("json-anchor"));
+
+          await sleep(1000);
+
+          // as User (型アサーション) のスタンプ！
+          document
+            .getElementById("cast-highlight")
+            .classList.add("bg-indigo-100", "border", "border-indigo-300");
+
+          const stamp = document.createElement("div");
+          stamp.className =
+            "absolute inset-0 border-4 border-indigo-500 text-indigo-600 font-black text-xl flex items-center justify-center bg-indigo-50/80 rounded-lg cast-active";
+          stamp.innerText = "User型";
+          packet.appendChild(stamp);
+
+          packet.classList.replace("border-slate-400", "border-indigo-500");
+          packet.classList.replace("bg-slate-50", "bg-indigo-50");
+
+          await sleep(1200);
+
+          // return
+          lineJson.classList.remove("exec-active");
+          lineReturn.classList.add("exec-active");
+          setPacketPosAbsolute(
+            packet,
+            document.getElementById("return-anchor"),
+          );
+
+          await sleep(800);
+
+          // main() へ戻る
+          lineReturn.classList.remove("exec-active");
+          setPacketPosAbsolute(
+            packet,
+            document.getElementById("main-await-anchor"),
+          );
+
+          await sleep(1000);
+          packet.style.opacity = "0";
+          lineMainAwait.classList.remove("exec-active");
+
+          // console.log
+          const lineMainLog = document.getElementById("line-main-log");
+          lineMainLog.classList.add("exec-active");
+
+          await sleep(600);
+          conOut.innerHTML += `<div class="animate-pop text-emerald-400">"Alice"</div>`;
+          await sleep(400);
+          conOut.innerHTML += `<div class="animate-pop text-emerald-400">"alice@example.com"</div>`;
+
+          await sleep(1200);
+          lineMainLog.classList.remove("exec-active");
+        } else {
+          // ==========================
+          // 異常系 (404 Error)
+          // ==========================
+          serverIcon.classList.add("text-rose-400");
+          serverBox.classList.add("border-rose-500");
+          serverStatus.innerHTML =
+            '<span class="text-rose-400">404 Not Found</span>';
+          serverStatus.style.opacity = "1";
+
+          // HTTP Response パケット生成 (エラーを含んでいるがPromise自体は解決する)
+          packet.innerHTML = `<div class="flex flex-col items-center"><div class="text-[10px] font-bold text-rose-600">Response Object</div><div class="code-font font-bold text-slate-600 text-[10px]">ok: false, status: 404...</div></div>`;
+          packet.className =
+            "data-packet bg-rose-50 border-2 border-rose-400 rounded-lg p-2 text-xs shadow-md";
+          setPacketPosAbsolute(
+            packet,
+            document.getElementById("server-req-anchor"),
+          );
+          packet.style.opacity = "1";
+
+          await sleep(200);
+          // fetch に戻る
+          setPacketPosAbsolute(
+            packet,
+            document.getElementById("fetch-req-anchor"),
+          );
+          await sleep(1000);
+
+          lineFetch.classList.remove("exec-active");
+          lineCheck.classList.add("exec-active");
+          setPacketPosAbsolute(packet, document.getElementById("check-anchor"));
+
+          await sleep(1000); // if(!response.ok) のチェック
+
+          // ok: false なので、throw される！
+          lineCheck.classList.remove("exec-active");
+          lineCheck.classList.add("exec-error");
+
+          packet.innerHTML = `<div class="flex items-center gap-2"><i class="fa-solid fa-bomb text-rose-500 text-xl"></i> <span class="code-font font-bold text-rose-700">Error: HTTP error: 404</span></div>`;
+          packet.className =
+            "data-packet bg-rose-50 border-2 border-rose-500 rounded-lg p-2 text-sm shadow-lg";
+          void packet.offsetWidth;
+          setPacketPosAbsolute(packet, document.getElementById("check-anchor"));
+
+          await sleep(800);
+
+          // catchブロックへワープ
+          lineCheck.classList.remove("exec-error");
+          const lineMainCatch = document.getElementById("line-main-catch");
+          lineMainAwait.classList.remove("exec-active");
+          lineMainCatch.classList.add("exec-error");
+          lineMainCatch.classList.remove("text-slate-400");
+
+          // 飛行アニメーション(ワープ)設定
+          packet.style.transition = "none";
+          calculateWarpPos(
+            packet,
+            document.getElementById("check-anchor"),
+            document.getElementById("catch-arg"),
+          );
+          packet.classList.add("throwing");
+
+          await sleep(1800); // ワープ完了待ち
+          packet.classList.remove("throwing");
+          setPacketPosAbsolute(packet, document.getElementById("catch-arg"));
+
+          await sleep(800);
+
+          // console.error
+          conBox.classList.replace("bg-slate-900", "bg-rose-950");
+          conBox.classList.replace("border-slate-700", "border-rose-800");
+          conOut.innerHTML =
+            '<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation"></i> 取得エラー: HTTP error: 404</span>';
+          conOut.classList.add("animate-pop");
+
+          await sleep(1200);
+          lineMainCatch.classList.remove("exec-error");
+          lineMainCatch.classList.add("text-slate-400");
+          packet.style.opacity = "0";
+        }
+
+        isAnimating = false;
+      }
+    </script>
   </body>
 </html>

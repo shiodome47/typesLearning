@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Hint } from "@curriculum/types";
+import { InlineCodeText } from "./InlineCodeText";
 
 const HINT_LABELS: Record<number, string> = {
   1: "方向性",
@@ -60,7 +61,7 @@ export function HintPanel({
               <span className="text-xs font-semibold text-yellow-700 mr-2">
                 ヒント{hint.level}（{HINT_LABELS[hint.level]}）:
               </span>
-              <span className="text-sm text-gray-700">{hint.text}</span>
+              <span className="text-sm text-gray-700"><InlineCodeText text={hint.text} /></span>
             </div>
           ))}
       </div>

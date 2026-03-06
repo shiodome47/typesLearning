@@ -3,54 +3,762 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: 配列の型</title>
+    <title>TypeScript 図解: 配列の3大メソッド (map, filter, find)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
-        background-color: #f8fafc;
+        background-color: #f8fafc; /* slate-50 */
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 実行中のコードハイライト */
+      .code-active {
+        transform: scale(1.02);
+        box-shadow:
+          0 10px 25px -5px rgba(0, 0, 0, 0.1),
+          0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+      }
+      .code-active-map {
+        border-color: #3b82f6 !important;
+        background-color: #eff6ff;
+      }
+      .code-active-filter {
+        border-color: #10b981 !important;
+        background-color: #ecfdf5;
+      }
+      .code-active-find {
+        border-color: #a855f7 !important;
+        background-color: #faf5ff;
+      }
+
+      /* スクロールバーの非表示（横スクロール用） */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      /* 出力アイテムの登場アニメーション */
+      @keyframes expand-height {
+        from {
+          height: 0;
+          opacity: 0;
+          padding-top: 0;
+          padding-bottom: 0;
+          border-width: 0;
+          margin-bottom: 0;
+        }
+        to {
+          height: 4rem;
+          opacity: 1;
+          padding-top: 0.5rem;
+          padding-bottom: 0.5rem;
+          border-width: 2px;
+          margin-bottom: 0.5rem;
+        }
+      }
+      .expand-item {
+        animation: expand-height 0.3s ease-out forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
-      <header class="text-center mb-10">
+      <!-- ヘッダー -->
+      <header class="text-center mb-8">
+        <div
+          class="inline-block bg-slate-200 text-slate-700 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm"
+        >
+          TypeScript / JavaScript の必須知識
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >配列の型</span
-          >
-          の図解
+          配列操作の3種の神器：<br class="md:hidden" /><span
+            class="text-blue-600"
+            >map</span
+          >, <span class="text-emerald-600">filter</span>,
+          <span class="text-purple-600">find</span>
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          配列に型を付けて、要素の型を安全に扱いましょう。
+        <p class="text-slate-600 text-base max-w-3xl mx-auto leading-relaxed">
+          配列（リスト）のデータを処理するとき、昔のように
+          <code class="bg-slate-200 px-1 rounded code-font">for</code>
+          ループを書くことは減りました。<br />
+          目的に合わせてこの3つのメソッドを使い分けることで、バグが少なく読みやすいコードになります。
         </p>
       </header>
 
-      <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
-      >
-        <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+      <!-- アクションボタン群 -->
+      <div class="flex flex-wrap justify-center gap-3 mb-6 relative z-20">
+        <button
+          onclick="runMap(this)"
+          class="bg-white hover:bg-blue-50 border-2 border-blue-300 text-blue-700 font-bold py-2.5 px-6 rounded-xl shadow-sm transition-all flex flex-col items-center group active:scale-95"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
-        </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
-      </section>
+          <span class="text-sm"
+            ><i class="fa-solid fa-boxes-packing mr-1"></i> map (変換)</span
+          >
+          <span
+            class="code-font text-xs text-blue-500 mt-1 font-normal bg-blue-50 px-2 rounded group-hover:bg-white"
+            >getTitles()</span
+          >
+        </button>
+        <button
+          onclick="runFilter(this)"
+          class="bg-white hover:bg-emerald-50 border-2 border-emerald-300 text-emerald-700 font-bold py-2.5 px-6 rounded-xl shadow-sm transition-all flex flex-col items-center group active:scale-95"
+        >
+          <span class="text-sm"
+            ><i class="fa-solid fa-filter mr-1"></i> filter (抽出)</span
+          >
+          <span
+            class="code-font text-xs text-emerald-500 mt-1 font-normal bg-emerald-50 px-2 rounded group-hover:bg-white"
+            >getActive()</span
+          >
+        </button>
+        <button
+          onclick="runFind(2, this)"
+          class="bg-white hover:bg-purple-50 border-2 border-purple-300 text-purple-700 font-bold py-2.5 px-6 rounded-xl shadow-sm transition-all flex flex-col items-center group active:scale-95"
+        >
+          <span class="text-sm"
+            ><i class="fa-solid fa-magnifying-glass mr-1"></i> find (検索)</span
+          >
+          <span
+            class="code-font text-xs text-purple-500 mt-1 font-normal bg-purple-50 px-2 rounded group-hover:bg-white"
+            >findById(2)</span
+          >
+        </button>
+        <button
+          onclick="runFind(99, this)"
+          class="bg-white hover:bg-purple-50 border-2 border-purple-300 text-purple-700 font-bold py-2.5 px-6 rounded-xl shadow-sm transition-all flex flex-col items-center group active:scale-95 relative overflow-hidden"
+        >
+          <div
+            class="absolute top-0 right-0 bg-slate-500 text-white text-[9px] px-1.5 py-0.5 rounded-bl font-bold"
+          >
+            無い場合
+          </div>
+          <span class="text-sm"
+            ><i class="fa-regular fa-face-frown mr-1"></i> find (空振)</span
+          >
+          <span
+            class="code-font text-xs text-purple-500 mt-1 font-normal bg-purple-50 px-2 rounded group-hover:bg-white"
+            >findById(99)</span
+          >
+        </button>
+      </div>
+
+      <!-- シミュレーションエリア (横スクロール対応) -->
+      <div class="w-full overflow-x-auto no-scrollbar pb-8 pt-4">
+        <div
+          id="animation-area"
+          class="relative min-w-[850px] bg-white border-2 border-slate-200 rounded-3xl p-8 flex justify-between items-stretch shadow-sm mx-auto max-w-5xl"
+        >
+          <!-- 左：入力配列 (todos) -->
+          <div class="flex flex-col gap-3 w-52 z-10" id="input-list">
+            <div
+              class="text-sm font-bold text-slate-500 mb-2 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-database"></i> todos 配列
+            </div>
+
+            <div
+              id="src-0"
+              class="bg-white border-2 border-slate-200 p-3 rounded-xl shadow-sm transition-opacity duration-300 relative"
+            >
+              <div
+                class="text-slate-400 text-[10px] font-normal leading-none mb-1"
+              >
+                id: 1
+              </div>
+              <div class="text-slate-700 font-bold text-[15px] leading-tight">
+                TypeScriptを学ぶ
+              </div>
+              <div
+                class="text-[11px] font-bold mt-2 leading-none text-emerald-500 bg-emerald-50 inline-block px-1.5 py-0.5 rounded"
+              >
+                ✅ done: true
+              </div>
+            </div>
+
+            <div
+              id="src-1"
+              class="bg-white border-2 border-slate-200 p-3 rounded-xl shadow-sm transition-opacity duration-300 relative"
+            >
+              <div
+                class="text-slate-400 text-[10px] font-normal leading-none mb-1"
+              >
+                id: 2
+              </div>
+              <div class="text-slate-700 font-bold text-[15px] leading-tight">
+                Reactを学ぶ
+              </div>
+              <div
+                class="text-[11px] font-bold mt-2 leading-none text-slate-500 bg-slate-100 inline-block px-1.5 py-0.5 rounded"
+              >
+                ⬜️ done: false
+              </div>
+            </div>
+
+            <div
+              id="src-2"
+              class="bg-white border-2 border-slate-200 p-3 rounded-xl shadow-sm transition-opacity duration-300 relative"
+            >
+              <div
+                class="text-slate-400 text-[10px] font-normal leading-none mb-1"
+              >
+                id: 3
+              </div>
+              <div class="text-slate-700 font-bold text-[15px] leading-tight">
+                アプリを作る
+              </div>
+              <div
+                class="text-[11px] font-bold mt-2 leading-none text-slate-500 bg-slate-100 inline-block px-1.5 py-0.5 rounded"
+              >
+                ⬜️ done: false
+              </div>
+            </div>
+          </div>
+
+          <!-- 中央：プロセッサー (変換器) -->
+          <div
+            class="flex flex-col items-center justify-center relative w-64 z-0"
+          >
+            <div
+              class="text-slate-300 text-4xl mb-4 opacity-50 absolute -top-8"
+            >
+              <i class="fa-solid fa-arrow-right-long"></i>
+            </div>
+
+            <div
+              id="processor"
+              class="w-full h-32 bg-slate-100 border-4 border-slate-300 border-dashed rounded-2xl flex flex-col items-center justify-center text-slate-400 transition-all duration-300 relative z-10 shadow-sm"
+            >
+              <i class="fa-solid fa-gears text-3xl mb-2"></i>
+              <span class="text-sm font-bold">メソッドを選択</span>
+            </div>
+
+            <div
+              class="text-slate-300 text-4xl mt-4 opacity-50 absolute -bottom-8"
+            >
+              <i class="fa-solid fa-arrow-right-long"></i>
+            </div>
+          </div>
+
+          <!-- 右：出力結果 -->
+          <div class="flex flex-col gap-3 w-52 z-10">
+            <div
+              class="text-sm font-bold text-slate-500 mb-2 flex items-center gap-2 justify-end"
+            >
+              戻り値 (Result) <i class="fa-solid fa-square-poll-horizontal"></i>
+            </div>
+
+            <div
+              id="output-box"
+              class="w-full min-h-[300px] bg-slate-50 border-2 border-slate-200 rounded-xl p-3 flex flex-col relative transition-colors duration-300"
+            >
+              <div
+                class="absolute inset-0 flex items-center justify-center text-slate-300 font-bold text-sm pointer-events-none"
+                id="output-placeholder"
+              >
+                ここに結果が出ます
+              </div>
+              <!-- 結果がここに追加される -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- コードと解説セクション -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2 relative z-20">
+        <!-- map -->
+        <div
+          id="code-box-map"
+          class="bg-white border-2 border-slate-200 rounded-xl p-5 transition-all duration-300"
+        >
+          <div class="text-blue-600 font-bold mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-boxes-packing"></i> map
+          </div>
+          <div
+            class="code-font text-[11px] text-slate-700 bg-slate-50 p-3 rounded border border-slate-200 mb-3 leading-relaxed"
+          >
+            <span class="text-blue-500">function</span> getTitles(todos) {<br />
+            &nbsp;&nbsp;<span class="text-purple-500">return</span> todos.<span
+              class="text-blue-500 font-bold"
+              >map</span
+            >(todo => <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;todo.title<br />
+            &nbsp;&nbsp;);<br />
+            }
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <strong>「変換」</strong
+            >します。配列のすべての要素を1つずつ加工し、<strong>必ず同じ長さの新しい配列</strong>を作ります。今回はオブジェクトから文字列だけを抽出しています。
+          </p>
+        </div>
+
+        <!-- filter -->
+        <div
+          id="code-box-filter"
+          class="bg-white border-2 border-slate-200 rounded-xl p-5 transition-all duration-300"
+        >
+          <div class="text-emerald-600 font-bold mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-filter"></i> filter
+          </div>
+          <div
+            class="code-font text-[11px] text-slate-700 bg-slate-50 p-3 rounded border border-slate-200 mb-3 leading-relaxed"
+          >
+            <span class="text-blue-500">function</span> getActive(todos) {<br />
+            &nbsp;&nbsp;<span class="text-purple-500">return</span> todos.<span
+              class="text-emerald-500 font-bold"
+              >filter</span
+            >(todo => <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;!todo.done<br />
+            &nbsp;&nbsp;);<br />
+            }
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <strong>「抽出（ふるい分け）」</strong>します。条件式が
+            <code class="bg-slate-100 px-1 rounded">true</code>
+            になる要素だけを残し、新しい配列を作ります。弾かれた要素は消えるため、長さは減る可能性があります。
+          </p>
+        </div>
+
+        <!-- find -->
+        <div
+          id="code-box-find"
+          class="bg-white border-2 border-slate-200 rounded-xl p-5 transition-all duration-300"
+        >
+          <div class="text-purple-600 font-bold mb-2 flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass"></i> find
+          </div>
+          <div
+            class="code-font text-[11px] text-slate-700 bg-slate-50 p-3 rounded border border-slate-200 mb-3 leading-relaxed"
+          >
+            <span class="text-blue-500">function</span> findById(todos, id) {<br />
+            &nbsp;&nbsp;<span class="text-purple-500">return</span> todos.<span
+              class="text-purple-500 font-bold"
+              >find</span
+            >(todo => <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;todo.id === id<br />
+            &nbsp;&nbsp;);<br />
+            }
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <strong>「検索」</strong
+            >します。条件に合う<strong>最初の1つ</strong>を見つけた瞬間、ループを打ち切ってその要素（配列ではなく単体）を返します。見つからなければ
+            <code class="bg-slate-100 px-1 rounded">undefined</code>
+            を返します。
+          </p>
+        </div>
+      </div>
     </div>
+
+    <script>
+      let isAnimating = false;
+      const area = document.getElementById("animation-area");
+
+      // 元データ
+      const todos = [
+        { id: 1, title: "TypeScriptを学ぶ", done: true },
+        { id: 2, title: "Reactを学ぶ", done: false },
+        { id: 3, title: "アプリを作る", done: false },
+      ];
+
+      // ユーティリティ: 指定ミリ秒待機
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // ユーティリティ: TodoカードのHTML生成
+      function getTodoHTML(todo) {
+        const doneColor = todo.done
+          ? "text-emerald-500 bg-emerald-50"
+          : "text-slate-500 bg-slate-100";
+        const doneText = todo.done ? "✅ done: true" : "⬜️ done: false";
+        return `
+                <div class="text-slate-400 text-[10px] font-normal leading-none mb-1">id: ${todo.id}</div>
+                <div class="text-slate-700 font-bold text-[15px] leading-tight">${todo.title}</div>
+                <div class="text-[11px] font-bold mt-2 leading-none inline-block px-1.5 py-0.5 rounded ${doneColor}">${doneText}</div>
+            `;
+      }
+
+      // ユーティリティ: パケット（飛ぶ要素）の生成
+      function createPacket(html, colorClass) {
+        const el = document.createElement("div");
+        el.className = `absolute z-50 p-3 rounded-xl shadow-lg border-2 bg-white ${colorClass} text-left flex flex-col justify-center w-44`;
+        el.innerHTML = html;
+        el.style.opacity = "0"; // 初期は透明
+        el.style.transition = "none";
+        area.appendChild(el);
+        return el;
+      }
+
+      // ユーティリティ: 指定要素から指定要素への移動アニメーション
+      function moveTo(el, fromEl, toEl, duration = 800) {
+        return new Promise((resolve) => {
+          const areaRect = area.getBoundingClientRect();
+          const fromRect = fromEl.getBoundingClientRect();
+          const toRect = toEl.getBoundingClientRect();
+
+          // 出発地点の計算 (親コンテナからの相対位置)
+          const startX =
+            fromRect.left -
+            areaRect.left +
+            (fromRect.width - el.offsetWidth) / 2;
+          const startY =
+            fromRect.top -
+            areaRect.top +
+            (fromRect.height - el.offsetHeight) / 2;
+
+          el.style.left = `${startX}px`;
+          el.style.top = `${startY}px`;
+          el.style.transform = `translate(0px, 0px)`;
+          el.style.transition = "none";
+
+          // 次のフレームで移動を開始
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              // 目的地の計算
+              const targetX =
+                toRect.left -
+                fromRect.left +
+                (toRect.width - el.offsetWidth) / 2;
+              const targetY =
+                toRect.top -
+                fromRect.top +
+                (toRect.height - el.offsetHeight) / 2;
+
+              el.style.transition = `transform ${duration}ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 300ms ease-out, background-color 300ms, border-color 300ms, color 300ms, box-shadow 300ms`;
+              el.style.opacity = "1";
+              el.style.transform = `translate(${targetX}px, ${targetY}px)`;
+
+              setTimeout(resolve, duration);
+            });
+          });
+        });
+      }
+
+      // ユーティリティ: 下に落ちて消えるアニメーション
+      function moveDownAndVanish(el, duration = 600) {
+        return new Promise((resolve) => {
+          const currentTransform = el.style.transform;
+          let curX = 0,
+            curY = 0;
+          const match = currentTransform.match(
+            /translate\((.*?)px,\s*(.*?)px\)/,
+          );
+          if (match) {
+            curX = parseFloat(match[1]);
+            curY = parseFloat(match[2]);
+          }
+
+          el.style.transition = `transform ${duration}ms ease-in, opacity ${duration}ms ease-out`;
+          el.style.transform = `translate(${curX}px, ${curY + 80}px) scale(0.8) rotate(5deg)`;
+          el.style.opacity = "0";
+
+          setTimeout(resolve, duration);
+        });
+      }
+
+      // UIリセット
+      function resetUI() {
+        const outputBox = document.getElementById("output-box");
+        outputBox.innerHTML = "";
+
+        // Re-create the placeholder as it might have been removed
+        const placeholder = document.createElement("div");
+        placeholder.id = "output-placeholder";
+        placeholder.className =
+          "absolute inset-0 flex items-center justify-center text-slate-300 font-bold text-sm pointer-events-none";
+        placeholder.innerText = "ここに結果が出ます";
+        placeholder.style.display = "none";
+        outputBox.appendChild(placeholder);
+
+        outputBox.className =
+          "w-full min-h-[300px] bg-slate-50 border-2 border-slate-200 rounded-xl p-3 flex flex-col gap-2 relative transition-colors duration-300";
+
+        ["map", "filter", "find"].forEach((type) => {
+          document.getElementById(`code-box-${type}`).className =
+            "bg-white border-2 border-slate-200 rounded-xl p-5 transition-all duration-300";
+        });
+
+        for (let i = 0; i < 3; i++) {
+          document
+            .getElementById(`src-${i}`)
+            .classList.remove("opacity-30", "scale-95");
+        }
+      }
+
+      // ==========================================
+      // 1. map のアニメーション
+      // ==========================================
+      async function runMap(btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        document
+          .getElementById("code-box-map")
+          .classList.add("code-active", "code-active-map");
+        document
+          .getElementById("output-box")
+          .classList.add("bg-blue-50/50", "border-blue-200");
+
+        const processor = document.getElementById("processor");
+        processor.innerHTML =
+          '<div class="text-xs font-bold text-blue-500 mb-1 tracking-widest uppercase">map</div><div class="code-font text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 font-bold shadow-sm">todo => todo.title</div>';
+        processor.className =
+          "w-full h-32 bg-blue-100/50 border-4 border-blue-400 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 relative z-10 shadow-lg";
+
+        const outBox = document.getElementById("output-box");
+
+        for (let i = 0; i < todos.length; i++) {
+          const srcEl = document.getElementById(`src-${i}`);
+          srcEl.classList.add("opacity-30", "scale-95");
+
+          const packet = createPacket(
+            getTodoHTML(todos[i]),
+            "border-slate-300",
+          );
+
+          // src -> processor
+          await moveTo(packet, srcEl, processor, 600);
+
+          // 変換処理
+          processor.style.backgroundColor = "#bfdbfe"; // blue-200
+          await sleep(200);
+
+          packet.innerHTML = `"${todos[i].title}"`;
+          packet.className =
+            "absolute z-50 px-4 py-3 rounded-lg shadow-xl border-2 text-sm font-bold code-font bg-blue-50 border-blue-500 text-blue-700 text-center w-auto";
+
+          await sleep(400);
+          processor.style.backgroundColor = "";
+
+          // processor -> output
+          const dummyDest = document.createElement("div");
+          dummyDest.className = "h-0 opacity-0 overflow-hidden"; // スペーサー
+          outBox.appendChild(dummyDest);
+
+          await moveTo(packet, processor, dummyDest, 600);
+
+          // 到着
+          dummyDest.className =
+            "bg-white border-2 border-blue-400 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold code-font shadow-sm expand-item flex items-center w-full";
+          dummyDest.innerHTML = `<span class="truncate">"${todos[i].title}"</span>`;
+          packet.remove();
+
+          srcEl.classList.remove("opacity-30", "scale-95");
+        }
+
+        // 完了演出
+        const resultMsg = document.createElement("div");
+        resultMsg.className =
+          "text-blue-600 text-[11px] font-bold text-center mt-2 bg-blue-100 py-1 rounded";
+        resultMsg.innerText = `Array(3)`;
+        outBox.insertBefore(resultMsg, outBox.firstChild);
+
+        isAnimating = false;
+      }
+
+      // ==========================================
+      // 2. filter のアニメーション
+      // ==========================================
+      async function runFilter(btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        document
+          .getElementById("code-box-filter")
+          .classList.add("code-active", "code-active-filter");
+        document
+          .getElementById("output-box")
+          .classList.add("bg-emerald-50/50", "border-emerald-200");
+
+        const processor = document.getElementById("processor");
+        processor.innerHTML =
+          '<div class="text-xs font-bold text-emerald-500 mb-1 tracking-widest uppercase">filter</div><div class="code-font text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 font-bold shadow-sm">todo => !todo.done</div>';
+        processor.className =
+          "w-full h-32 bg-emerald-100/50 border-4 border-emerald-400 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 relative z-10 shadow-lg";
+
+        const outBox = document.getElementById("output-box");
+        let resultCount = 0;
+
+        for (let i = 0; i < todos.length; i++) {
+          const srcEl = document.getElementById(`src-${i}`);
+          srcEl.classList.add("opacity-30", "scale-95");
+
+          const packet = createPacket(
+            getTodoHTML(todos[i]),
+            "border-slate-300",
+          );
+
+          // src -> processor
+          await moveTo(packet, srcEl, processor, 600);
+
+          processor.style.backgroundColor = "#a7f3d0"; // emerald-200
+          await sleep(300);
+
+          if (!todos[i].done) {
+            // 条件クリア (抽出)
+            packet.classList.replace("border-slate-300", "border-emerald-500");
+            packet.style.boxShadow = "0 0 15px rgba(16, 185, 129, 0.4)";
+            await sleep(300);
+            processor.style.backgroundColor = "";
+
+            const dummyDest = document.createElement("div");
+            dummyDest.className = "h-0 opacity-0 overflow-hidden";
+            outBox.appendChild(dummyDest);
+
+            await moveTo(packet, processor, dummyDest, 600);
+
+            dummyDest.className =
+              "bg-white border-2 border-emerald-400 p-2 rounded-xl shadow-sm expand-item w-full relative";
+            dummyDest.style.height = "auto"; // HTMLを入れるため
+            dummyDest.innerHTML = getTodoHTML(todos[i]);
+            packet.remove();
+            resultCount++;
+          } else {
+            // 条件外 (破棄)
+            packet.classList.replace("border-slate-300", "border-red-400");
+            packet.classList.add("bg-red-50");
+            packet.innerHTML =
+              `<div class="absolute inset-0 flex items-center justify-center text-red-500 text-4xl font-black bg-red-50/80 rounded-lg"><i class="fa-solid fa-xmark"></i></div>` +
+              packet.innerHTML;
+            await sleep(300);
+            processor.style.backgroundColor = "";
+
+            await moveDownAndVanish(packet, 500);
+            packet.remove();
+          }
+          srcEl.classList.remove("opacity-30", "scale-95");
+        }
+
+        const resultMsg = document.createElement("div");
+        resultMsg.className =
+          "text-emerald-600 text-[11px] font-bold text-center mt-2 bg-emerald-100 py-1 rounded";
+        resultMsg.innerText = `Array(${resultCount})`;
+        outBox.insertBefore(resultMsg, outBox.firstChild);
+
+        isAnimating = false;
+      }
+
+      // ==========================================
+      // 3. find のアニメーション
+      // ==========================================
+      async function runFind(targetId, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        document
+          .getElementById("code-box-find")
+          .classList.add("code-active", "code-active-find");
+        document
+          .getElementById("output-box")
+          .classList.add("bg-purple-50/50", "border-purple-200");
+
+        const processor = document.getElementById("processor");
+        processor.innerHTML = `<div class="text-xs font-bold text-purple-500 mb-1 tracking-widest uppercase">find</div><div class="code-font text-purple-700 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200 font-bold shadow-sm">todo => todo.id === ${targetId}</div>`;
+        processor.className =
+          "w-full h-32 bg-purple-100/50 border-4 border-purple-400 rounded-2xl flex flex-col items-center justify-center transition-all duration-300 relative z-10 shadow-lg";
+
+        const outBox = document.getElementById("output-box");
+        let found = false;
+
+        for (let i = 0; i < todos.length; i++) {
+          const srcEl = document.getElementById(`src-${i}`);
+          srcEl.classList.add("opacity-30", "scale-95");
+
+          const packet = createPacket(
+            getTodoHTML(todos[i]),
+            "border-slate-300",
+          );
+
+          // src -> processor
+          await moveTo(packet, srcEl, processor, 600);
+
+          processor.style.backgroundColor = "#e9d5ff"; // purple-200
+          await sleep(300);
+
+          if (todos[i].id === targetId) {
+            // 見つかった！ (ループ終了)
+            packet.classList.replace("border-slate-300", "border-purple-500");
+            packet.classList.add("bg-purple-50");
+            packet.style.boxShadow = "0 0 20px rgba(168, 85, 247, 0.5)";
+            await sleep(400);
+            processor.style.backgroundColor = "";
+
+            const dummyDest = document.createElement("div");
+            dummyDest.className = "h-0 opacity-0 overflow-hidden";
+            outBox.appendChild(dummyDest);
+
+            await moveTo(packet, processor, dummyDest, 600);
+
+            dummyDest.className =
+              "bg-white border-2 border-purple-500 p-2 rounded-xl shadow-md expand-item w-full";
+            dummyDest.style.height = "auto";
+            dummyDest.innerHTML = getTodoHTML(todos[i]);
+            packet.remove();
+            srcEl.classList.remove("opacity-30", "scale-95");
+
+            // 発見したのでここで処理打ち切り
+            found = true;
+
+            const msg = document.createElement("div");
+            msg.className =
+              "text-purple-600 text-[11px] font-bold text-center mt-3 bg-purple-100 py-1.5 rounded flex items-center justify-center gap-1";
+            msg.innerHTML =
+              '<i class="fa-solid fa-flag-checkered"></i> 発見したため、以降は探しません (単一のオブジェクトを返却)';
+            outBox.appendChild(msg);
+            break;
+          } else {
+            // 違うので破棄
+            packet.classList.replace("border-slate-300", "border-slate-400");
+            packet.classList.add("opacity-50", "bg-slate-100");
+            await sleep(200);
+            processor.style.backgroundColor = "";
+
+            await moveDownAndVanish(packet, 400);
+            packet.remove();
+          }
+          srcEl.classList.remove("opacity-30", "scale-95");
+        }
+
+        // 最後まで見つからなかった場合 (id: 99)
+        if (!found) {
+          const dummyDest = document.createElement("div");
+          dummyDest.className =
+            "bg-white border-2 border-slate-300 text-slate-500 p-4 rounded-xl shadow-sm w-full text-center code-font font-bold text-lg";
+          dummyDest.innerText = "undefined";
+          outBox.appendChild(dummyDest);
+
+          const msg = document.createElement("div");
+          msg.className =
+            "text-slate-500 text-[11px] font-bold text-center mt-3 bg-slate-200 py-1.5 rounded flex items-center justify-center gap-1";
+          msg.innerHTML =
+            '<i class="fa-solid fa-magnifying-glass-minus"></i> 全て探しても無かったため undefined を返却';
+          outBox.appendChild(msg);
+        }
+
+        isAnimating = false;
+      }
+    </script>
   </body>
 </html>

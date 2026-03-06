@@ -3,54 +3,779 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: インターフェース</title>
+    <title>TypeScript 図解: インターフェースと継承</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 継承時のコピー移動アニメーション */
+      @keyframes copy-slide {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(calc(var(--tx) / 2), -30px) scale(1.05);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 0;
+        }
+      }
+      .copy-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        width: fit-content;
+        height: fit-content;
+      }
+      .copying {
+        animation: copy-slide 2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* 合体（追加）時のフラッシュ */
+      @keyframes pop-flash {
+        0% {
+          transform: scale(0.9);
+          background-color: #f8fafc;
+        }
+        50% {
+          transform: scale(1.05);
+          background-color: #dcfce7;
+          border-color: #10b981;
+        }
+        100% {
+          transform: scale(1);
+          background-color: #ffffff;
+        }
+      }
+      .pop-active {
+        animation: pop-flash 1s ease-out forwards;
+      }
+
+      /* 関数の飛行アニメーション */
+      @keyframes fly-to-func {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(
+              calc(var(--tx) * 0.4),
+              calc(var(--ty) * 0.4 - 20px)
+            )
+            scale(1.05);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0.8);
+          opacity: 0;
+        }
+      }
+      .func-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        background-color: white;
+        border: 2px solid #f97316; /* orange-500 */
+        border-radius: 0.75rem;
+        padding: 0.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        width: fit-content;
+        height: fit-content;
+      }
+      .flying {
+        animation: fly-to-func 2.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* ゲートチェック成功時の光 */
+      @keyframes check-glow {
+        0% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #475569;
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+          border-color: #10b981;
+          background-color: #ecfdf5;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #475569;
+        }
+      }
+      .check-active {
+        animation: check-glow 1.5s ease-out forwards;
+      }
+
+      /* 余分なプロパティのハイライト（無視される表現） */
+      @keyframes ignore-glow {
+        0% {
+          background-color: transparent;
+          opacity: 1;
+        }
+        50% {
+          background-color: #f1f5f9;
+          opacity: 0.5;
+        }
+        100% {
+          background-color: transparent;
+          opacity: 1;
+        }
+      }
+      .ignore-active {
+        animation: ignore-glow 1.5s ease-out forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-orange-100 text-orange-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-orange-200"
+        >
+          TypeScript 型の拡張と互換性
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >インターフェース</span
+          基礎を引き継ぎ、拡張する：<br class="md:hidden" /><span
+            class="text-orange-600"
+            >interface と extends</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          interface でオブジェクトの契約を定義し、拡張可能な型を作りましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">extends</code>
+          を使うと、既存の型のプロパティを丸ごと引き継いで（コピーして）、新しいプロパティを追加した「拡張版の型」を簡単に作ることができます。<br
+            class="hidden md:block"
+          />さらに、関数に渡すときは「必要なプロパティさえ持っていれば、余分なものがあっても受け入れる」という柔軟な性質を持ちます。
         </p>
       </header>
 
+      <!-- 1. 継承 (extends) のシミュレーション -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative z-10"
+      >
+        <div
+          class="flex justify-between items-center border-b-2 border-slate-100 pb-3 mb-8"
+        >
+          <h2 class="text-2xl font-bold flex items-center gap-2 text-slate-700">
+            <i class="fa-solid fa-clone text-emerald-500"></i> 1. extends
+            による「プロパティの引き継ぎ」
+          </h2>
+          <button
+            onclick="runExtends()"
+            id="btn-extends"
+            class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-all flex items-center gap-2 text-sm z-20 active:scale-95"
+          >
+            <i class="fa-solid fa-wand-magic-sparkles"></i> 継承シミュレーション
+          </button>
+        </div>
+
+        <div
+          class="flex flex-col md:flex-row gap-12 items-center justify-center relative"
+        >
+          <!-- ベース型 (Animal) -->
+          <div
+            id="base-interface"
+            class="w-full md:w-[40%] bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-5 relative shadow-sm"
+          >
+            <div
+              class="absolute -top-3 left-6 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm"
+            >
+              ベースの型 (基本セット)
+            </div>
+
+            <div class="code-font text-sm text-slate-700 mb-3 mt-1 font-bold">
+              <span class="text-blue-500">interface</span>
+              <span class="text-emerald-700">Animal</span> {
+            </div>
+
+            <div class="flex flex-col gap-2 pl-4 mb-2">
+              <div
+                id="prop-name"
+                class="bg-white border border-emerald-200 rounded p-2 flex justify-between shadow-sm"
+              >
+                <span class="code-font font-bold text-slate-700">name:</span>
+                <span class="code-font text-emerald-600">string</span>
+              </div>
+              <div
+                id="prop-sound"
+                class="bg-white border border-emerald-200 rounded p-2 flex justify-between shadow-sm"
+              >
+                <span class="code-font font-bold text-slate-700">sound:</span>
+                <span class="code-font text-emerald-600">string</span>
+              </div>
+            </div>
+            <div class="code-font text-sm text-slate-700 font-bold">}</div>
+          </div>
+
+          <!-- コピーのダミー要素 -->
+          <div
+            id="dummy-name"
+            class="copy-packet bg-white border border-emerald-300 rounded p-2 flex justify-between w-[200px]"
+          >
+            <span class="code-font font-bold text-slate-700">name:</span
+            ><span class="code-font text-emerald-600">string</span>
+          </div>
+          <div
+            id="dummy-sound"
+            class="copy-packet bg-white border border-emerald-300 rounded p-2 flex justify-between w-[200px]"
+          >
+            <span class="code-font font-bold text-slate-700">sound:</span
+            ><span class="code-font text-emerald-600">string</span>
+          </div>
+
+          <!-- 矢印 -->
+          <div class="hidden md:flex flex-col items-center text-slate-400">
+            <div
+              class="text-[10px] font-bold bg-slate-100 px-2 py-0.5 rounded-full mb-1"
+            >
+              extends
+            </div>
+            <i class="fa-solid fa-arrow-right-long text-3xl"></i>
+          </div>
+
+          <!-- 拡張型 (Dog) -->
+          <div
+            id="extended-interface"
+            class="w-full md:w-[40%] bg-orange-50 border-2 border-orange-300 rounded-2xl p-5 relative shadow-sm"
+          >
+            <div
+              class="absolute -top-3 left-6 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm"
+            >
+              拡張された型 (追加セット)
+            </div>
+
+            <div class="code-font text-sm text-slate-700 mb-3 mt-1 font-bold">
+              <span class="text-blue-500">interface</span>
+              <span class="text-orange-600">Dog</span>
+              <span class="text-purple-500">extends</span>
+              <span class="text-emerald-600">Animal</span> {
+            </div>
+
+            <div class="flex flex-col gap-2 pl-4 mb-2">
+              <!-- 受け継いだプロパティ (最初は透明度50%で、アニメーションで実体化) -->
+              <div
+                id="target-name"
+                class="bg-white/50 border border-slate-200 border-dashed rounded p-2 flex justify-between opacity-50 transition-all"
+              >
+                <span class="code-font font-bold text-slate-400">name:</span>
+                <span class="code-font text-slate-400">string</span>
+              </div>
+              <div
+                id="target-sound"
+                class="bg-white/50 border border-slate-200 border-dashed rounded p-2 flex justify-between opacity-50 transition-all"
+              >
+                <span class="code-font font-bold text-slate-400">sound:</span>
+                <span class="code-font text-slate-400">string</span>
+              </div>
+
+              <!-- 独自プロパティ -->
+              <div
+                class="bg-white border-2 border-orange-300 rounded p-2 flex justify-between shadow-sm relative mt-2"
+              >
+                <div
+                  class="absolute -left-6 top-1/2 transform -translate-y-1/2 text-orange-500 text-[10px] font-bold"
+                >
+                  <i class="fa-solid fa-plus"></i> 追加
+                </div>
+                <span class="code-font font-bold text-slate-700">breed:</span>
+                <span class="code-font text-orange-600">string</span>
+              </div>
+            </div>
+            <div class="code-font text-sm text-slate-700 font-bold">}</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 型の互換性 (Structural Typing) -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 relative z-0"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-right-to-bracket text-indigo-500"></i> 2.
+          関数に渡すときの「型の互換性」チェック
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div
+          class="flex flex-col lg:flex-row gap-12 items-center justify-center relative"
+        >
+          <!-- 引数として渡す変数 (Dog) -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-4">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              Dog 型のデータを関数に渡す
+            </div>
+
+            <div
+              class="bg-slate-50 border-2 border-slate-200 rounded-xl p-4 shadow-sm relative"
+            >
+              <div
+                class="code-font text-[13px] text-slate-700 leading-relaxed mb-4"
+              >
+                <span class="text-blue-500">const</span> dog:
+                <span class="text-orange-500 font-bold">Dog</span> = {<br />
+                &nbsp;&nbsp;name:
+                <span class="text-amber-600">"Pochi"</span>,<br />
+                &nbsp;&nbsp;sound:
+                <span class="text-amber-600">"Woof"</span>,<br />
+                &nbsp;&nbsp;breed:
+                <span class="text-amber-600">"Shiba"</span>,<br />
+                };
+              </div>
+
+              <button
+                onclick="runFunctionCall(this)"
+                class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all flex justify-center items-center gap-2 group active:scale-95 z-20 relative"
+              >
+                <span class="code-font">describeAnimal(dog)</span>
+                <i
+                  class="fa-solid fa-paper-plane group-hover:translate-x-1 transition-transform"
+                ></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 飛行するデータのダミー -->
+          <div
+            id="func-dummy"
+            class="func-packet flex flex-col gap-1 items-center"
+          >
+            <div class="text-[10px] font-bold text-orange-600 mb-1">
+              dog (Dog型)
+            </div>
+            <div
+              class="code-font text-[10px] text-slate-700 bg-orange-50 p-1.5 rounded flex flex-col gap-1 w-full border border-orange-200"
+            >
+              <div class="flex justify-between">
+                <span class="font-bold">name:</span>
+                <span class="text-amber-600">"Pochi"</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="font-bold">sound:</span>
+                <span class="text-amber-600">"Woof"</span>
+              </div>
+              <div
+                class="flex justify-between border-t border-orange-200 pt-1 mt-1"
+              >
+                <span class="font-bold">breed:</span>
+                <span class="text-amber-600">"Shiba"</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 関数側の受け入れ (Animal) -->
+          <div class="w-full lg:w-[50%] flex flex-col items-center">
+            <div
+              id="func-machine"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 relative z-10 shadow-xl transition-all duration-300"
+            >
+              <div
+                class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow-md"
+              >
+                function describeAnimal
+              </div>
+
+              <!-- 引数の型ゲート (Animalを要求) -->
+              <div
+                class="bg-slate-900 rounded-xl p-4 border border-slate-600 mb-4 relative overflow-hidden"
+              >
+                <div
+                  class="text-[10px] text-slate-400 mb-2 font-bold flex justify-between items-center"
+                >
+                  <span>引数 animal の要求ゲート</span>
+                  <span
+                    class="bg-emerald-500/20 text-emerald-400 border border-emerald-500 px-2 py-0.5 rounded code-font"
+                    >Animal 型</span
+                  >
+                </div>
+
+                <div class="flex flex-col gap-2 relative z-10">
+                  <div
+                    id="check-name"
+                    class="border-2 border-slate-600 bg-slate-800 rounded p-2 flex justify-between items-center transition-all"
+                  >
+                    <span class="code-font text-xs font-bold text-slate-300"
+                      >name (必須)</span
+                    >
+                    <i
+                      class="fa-solid fa-check text-emerald-500 opacity-0 transition-opacity"
+                      id="icon-name"
+                    ></i>
+                  </div>
+                  <div
+                    id="check-sound"
+                    class="border-2 border-slate-600 bg-slate-800 rounded p-2 flex justify-between items-center transition-all"
+                  >
+                    <span class="code-font text-xs font-bold text-slate-300"
+                      >sound (必須)</span
+                    >
+                    <i
+                      class="fa-solid fa-check text-emerald-500 opacity-0 transition-opacity"
+                      id="icon-sound"
+                    ></i>
+                  </div>
+                  <!-- breedはゲートには存在しないので、スルー（無視）されるという視覚表現 -->
+                  <div
+                    id="check-ignore"
+                    class="border border-slate-700 border-dashed bg-transparent rounded p-1 flex justify-between items-center transition-all opacity-0 mt-1 h-0 overflow-hidden"
+                  >
+                    <span class="code-font text-[10px] text-slate-500"
+                      >breed (要求していないので無視)</span
+                    >
+                    <i class="fa-solid fa-forward text-slate-500"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 関数の処理 -->
+              <div
+                class="code-font text-[13px] text-slate-300 pl-2 leading-relaxed"
+              >
+                <span class="text-purple-400">return</span> animal.name +
+                <span class="text-amber-300">" says "</span> + animal.sound;
+              </div>
+            </div>
+
+            <!-- 出力結果 -->
+            <div
+              class="w-8 h-8 border-l-2 border-r-2 border-slate-300 bg-slate-100/50"
+            ></div>
+
+            <div
+              id="func-output"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl w-full max-w-sm p-4 text-center shadow-sm transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                戻り値 (string)
+              </div>
+              <div
+                id="result-val"
+                class="code-font text-lg font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 解説メッセージ -->
+        <div
+          class="mt-8 bg-indigo-50 border-l-4 border-indigo-500 p-5 rounded-r-lg shadow-sm"
+        >
+          <h3
+            class="font-bold text-indigo-800 mb-2 flex items-center gap-2 text-sm"
+          >
+            <i class="fa-solid fa-lightbulb text-amber-500"></i>
+            TypeScriptの「構造的型付け (Duck Typing)」
+          </h3>
+          <p class="text-sm text-indigo-900 leading-relaxed">
+            関数
+            <code class="bg-indigo-100 px-1 rounded code-font font-bold"
+              >describeAnimal</code
+            >
+            は
+            <code class="bg-indigo-100 px-1 rounded code-font font-bold"
+              >Animal</code
+            >
+            型を要求していますが、そこに
+            <code class="bg-indigo-100 px-1 rounded code-font font-bold"
+              >Dog</code
+            >
+            型を渡してもエラーになりません。<br />
+            なぜなら、TypeScriptは「名前がAnimalかどうか」ではなく、<strong>「中身がAnimalに必要なプロパティ（nameとsound）を全て持っているか？」</strong>という<strong>構造</strong>だけをチェックするからです。<code
+              class="bg-indigo-100 px-1 rounded code-font font-bold"
+              >breed</code
+            >
+            という余分なプロパティが含まれていても、「必要なものは全部あるからヨシ！」として安全に受け入れてくれます。
+          </p>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimatingExtends = false;
+      let isAnimatingFunc = false;
+
+      // --- セクション1: extends のアニメーション ---
+      function runExtends() {
+        if (isAnimatingExtends) return;
+        isAnimatingExtends = true;
+
+        const btn = document.getElementById("btn-extends");
+        const propName = document.getElementById("prop-name");
+        const propSound = document.getElementById("prop-sound");
+        const targetName = document.getElementById("target-name");
+        const targetSound = document.getElementById("target-sound");
+        const dummyName = document.getElementById("dummy-name");
+        const dummySound = document.getElementById("dummy-sound");
+
+        // 1. コピー元のハイライト
+        propName.style.boxShadow = "0 0 10px rgba(16, 185, 129, 0.5)";
+        propSound.style.boxShadow = "0 0 10px rgba(16, 185, 129, 0.5)";
+        propName.style.borderColor = "#10b981";
+        propSound.style.borderColor = "#10b981";
+
+        // 2. ダミーの配置とアニメーション設定
+        const rectNameStart = propName.getBoundingClientRect();
+        const rectNameEnd = targetName.getBoundingClientRect();
+        const rectSoundStart = propSound.getBoundingClientRect();
+        const rectSoundEnd = targetSound.getBoundingClientRect();
+        const containerRect = dummyName.parentElement.getBoundingClientRect();
+
+        dummyName.style.top = `${rectNameStart.top - containerRect.top}px`;
+        dummyName.style.left = `${rectNameStart.left - containerRect.left}px`;
+        dummyName.style.setProperty(
+          "--tx",
+          `${rectNameEnd.left - rectNameStart.left}px`,
+        );
+        dummyName.style.setProperty(
+          "--ty",
+          `${rectNameEnd.top - rectNameStart.top}px`,
+        );
+
+        dummySound.style.top = `${rectSoundStart.top - containerRect.top}px`;
+        dummySound.style.left = `${rectSoundStart.left - containerRect.left}px`;
+        dummySound.style.setProperty(
+          "--tx",
+          `${rectSoundEnd.left - rectSoundStart.left}px`,
+        );
+        dummySound.style.setProperty(
+          "--ty",
+          `${rectSoundEnd.top - rectSoundStart.top}px`,
+        );
+
+        dummyName.style.opacity = "1";
+        dummySound.style.opacity = "1";
+
+        setTimeout(() => {
+          dummyName.classList.add("copying");
+
+          setTimeout(() => {
+            dummySound.classList.add("copying");
+
+            // 3. ターゲットの実体化とフラッシュ
+            setTimeout(() => {
+              targetName.classList.remove(
+                "opacity-50",
+                "border-dashed",
+                "bg-white/50",
+                "border-slate-200",
+              );
+              targetName.classList.add(
+                "opacity-100",
+                "border-emerald-300",
+                "bg-white",
+                "pop-active",
+              );
+              targetName.innerHTML = `<span class="code-font font-bold text-slate-700">name:</span><span class="code-font text-emerald-600">string</span>`;
+
+              setTimeout(() => {
+                targetSound.classList.remove(
+                  "opacity-50",
+                  "border-dashed",
+                  "bg-white/50",
+                  "border-slate-200",
+                );
+                targetSound.classList.add(
+                  "opacity-100",
+                  "border-emerald-300",
+                  "bg-white",
+                  "pop-active",
+                );
+                targetSound.innerHTML = `<span class="code-font font-bold text-slate-700">sound:</span><span class="code-font text-emerald-600">string</span>`;
+
+                // リセット
+                setTimeout(() => {
+                  propName.style.boxShadow = "";
+                  propSound.style.boxShadow = "";
+                  propName.style.borderColor = "";
+                  propSound.style.borderColor = "";
+
+                  dummyName.classList.remove("copying");
+                  dummySound.classList.remove("copying");
+                  dummyName.style.opacity = "0";
+                  dummySound.style.opacity = "0";
+
+                  targetName.classList.remove("pop-active");
+                  targetSound.classList.remove("pop-active");
+
+                  // 初期状態に戻す（再度試せるように）
+                  setTimeout(() => {
+                    targetName.classList.remove(
+                      "opacity-100",
+                      "border-emerald-300",
+                      "bg-white",
+                    );
+                    targetName.classList.add(
+                      "opacity-50",
+                      "border-dashed",
+                      "bg-white/50",
+                      "border-slate-200",
+                    );
+                    targetName.innerHTML = `<span class="code-font font-bold text-slate-400">name:</span><span class="code-font text-slate-400">string</span>`;
+
+                    targetSound.classList.remove(
+                      "opacity-100",
+                      "border-emerald-300",
+                      "bg-white",
+                    );
+                    targetSound.classList.add(
+                      "opacity-50",
+                      "border-dashed",
+                      "bg-white/50",
+                      "border-slate-200",
+                    );
+                    targetSound.innerHTML = `<span class="code-font font-bold text-slate-400">sound:</span><span class="code-font text-slate-400">string</span>`;
+
+                    isAnimatingExtends = false;
+                  }, 4000);
+                }, 1500);
+              }, 500);
+            }, 1800);
+          }, 500);
+        }, 300);
+      }
+
+      // --- セクション2: 関数呼び出しのアニメーション ---
+      function runFunctionCall(btnEl) {
+        if (isAnimatingFunc) return;
+        isAnimatingFunc = true;
+
+        const dummy = document.getElementById("func-dummy");
+        const gateName = document.getElementById("check-name");
+        const gateSound = document.getElementById("check-sound");
+        const gateIgnore = document.getElementById("check-ignore");
+        const iconName = document.getElementById("icon-name");
+        const iconSound = document.getElementById("icon-sound");
+        const funcMachine = document.getElementById("func-machine");
+
+        const resultBox = document.getElementById("func-output");
+        const resultVal = document.getElementById("result-val");
+
+        // UIリセット
+        resultBox.classList.add("opacity-50");
+        resultBox.classList.remove("border-indigo-400", "bg-indigo-50");
+        resultVal.innerText = "---";
+        resultVal.className = "code-font text-lg font-bold text-slate-400";
+        gateIgnore.style.height = "0";
+        gateIgnore.style.opacity = "0";
+        gateIgnore.style.marginTop = "0";
+        gateIgnore.classList.remove("ignore-active");
+
+        // 1. 飛行アニメーションの設定
+        const btnRect = btnEl.getBoundingClientRect();
+        const gateRect = document
+          .getElementById("check-name")
+          .parentElement.getBoundingClientRect(); // ゲート全体
+        const containerRect = dummy.parentElement.getBoundingClientRect();
+
+        // パケットの開始位置をボタンの中央に設定
+        dummy.style.top = `${btnRect.top - containerRect.top + btnRect.height / 2 - dummy.offsetHeight / 2}px`;
+        dummy.style.left = `${btnRect.left - containerRect.left + btnRect.width / 2 - dummy.offsetWidth / 2}px`;
+
+        const tx =
+          gateRect.left +
+          gateRect.width / 2 -
+          (btnRect.left + btnRect.width / 2);
+        const ty = gateRect.top - (btnRect.top + btnRect.height / 2) - 20;
+
+        dummy.style.setProperty("--tx", `${tx}px`);
+        dummy.style.setProperty("--ty", `${ty}px`);
+
+        dummy.style.opacity = "1";
+        dummy.classList.add("flying");
+
+        // 2. ゲート到着時のチェックアニメーション
+        setTimeout(() => {
+          funcMachine.style.borderColor = "#6366f1";
+          funcMachine.style.boxShadow = "0 0 20px rgba(99, 102, 241, 0.4)";
+
+          // name のチェック
+          setTimeout(() => {
+            gateName.classList.add("check-active");
+            iconName.style.opacity = "1";
+
+            // sound のチェック
+            setTimeout(() => {
+              gateSound.classList.add("check-active");
+              iconSound.style.opacity = "1";
+
+              // breed の無視（余分なプロパティの表現）
+              setTimeout(() => {
+                gateIgnore.style.height = "auto";
+                gateIgnore.style.marginTop = "4px";
+                gateIgnore.style.opacity = "1";
+                gateIgnore.classList.add("ignore-active");
+
+                // 3. 出力
+                setTimeout(() => {
+                  resultBox.classList.remove("opacity-50");
+                  resultBox.classList.add("border-indigo-400", "bg-indigo-50");
+                  resultVal.innerText = '"Pochi says Woof"';
+                  resultVal.className =
+                    "code-font text-xl font-black text-indigo-600";
+
+                  // 完了・リセット
+                  setTimeout(() => {
+                    funcMachine.style.borderColor = "";
+                    funcMachine.style.boxShadow = "";
+                    gateName.classList.remove("check-active");
+                    gateSound.classList.remove("check-active");
+                    iconName.style.opacity = "0";
+                    iconSound.style.opacity = "0";
+                    dummy.classList.remove("flying");
+                    dummy.style.opacity = "0";
+
+                    setTimeout(() => {
+                      resultBox.classList.add("opacity-50");
+                      resultBox.classList.remove(
+                        "border-indigo-400",
+                        "bg-indigo-50",
+                      );
+                      resultVal.innerText = "---";
+                      resultVal.className =
+                        "code-font text-lg font-bold text-slate-400";
+                      gateIgnore.style.height = "0";
+                      gateIgnore.style.opacity = "0";
+                      gateIgnore.style.marginTop = "0";
+                      isAnimatingFunc = false;
+                    }, 2500);
+                  }, 2000);
+                }, 1200);
+              }, 800);
+            }, 800);
+          }, 600);
+        }, 2200); // 飛行が終わる頃
+      }
+    </script>
   </body>
 </html>

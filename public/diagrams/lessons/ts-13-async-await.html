@@ -3,54 +3,703 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: async/await</title>
+    <title>TypeScript 図解: async/await と try/catch</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 実行中の行のハイライト */
+      .exec-line {
+        transition:
+          background-color 0.3s,
+          border-color 0.3s,
+          transform 0.3s;
+        border-left: 4px solid transparent;
+      }
+      .exec-active {
+        background-color: #eff6ff; /* blue-50 */
+        border-left-color: #3b82f6; /* blue-500 */
+        transform: translateX(5px);
+      }
+      .exec-error {
+        background-color: #fef2f2; /* red-50 */
+        border-left-color: #ef4444; /* red-500 */
+        transform: translateX(5px);
+      }
+
+      /* 一時停止 (await) アニメーション */
+      @keyframes pulse-pause {
+        0% {
+          transform: scale(1);
+          opacity: 0.8;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 0.8;
+        }
+      }
+      .awaiting {
+        animation: pulse-pause 1s infinite;
+      }
+
+      /* プログレスバー (タイマー) */
+      .timer-bar {
+        width: 100%;
+        height: 6px;
+        background-color: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+        position: relative;
+      }
+      .timer-fill {
+        height: 100%;
+        width: 0%;
+        background-color: #8b5cf6; /* violet-500 */
+        transition: width linear;
+      }
+
+      /* データパケットの飛行 */
+      .data-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+        border-width: 2px;
+      }
+
+      /* エラーがスローされるアニメーション (放物線) */
+      @keyframes throw-error {
+        0% {
+          transform: translate(0, 0) scale(1) rotate(0deg);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(-30px, 80px) scale(1.1) rotate(-10deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-10px, 150px) scale(0.8) rotate(0deg);
+          opacity: 0;
+        }
+      }
+      .throwing {
+        animation: throw-error 0.8s cubic-bezier(0.55, 0.085, 0.68, 0.53)
+          forwards;
+      }
+
+      /* 成功データが返るアニメーション */
+      @keyframes return-data {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(-50px, -40px) scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 0;
+        }
+      }
+      .returning {
+        animation: return-data 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-blue-200"
+        >
+          モダンな非同期処理
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
+          処理を「一時停止」して待つ：<br class="md:hidden" /><span
+            class="text-blue-600"
             >async/await</span
           >
-          の図解
+          と <span class="text-rose-500">try/catch</span>
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          async/await で非同期処理を同期的に書く方法と型の関係を学びましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code
+            class="bg-slate-200 px-1 rounded code-font text-blue-600 font-bold"
+            >await</code
+          >
+          を使うと、Promiseの完了を「その行で一時停止して」待つことができます。結果が返ってきたら次の行へ進み、エラー（<code
+            class="bg-slate-200 px-1 rounded code-font text-rose-500 font-bold"
+            >throw</code
+          >）が起きれば
+          <code
+            class="bg-slate-200 px-1 rounded code-font text-rose-500 font-bold"
+            >catch</code
+          >
+          ブロックへ一気にジャンプします。同期処理のように上から下へ素直に読めるのが最大のメリットです。
         </p>
       </header>
 
+      <!-- メインのインタラクティブエリア -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 mb-10"
+      >
+        <!-- コントロールボタン -->
+        <div class="flex justify-center gap-4 mb-8">
+          <button
+            onclick="runSimulation(1)"
+            id="btn-success"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all flex items-center gap-2 group relative"
+          >
+            <i class="fa-solid fa-play"></i> 正常なID(1) で実行
+          </button>
+
+          <button
+            onclick="runSimulation(-1)"
+            id="btn-error"
+            class="bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all flex items-center gap-2 group relative"
+          >
+            <i class="fa-solid fa-bolt"></i> 不正なID(-1) で実行
+          </button>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-8 items-stretch relative">
+          <!-- 飛行用パケットのダミー -->
+          <div
+            id="fly-packet"
+            class="data-packet bg-white rounded-lg p-2 text-sm text-center"
+          ></div>
+
+          <!-- 左側：呼び出し側 (main関数) -->
+          <div class="w-full lg:w-1/2 flex flex-col relative z-10">
+            <div
+              class="text-sm font-bold text-slate-500 mb-2 flex items-center gap-2"
+            >
+              <i class="fa-regular fa-file-code"></i> 呼び出し側 (main)
+            </div>
+
+            <div
+              class="bg-slate-800 text-white rounded-xl p-4 shadow-inner code-font text-[13px] leading-relaxed border-2 border-slate-700 relative"
+            >
+              <div class="text-blue-400 font-bold mb-2">
+                async <span class="text-purple-400">function</span> main() {
+              </div>
+
+              <!-- try ブロック -->
+              <div class="pl-4 border-l-2 border-slate-600">
+                <div class="text-rose-400 font-bold mb-1">try {</div>
+
+                <!-- await 行 -->
+                <div
+                  id="line-await"
+                  class="exec-line pl-4 py-1 rounded relative flex items-center"
+                >
+                  <div>
+                    <span class="text-blue-400">const</span> user =
+                    <span
+                      class="bg-blue-900/50 text-blue-300 px-1 rounded font-bold border border-blue-500"
+                      >await</span
+                    >
+                    fetchUser(<span id="arg-id" class="text-amber-300">1</span
+                    >);
+                  </div>
+                  <!-- 一時停止アイコン -->
+                  <div
+                    id="pause-icon"
+                    class="absolute right-4 text-amber-400 opacity-0 transition-opacity flex items-center gap-1 bg-amber-900/50 px-2 py-0.5 rounded text-[10px]"
+                  >
+                    <i class="fa-solid fa-pause"></i> 待機中...
+                  </div>
+                </div>
+
+                <!-- console.log 行 -->
+                <div id="line-log" class="exec-line pl-4 py-1 rounded">
+                  console.log(<span class="text-slate-300">user.name</span>);
+                  <span class="text-slate-500 text-[10px]"
+                    >// 完了後に実行される</span
+                  >
+                </div>
+
+                <div class="text-rose-400 font-bold mt-1">}</div>
+              </div>
+
+              <!-- catch ブロック -->
+              <div class="pl-4 border-l-2 border-slate-600 mt-1">
+                <div id="line-catch-start" class="exec-line py-1 rounded pl-1">
+                  <span class="text-rose-400 font-bold">catch</span> (<span
+                    class="text-slate-300"
+                    >error</span
+                  >) {
+                </div>
+                <div
+                  id="line-catch-log"
+                  class="exec-line pl-4 py-1 rounded text-slate-400 transition-colors"
+                >
+                  console.error(<span class="text-slate-300">error.message</span
+                  >);
+                </div>
+                <div class="text-rose-400 font-bold">}</div>
+              </div>
+
+              <div class="text-blue-400 font-bold mt-2">}</div>
+            </div>
+
+            <!-- コンソール出力 -->
+            <div
+              id="console-box"
+              class="mt-4 w-full bg-slate-900 border border-slate-700 rounded-xl p-3 font-mono text-sm text-slate-300 shadow-inner relative transition-colors duration-300 h-20"
+            >
+              <div
+                class="text-slate-500 text-[10px] absolute top-1 right-2 font-sans font-bold"
+              >
+                Console
+              </div>
+              <div class="flex items-start gap-2 mt-2">
+                <span class="text-slate-500">></span>
+                <span id="console-output" class="break-all font-bold"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 矢印 -->
+          <div
+            class="hidden lg:flex flex-col justify-center items-center text-slate-300 pt-8"
+          >
+            <div class="text-[10px] mb-1 font-bold">呼び出し</div>
+            <i class="fa-solid fa-arrow-right-long text-xl mb-4"></i>
+            <i class="fa-solid fa-arrow-left-long text-xl"></i>
+            <div class="text-[10px] mt-1 font-bold">結果/エラー</div>
+          </div>
+
+          <!-- 右側：非同期関数 (fetchUser) -->
+          <div class="w-full lg:w-1/2 flex flex-col relative z-0">
+            <div
+              class="text-sm font-bold text-slate-500 mb-2 flex items-center gap-2 justify-end"
+            >
+              非同期関数 (fetchUser)
+              <i class="fa-solid fa-cloud-arrow-down"></i>
+            </div>
+
+            <div
+              id="fetch-box"
+              class="bg-slate-50 border-2 border-slate-300 rounded-xl p-4 shadow-md code-font text-[13px] relative transition-colors duration-300"
+            >
+              <div
+                class="text-blue-600 font-bold border-b border-slate-200 pb-2 mb-3"
+              >
+                async function fetchUser(userId)
+              </div>
+
+              <!-- エラー判定 -->
+              <div id="fetch-err-check" class="exec-line p-2 rounded mb-2">
+                <span class="text-blue-600">if</span> (userId <= 0) {<br />
+                &nbsp;&nbsp;<span
+                  class="bg-rose-100 text-rose-600 font-bold px-1 rounded border border-rose-300"
+                  >throw</span
+                >
+                <span class="text-blue-600">new Error</span>(<span
+                  class="text-amber-600"
+                  >"Invalid user ID"</span
+                >);<br />
+                }
+              </div>
+
+              <!-- タイマー (非同期処理のモック) -->
+              <div
+                id="fetch-timer-block"
+                class="exec-line p-2 rounded mb-2 opacity-50 transition-opacity"
+              >
+                <div class="text-slate-500 text-[10px] mb-1">
+                  // API通信などの重い処理をシミュレート
+                </div>
+                <div><span class="text-blue-600">await</span> delay(1000);</div>
+
+                <!-- プログレスバー -->
+                <div class="w-full mt-2 mb-1 px-2">
+                  <div class="timer-bar">
+                    <div id="fetch-progress" class="timer-fill"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 正常返却 -->
+              <div
+                id="fetch-return"
+                class="exec-line p-2 rounded opacity-50 transition-opacity relative"
+              >
+                <span class="text-purple-600 font-bold">return</span> { id:
+                userId, name: <span class="text-amber-600">"Alice"</span> };
+
+                <!-- 返却値の発射地点 -->
+                <div
+                  id="return-anchor"
+                  class="absolute top-1/2 right-2 w-2 h-2"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 解説 -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-4 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-graduation-cap text-violet-500"></i>
+          ポイント解説
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-blue-50 border border-blue-200 p-4 rounded-xl">
+            <h3 class="font-bold text-blue-800 mb-2 text-sm">
+              <i class="fa-solid fa-pause"></i> await は「そこで待つ」
+            </h3>
+            <p class="text-xs text-blue-900 leading-relaxed">
+              <code class="bg-blue-100 px-1 rounded code-font font-bold"
+                >await</code
+              >
+              がついた非同期関数が呼ばれると、裏側で処理が終わるまで
+              <strong>その行でプログラムが一時停止</strong>
+              します。そのため、次の行の
+              <code class="bg-blue-100 px-1 rounded code-font"
+                >console.log</code
+              >
+              は、確実にデータ（user）が手に入ってから実行されます。<br />
+              （※ブラウザ全体の画面がフリーズするわけではありません）
+            </p>
+          </div>
+          <div class="bg-rose-50 border border-rose-200 p-4 rounded-xl">
+            <h3 class="font-bold text-rose-800 mb-2 text-sm">
+              <i class="fa-solid fa-meteor"></i> throw と try/catch
+            </h3>
+            <p class="text-xs text-rose-900 leading-relaxed">
+              非同期関数の中でエラーが発生し
+              <code class="bg-rose-100 px-1 rounded code-font font-bold"
+                >throw</code
+              >
+              されると、処理はそこから<strong
+                >呼び出し元の
+                <code class="bg-rose-100 px-1 rounded code-font">catch</code>
+                ブロックへワープ</strong
+              >します。そのため、<code
+                class="bg-rose-100 px-1 rounded code-font"
+                >try</code
+              >
+              ブロック内の残りの行（console.logなど）は実行されず、安全にエラー処理だけを行うことができます。
+            </p>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      function resetUI() {
+        // クラスのリセット
+        [
+          "line-await",
+          "line-log",
+          "line-catch-start",
+          "line-catch-log",
+        ].forEach((id) => {
+          document.getElementById(id).className =
+            "exec-line pl-4 py-1 rounded relative flex items-center text-white";
+        });
+        document
+          .getElementById("line-catch-log")
+          .classList.add("text-slate-400");
+
+        ["fetch-err-check", "fetch-timer-block", "fetch-return"].forEach(
+          (id) => {
+            document.getElementById(id).className =
+              "exec-line p-2 rounded mb-2";
+          },
+        );
+        document
+          .getElementById("fetch-timer-block")
+          .classList.add("opacity-50");
+        document.getElementById("fetch-return").classList.add("opacity-50");
+
+        document.getElementById("pause-icon").classList.remove("awaiting");
+        document.getElementById("pause-icon").style.opacity = "0";
+
+        const progress = document.getElementById("fetch-progress");
+        progress.style.transition = "none";
+        progress.style.width = "0%";
+
+        const conBox = document.getElementById("console-box");
+        conBox.className =
+          "mt-4 w-full bg-slate-900 border border-slate-700 rounded-xl p-3 font-mono text-sm text-slate-300 shadow-inner relative transition-colors duration-300 h-20";
+        document.getElementById("console-output").innerHTML = "";
+
+        const packet = document.getElementById("fly-packet");
+        packet.className =
+          "data-packet bg-white rounded-lg p-2 text-sm text-center";
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        packet.style.animation = "none";
+
+        document.getElementById("fetch-box").className =
+          "bg-slate-50 border-2 border-slate-300 rounded-xl p-4 shadow-md code-font text-[13px] relative transition-colors duration-300";
+      }
+
+      // パケットの位置を設定するヘルパー
+      function setPacketPos(packet, targetEl, offsetX = 0, offsetY = 0) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = packet.parentElement.getBoundingClientRect();
+
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+
+        packet.style.transform = `translate(${x}px, ${y}px)`;
+        return { x, y };
+      }
+
+      async function runSimulation(userId) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        const isSuccess = userId > 0;
+        document.getElementById("arg-id").innerText = userId;
+
+        const lineAwait = document.getElementById("line-await");
+        const lineLog = document.getElementById("line-log");
+        const lineCatchStart = document.getElementById("line-catch-start");
+        const lineCatchLog = document.getElementById("line-catch-log");
+
+        const fetchCheck = document.getElementById("fetch-err-check");
+        const fetchTimer = document.getElementById("fetch-timer-block");
+        const fetchReturn = document.getElementById("fetch-return");
+        const fetchBox = document.getElementById("fetch-box");
+
+        const packet = document.getElementById("fly-packet");
+
+        // 1. main 関数開始 -> await で一時停止
+        lineAwait.classList.add("exec-active");
+        await sleep(400);
+
+        // 一時停止マーク表示
+        const pauseIcon = document.getElementById("pause-icon");
+        pauseIcon.style.opacity = "1";
+        pauseIcon.classList.add("awaiting");
+
+        fetchBox.classList.replace("border-slate-300", "border-blue-400");
+        fetchBox.classList.replace("bg-slate-50", "bg-blue-50");
+
+        // 2. fetchUser 内部の処理開始
+        await sleep(600);
+        fetchCheck.classList.add(
+          "bg-white",
+          "shadow-sm",
+          "border",
+          "border-blue-200",
+        );
+
+        await sleep(600);
+
+        if (isSuccess) {
+          // ==========================
+          // 正常系ルート
+          // ==========================
+          fetchCheck.classList.remove(
+            "bg-white",
+            "shadow-sm",
+            "border",
+            "border-blue-200",
+          );
+
+          // タイマー処理
+          fetchTimer.classList.remove("opacity-50");
+          fetchTimer.classList.add(
+            "bg-white",
+            "shadow-sm",
+            "border",
+            "border-blue-200",
+          );
+
+          const progress = document.getElementById("fetch-progress");
+          progress.style.transition = "width 1s linear";
+          progress.style.width = "100%";
+
+          await sleep(1200); // タイマー完了を待つ
+
+          fetchTimer.classList.remove(
+            "bg-white",
+            "shadow-sm",
+            "border",
+            "border-blue-200",
+          );
+          fetchTimer.classList.add("opacity-50");
+
+          // return 処理
+          fetchReturn.classList.remove("opacity-50");
+          fetchReturn.classList.add(
+            "bg-emerald-50",
+            "shadow-sm",
+            "border",
+            "border-emerald-300",
+          );
+
+          // データが飛んで帰るアニメーション
+          packet.innerHTML = `<div class="code-font text-emerald-600 border border-emerald-300 bg-emerald-50 px-2 py-1 rounded">{ id: 1, name: "Alice" }</div>`;
+
+          // 初期位置 (return 箇所)
+          const anchor = document.getElementById("return-anchor");
+          setPacketPos(packet, anchor);
+          packet.style.opacity = "1";
+
+          // 終点 (await 箇所)
+          const awaitRect = lineAwait.getBoundingClientRect();
+          const containerRect = packet.parentElement.getBoundingClientRect();
+          const tx = awaitRect.left - containerRect.left + 150;
+          const ty = awaitRect.top - containerRect.top + 10;
+
+          packet.style.setProperty("--tx", `${tx}px`);
+          packet.style.setProperty("--ty", `${ty}px`);
+
+          // CSSアニメーション起動
+          void packet.offsetWidth;
+          packet.classList.add("returning");
+
+          await sleep(800); // 飛行完了
+
+          // 3. main関数再開 (await完了)
+          pauseIcon.style.opacity = "0";
+          pauseIcon.classList.remove("awaiting");
+          lineAwait.classList.remove("exec-active");
+
+          fetchBox.classList.replace("border-blue-400", "border-slate-300");
+          fetchBox.classList.replace("bg-blue-50", "bg-slate-50");
+          fetchReturn.classList.remove(
+            "bg-emerald-50",
+            "shadow-sm",
+            "border",
+            "border-emerald-300",
+          );
+          fetchReturn.classList.add("opacity-50");
+
+          // console.log 実行
+          lineLog.classList.add("exec-active");
+          await sleep(400);
+
+          const conOut = document.getElementById("console-output");
+          conOut.innerHTML = '<span class="text-emerald-400">"Alice"</span>';
+
+          await sleep(600);
+          lineLog.classList.remove("exec-active");
+        } else {
+          // ==========================
+          // 異常系(エラー)ルート
+          // ==========================
+          fetchCheck.classList.remove("border-blue-200");
+          fetchCheck.classList.add("border-rose-400", "bg-rose-50");
+
+          await sleep(400);
+
+          // エラーを throw する
+          packet.innerHTML = `<div class="code-font text-rose-600 border border-rose-400 bg-rose-50 px-2 py-1 rounded font-bold shadow-lg"><i class="fa-solid fa-bomb"></i> Error</div>`;
+
+          const checkRect = fetchCheck.getBoundingClientRect();
+          const containerRect = packet.parentElement.getBoundingClientRect();
+          const startX = checkRect.left - containerRect.left + 50;
+          const startY = checkRect.top - containerRect.top;
+
+          packet.style.transform = `translate(${startX}px, ${startY}px)`;
+          packet.style.opacity = "1";
+
+          // CSSアニメーション起動 (放物線を描いて落ちる)
+          void packet.offsetWidth;
+          packet.classList.add("throwing");
+
+          await sleep(600);
+
+          // 3. catch ブロックへワープ
+          pauseIcon.style.opacity = "0";
+          pauseIcon.classList.remove("awaiting");
+          lineAwait.classList.remove("exec-active");
+
+          fetchBox.classList.replace("border-blue-400", "border-slate-300");
+          fetchBox.classList.replace("bg-blue-50", "bg-slate-50");
+          fetchCheck.classList.remove(
+            "bg-white",
+            "shadow-sm",
+            "border",
+            "border-rose-400",
+            "bg-rose-50",
+          );
+
+          // tryをすっ飛ばしてcatchが光る
+          lineCatchStart.classList.add("exec-error");
+          await sleep(300);
+          lineCatchStart.classList.remove("exec-error");
+
+          lineCatchLog.classList.remove("text-slate-400");
+          lineCatchLog.classList.add("text-white", "exec-error");
+
+          await sleep(400);
+
+          // console.error 実行
+          const conBox = document.getElementById("console-box");
+          const conOut = document.getElementById("console-output");
+
+          conBox.classList.replace("bg-slate-900", "bg-rose-950");
+          conBox.classList.replace("border-slate-700", "border-rose-800");
+          conOut.innerHTML =
+            '<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation"></i> Invalid user ID</span>';
+
+          await sleep(600);
+          lineCatchLog.classList.add("text-slate-400");
+          lineCatchLog.classList.remove("text-white", "exec-error");
+        }
+
+        isAnimating = false;
+      }
+    </script>
   </body>
 </html>

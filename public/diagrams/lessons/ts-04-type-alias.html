@@ -3,54 +3,560 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: 型エイリアス</title>
+    <title>TypeScript 図解: 型エイリアス (Type Alias)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 設計図のブループリント風スタイル */
+      .blueprint {
+        background-color: #1e293b; /* slate-800 */
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size: 20px 20px;
+        color: #f8fafc;
+        border: 2px solid #3b82f6; /* blue-500 */
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+      }
+
+      /* データの飛行アニメーション */
+      @keyframes fly-packet {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(
+              calc(var(--tx) * 0.4),
+              calc(var(--ty) * 0.4 - 30px)
+            )
+            scale(1.1);
+          opacity: 1;
+        }
+        80% {
+          transform: translate(var(--tx), var(--ty)) scale(0.6);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0.5);
+          opacity: 0;
+        }
+      }
+
+      .action-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        border: 2px solid #3b82f6;
+        background-color: white;
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+      }
+
+      .flying {
+        animation: fly-packet 2.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* ゲート通過の成功アニメーション */
+      @keyframes gate-success {
+        0% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #cbd5e1;
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+          border-color: #10b981;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #cbd5e1;
+        }
+      }
+      .gate-active {
+        animation: gate-success 1.5s ease-out;
+        border-color: #10b981 !important;
+        background-color: #ecfdf5 !important;
+      }
+
+      /* 値の抽出ハイライト */
+      @keyframes extract-glow {
+        0% {
+          background-color: transparent;
+        }
+        50% {
+          background-color: #fef08a;
+          transform: scale(1.1);
+        }
+        100% {
+          background-color: transparent;
+        }
+      }
+      .extract-active {
+        animation: extract-glow 1.5s ease-in-out;
+        color: #b45309 !important; /* amber-700 */
+        font-weight: bold;
+      }
+
+      /* 接続線のアニメーション */
+      @keyframes flow-line-anim {
+        0% {
+          background-position: 0 0;
+        }
+        100% {
+          background-position: 20px 0;
+        }
+      }
+      .reference-line {
+        position: absolute;
+        border: 2px dashed #94a3b8;
+        z-index: 0;
+      }
+      .reference-line.active {
+        border-color: #3b82f6;
+        background-image: linear-gradient(90deg, #3b82f6 50%, transparent 50%);
+        background-size: 20px 2px;
+        animation: flow-line-anim 2s linear infinite;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-blue-200"
+        >
+          TypeScript コード整理術
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >型エイリアス</span
+          型に名前をつけて使い回す：<br class="md:hidden" /><span
+            class="text-blue-600"
+            >型エイリアス (Type Alias)</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          type キーワードで型に名前を付けて、再利用しやすくしましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font"
+            >type 名前 = { ... }</code
+          >
+          と定義することで、オブジェクトの構造を「共通の設計図」として登録できます。何度も同じ型を書く手間が省け、コードが圧倒的に読みやすくなります。
         </p>
       </header>
 
+      <!-- インタラクティブ・シミュレーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative z-10"
+      >
+        <!-- 操作ボタン -->
+        <div class="flex justify-center mb-12">
+          <button
+            onclick="runSimulation(this)"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all flex items-center gap-2 group active:scale-95 z-20 relative"
+          >
+            <i
+              class="fa-solid fa-play group-hover:text-blue-200 transition-colors"
+            ></i>
+            シミュレーションを実行する
+          </button>
+        </div>
+
+        <!-- アプリの構造図 -->
+        <div class="relative flex flex-col items-center min-h-[500px]">
+          <!-- ① 共通の設計図 (Type Alias) -->
+          <div
+            id="type-blueprint"
+            class="blueprint rounded-2xl p-6 w-full max-w-sm relative z-10 transition-all duration-500 mb-16"
+          >
+            <div
+              class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1 border border-blue-400"
+            >
+              <i class="fa-solid fa-compass-drafting"></i> 共通の設計図
+            </div>
+
+            <div class="code-font text-sm leading-relaxed">
+              <span class="text-pink-400 font-bold">type</span>
+              <span class="text-blue-300 font-bold text-lg">User</span> = {<br />
+              &nbsp;&nbsp;name:
+              <span class="text-emerald-300">string</span>;<br />
+              &nbsp;&nbsp;age:
+              <span class="text-emerald-300">number</span>;<br />
+              &nbsp;&nbsp;isAdmin:
+              <span class="text-emerald-300">boolean</span>;<br />
+              };
+            </div>
+          </div>
+
+          <!-- 接続線 (PC向け) -->
+          <div
+            id="line-left"
+            class="hidden md:block reference-line"
+            style="
+              top: 100px;
+              left: 25%;
+              width: 25%;
+              height: 60px;
+              border-top: none;
+              border-right: none;
+              border-bottom-left-radius: 10px;
+            "
+          ></div>
+          <div
+            id="line-right"
+            class="hidden md:block reference-line"
+            style="
+              top: 100px;
+              right: 25%;
+              width: 25%;
+              height: 60px;
+              border-top: none;
+              border-left: none;
+              border-bottom-right-radius: 10px;
+            "
+          ></div>
+
+          <div
+            class="w-full flex flex-col md:flex-row gap-8 items-stretch justify-between relative z-10"
+          >
+            <!-- ② 変数の作成 -->
+            <div
+              class="w-full md:w-[45%] bg-slate-50 border-2 border-slate-200 rounded-2xl p-5 relative shadow-sm flex flex-col"
+            >
+              <div
+                class="absolute -top-3 left-6 bg-slate-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm"
+              >
+                変数 (データの作成)
+              </div>
+              <div class="text-[10px] font-bold text-slate-400 mb-2">
+                同じ設計図（User）を使って作成
+              </div>
+
+              <div
+                class="bg-white rounded-xl p-4 border border-slate-200 flex-1 flex flex-col justify-center"
+              >
+                <div class="code-font text-sm text-slate-700 leading-relaxed">
+                  <span class="text-blue-600">const</span> alice:
+                  <span
+                    id="ref-type-1"
+                    class="text-blue-500 font-bold transition-colors px-1 rounded"
+                    >User</span
+                  >
+                  = {<br />
+                  &nbsp;&nbsp;name:
+                  <span class="text-amber-600">"Alice"</span>,<br />
+                  &nbsp;&nbsp;age: <span class="text-amber-600">25</span>,<br />
+                  &nbsp;&nbsp;isAdmin:
+                  <span class="text-emerald-600">false</span>,<br />
+                  };
+                </div>
+              </div>
+            </div>
+
+            <!-- ③ 関数での利用 -->
+            <div
+              class="w-full md:w-[45%] bg-slate-50 border-2 border-slate-200 rounded-2xl p-5 relative shadow-sm flex flex-col"
+            >
+              <div
+                class="absolute -top-3 left-6 bg-purple-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm"
+              >
+                関数 (データの利用)
+              </div>
+              <div class="text-[10px] font-bold text-slate-400 mb-2">
+                同じ設計図（User）を要求する
+              </div>
+
+              <div
+                id="func-box"
+                class="transition-all-custom bg-slate-800 rounded-xl p-4 border-2 border-slate-700 flex-1 flex flex-col justify-center relative"
+              >
+                <!-- 関数入口のゲート -->
+                <div
+                  id="arg-gate"
+                  class="absolute -left-3 top-1/2 transform -translate-y-1/2 bg-slate-700 border-2 border-slate-500 rounded p-1 transition-all z-20"
+                >
+                  <div class="code-font text-[10px] text-white font-bold">
+                    user:
+                    <span
+                      id="ref-type-2"
+                      class="text-blue-300 transition-colors"
+                      >User</span
+                    >
+                  </div>
+                </div>
+
+                <div
+                  class="code-font text-[13px] text-slate-300 leading-relaxed pl-6"
+                >
+                  <span class="text-purple-400">function</span> greetUser(...)
+                  {<br />
+                  &nbsp;&nbsp;<span class="text-purple-400">return</span>
+                  <span class="text-amber-300">"Hello, "</span> +
+                  <span
+                    id="use-name"
+                    class="transition-colors rounded px-1 inline-block"
+                    >user.name</span
+                  >
+                  + <br />
+                  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span
+                    class="text-amber-300"
+                    >"! Age: "</span
+                  >
+                  +
+                  <span
+                    id="use-age"
+                    class="transition-colors rounded px-1 inline-block"
+                    >user.age</span
+                  >;<br />
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 飛行するデータパケットのプレースホルダー -->
+          <div
+            id="data-packet"
+            class="action-packet flex flex-col gap-1 items-center"
+          >
+            <div class="text-[10px] font-bold text-slate-500">alice</div>
+            <div
+              class="code-font text-[10px] text-slate-700 leading-tight bg-slate-50 p-1 rounded"
+            >
+              { name: "Alice", age: 25... }
+            </div>
+          </div>
+
+          <!-- 出力結果 -->
+          <div class="w-full mt-8 flex flex-col items-center">
+            <div
+              id="output-box"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl w-full max-w-md p-4 text-center shadow-sm transition-all opacity-50 transform translate-y-4"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                > console.log(greetUser(alice));
+              </div>
+              <div
+                id="output-val"
+                class="code-font text-xl font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 解説セクション -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-link text-blue-500"></i> 2. Type
+          Alias（型エイリアス）のメリット
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-slate-50 p-5 rounded-xl border border-slate-200">
+            <div
+              class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-code text-slate-400"></i>
+              もし使わなかったら？（読みにくい）
+            </div>
+            <div
+              class="code-font text-[11px] bg-white p-3 rounded border border-slate-300 text-slate-500 leading-relaxed"
+            >
+              <span class="text-blue-500">function</span> greetUser(user: {
+              name: string; age: number; isAdmin: boolean }): string {<br />
+              &nbsp;&nbsp;...<br />
+              }
+            </div>
+            <p class="text-xs text-slate-600 mt-3 leading-relaxed">
+              引数の部分に直接型を書くと、コードが横に長くなり、非常に読みにくくなります。また、他の関数でも同じ型を使いたい場合、何度もコピペする必要があり、変更があった時に修正漏れが起きやすくなります。
+            </p>
+          </div>
+
+          <div class="bg-blue-50 p-5 rounded-xl border border-blue-200">
+            <div
+              class="text-sm font-bold text-blue-800 mb-2 flex items-center gap-2"
+            >
+              <i class="fa-solid fa-pen-nib text-blue-500"></i>
+              使った場合（スッキリ・安全）
+            </div>
+            <div
+              class="code-font text-[11px] bg-white p-3 rounded border border-blue-300 text-slate-700 leading-relaxed shadow-sm"
+            >
+              <span class="text-blue-500">type</span> User = { ... };<br /><br />
+              <span class="text-blue-500">function</span> greetUser(user:
+              <span class="text-blue-600 font-bold">User</span>): string {<br />
+              &nbsp;&nbsp;...<br />
+              }
+            </div>
+            <p class="text-xs text-blue-800 mt-3 leading-relaxed">
+              <code class="bg-blue-100 px-1 rounded code-font font-bold"
+                >User</code
+              >
+              という一言で済むようになり、関数の目的がハッキリします。また、変数側と関数側が<strong>「同じ設計図を参照している」</strong>ことが保証されるため、タイポなどのミスをコンパイラが確実に防いでくれます。
+            </p>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+
+      function runSimulation(btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        // DOM Elements
+        const blueprint = document.getElementById("type-blueprint");
+        const refType1 = document.getElementById("ref-type-1");
+        const refType2 = document.getElementById("ref-type-2");
+        const lineLeft = document.getElementById("line-left");
+        const lineRight = document.getElementById("line-right");
+
+        const packet = document.getElementById("data-packet");
+        const argGate = document.getElementById("arg-gate");
+        const funcBox = document.getElementById("func-box");
+
+        const useName = document.getElementById("use-name");
+        const useAge = document.getElementById("use-age");
+
+        const outputBox = document.getElementById("output-box");
+        const outputVal = document.getElementById("output-val");
+
+        // UIリセット
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+
+        // 1. 設計図の参照ハイライト (0s)
+        blueprint.style.boxShadow = "0 0 30px rgba(59, 130, 246, 0.6)";
+        blueprint.style.transform = "scale(1.02)";
+        lineLeft.classList.add("active");
+        lineRight.classList.add("active");
+
+        refType1.classList.add("bg-blue-100");
+        refType2.classList.add("bg-blue-800", "px-1", "rounded");
+
+        // 2. データの飛行開始 (1.5s - ゆっくり観察させる)
+        setTimeout(() => {
+          // 参照ハイライトの解除
+          blueprint.style.boxShadow = "";
+          blueprint.style.transform = "";
+          lineLeft.classList.remove("active");
+          lineRight.classList.remove("active");
+          refType1.classList.remove("bg-blue-100");
+          refType2.classList.remove("bg-blue-800", "px-1", "rounded");
+
+          // パケットの開始位置と終了位置の計算
+          const startBox = refType1.parentElement.parentElement;
+          const startRect = startBox.getBoundingClientRect();
+          const endRect = argGate.getBoundingClientRect();
+          const containerRect = packet.parentElement.getBoundingClientRect();
+
+          // 変数の箱（startBox）の中央から出現させる
+          packet.style.top = `${startRect.top - containerRect.top + startRect.height / 2 - packet.offsetHeight / 2}px`;
+          packet.style.left = `${startRect.left - containerRect.left + startRect.width / 2 - packet.offsetWidth / 2}px`;
+
+          // 引数ゲート（argGate）の中央へ向かう移動量
+          const tx =
+            endRect.left +
+            endRect.width / 2 -
+            (startRect.left + startRect.width / 2);
+          const ty =
+            endRect.top +
+            endRect.height / 2 -
+            (startRect.top + startRect.height / 2);
+
+          packet.style.setProperty("--tx", `${tx}px`);
+          packet.style.setProperty("--ty", `${ty}px`);
+
+          packet.style.opacity = "1";
+          packet.classList.add("flying");
+
+          // 3. ゲート通過と関数処理 (2.2s - 飛行が到着する頃)
+          setTimeout(() => {
+            packet.style.opacity = "0";
+            argGate.classList.add("gate-active");
+            funcBox.style.borderColor = "#3b82f6"; // 関数ボックスが青く光る
+
+            // 値の抽出ハイライト (1.0s後)
+            setTimeout(() => {
+              useName.classList.add("extract-active");
+
+              setTimeout(() => {
+                useAge.classList.add("extract-active");
+
+                // 4. 出力 (1.2s後)
+                setTimeout(() => {
+                  outputBox.classList.remove("opacity-50", "translate-y-4");
+                  outputBox.classList.add(
+                    "translate-y-0",
+                    "border-emerald-400",
+                    "bg-emerald-50",
+                  );
+
+                  outputVal.innerText = '"Hello, Alice! Age: 25"';
+                  outputVal.className =
+                    "code-font text-2xl font-black text-emerald-600";
+
+                  // アニメーションのリセット (しばらく見せてからリセット)
+                  setTimeout(() => {
+                    argGate.classList.remove("gate-active");
+                    funcBox.style.borderColor = "";
+                    useName.classList.remove("extract-active");
+                    useAge.classList.remove("extract-active");
+                    packet.classList.remove("flying");
+                    packet.style.opacity = "0";
+
+                    setTimeout(() => {
+                      outputBox.classList.add("opacity-50", "translate-y-4");
+                      outputBox.classList.remove(
+                        "translate-y-0",
+                        "border-emerald-400",
+                        "bg-emerald-50",
+                      );
+                      outputVal.innerText = "---";
+                      outputVal.className =
+                        "code-font text-xl font-bold text-slate-400";
+                      isAnimating = false;
+                    }, 2000);
+                  }, 2500);
+                }, 1200);
+              }, 1000);
+            }, 1000);
+          }, 2200); // 飛行アニメーションがゲートに届く頃
+        }, 1500);
+      }
+    </script>
   </body>
 </html>

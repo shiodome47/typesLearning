@@ -3,54 +3,609 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: useContext</title>
+    <title>React 図解: Context API と カスタムフック</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Reactカラー */
+      .react-blue {
+        color: #06b6d4;
+      }
+      .bg-react-blue {
+        background-color: #06b6d4;
+      }
+
+      /* テーマ切り替え用のカスタムスタイル */
+      #demo-app {
+        transition:
+          background-color 0.5s ease,
+          color 0.5s ease;
+      }
+      #demo-app.theme-light {
+        background-color: #f8fafc; /* slate-50 */
+        color: #334155; /* slate-700 */
+        border-color: #cbd5e1;
+      }
+      #demo-app.theme-dark {
+        background-color: #0f172a; /* slate-900 */
+        color: #f8fafc; /* slate-50 */
+        border-color: #334155;
+      }
+
+      .theme-card {
+        transition:
+          background-color 0.5s ease,
+          border-color 0.5s ease,
+          box-shadow 0.5s ease;
+      }
+      .theme-light .theme-card {
+        background-color: #ffffff;
+        border-color: #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      .theme-dark .theme-card {
+        background-color: #1e293b;
+        border-color: #475569;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      }
+
+      /* データの流れ（ビーム）アニメーション */
+      @keyframes beam-flow-down {
+        0% {
+          transform: translateY(-100%);
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+      }
+      @keyframes beam-flow-up {
+        0% {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-100%);
+          opacity: 0;
+        }
+      }
+
+      .flow-line {
+        position: absolute;
+        width: 4px;
+        background-color: #cbd5e1; /* 通常時の線の色 */
+        z-index: 0;
+        overflow: hidden;
+        border-radius: 2px;
+      }
+
+      .flow-line::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          to bottom,
+          transparent,
+          #06b6d4,
+          transparent
+        );
+        display: none;
+      }
+
+      .flow-down::after {
+        animation: beam-flow-down 0.8s ease-in-out;
+      }
+      .flow-up::after {
+        background: linear-gradient(to top, transparent, #f59e0b, transparent);
+        animation: beam-flow-up 0.8s ease-in-out;
+      }
+
+      .animating-down::after,
+      .animating-up::after {
+        display: block;
+      }
+
+      /* パルスアニメーション */
+      @keyframes pulse-ring {
+        0% {
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.7);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(6, 182, 212, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+        }
+      }
+      .pulse-active {
+        animation: pulse-ring 0.5s ease-out;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-cyan-100 text-cyan-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-cyan-200"
+        >
+          React グローバル状態管理
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >useContext</span
+          バケツリレーを無くす魔法のトンネル：<br class="md:hidden" /><span
+            class="react-blue"
+            >Context API</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          Context に型を付けて、コンポーネント間で安全にデータを共有しましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">createContext</code>
+          は、コンポーネントツリーの裏側に「データの専用トンネル」を作ります。<br
+            class="hidden md:block"
+          />
+          親（Provider）がトンネルにデータを流し込み、子孫（useContext）は中間のコンポーネントを飛び越えて、どこからでも直接データを受け取ったり、更新関数を呼び出したりできます。
         </p>
       </header>
 
+      <!-- 1. インタラクティブ・シミュレーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-network-wired react-blue"></i> 1. Context
+          の動作シミュレーション
+        </h2>
+
+        <p class="mb-6 text-slate-600 text-sm text-center">
+          下部にある
+          <span class="font-bold bg-slate-200 px-2 py-1 rounded"
+            >ThemeToggleButton</span
+          >
+          をクリックしてください。<br />データと更新命令が、中間のコンポーネントを飛び越えて行き来する様子がわかります。
+        </p>
+
+        <!-- アプリの階層構造図 -->
+        <div
+          class="relative max-w-4xl mx-auto bg-slate-50 border-2 border-slate-200 rounded-2xl p-6 md:p-10 flex flex-col items-center"
+        >
+          <!-- 1. Provider (提供者) -->
+          <div
+            id="provider-box"
+            class="theme-card z-10 w-full max-w-md border-2 rounded-xl p-4 mb-12 relative flex flex-col items-center"
+          >
+            <div
+              class="absolute -top-3 bg-react-blue text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm"
+            >
+              &lt;ThemeProvider /&gt;
+            </div>
+            <div class="text-xs font-bold text-slate-500 mb-2">
+              状態 (State) を管理・提供する親
+            </div>
+
+            <div class="flex gap-4 w-full">
+              <div
+                class="flex-1 bg-slate-100 dark:bg-slate-800 rounded p-2 text-center border border-slate-300 dark:border-slate-600 transition-colors"
+              >
+                <div class="text-[10px] text-slate-500 font-bold mb-1">
+                  State
+                </div>
+                <div
+                  class="code-font font-bold text-lg react-blue"
+                  id="provider-state-val"
+                >
+                  "light"
+                </div>
+              </div>
+              <div
+                class="flex-1 bg-slate-100 dark:bg-slate-800 rounded p-2 text-center border border-slate-300 dark:border-slate-600 transition-colors"
+              >
+                <div class="text-[10px] text-slate-500 font-bold mb-1">
+                  Function
+                </div>
+                <div class="code-font font-bold text-sm text-amber-500 mt-1">
+                  toggleTheme()
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- データの通り道 (Context Tunnel) -->
+          <div
+            class="absolute top-[140px] left-1/2 transform -translate-x-1/2 w-[80%] max-w-2xl h-[180px] border-4 border-dashed border-cyan-300 rounded-3xl z-0 bg-cyan-50/50 flex flex-col items-center justify-center opacity-70"
+          >
+            <div
+              class="text-cyan-600 font-black text-xl opacity-30 tracking-widest"
+            >
+              <i class="fa-solid fa-cloud"></i> ThemeContext (魔法のトンネル)
+            </div>
+          </div>
+
+          <!-- 接続線 (Provider -> Context) -->
+          <div
+            id="line-p-to-c"
+            class="flow-line flow-down"
+            style="top: 130px; height: 30px; left: 50%"
+          ></div>
+
+          <!-- 2. 中間コンポーネント (Propsリレー不要の証明) -->
+          <div
+            class="theme-card z-10 w-full max-w-sm border-2 border-slate-300 border-dashed rounded-xl p-3 mb-12 relative flex flex-col items-center opacity-60"
+          >
+            <div
+              class="absolute -top-3 bg-slate-400 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm"
+            >
+              &lt;MiddleLayout /&gt;
+            </div>
+            <div class="text-[11px] font-bold text-slate-500 mt-2 text-center">
+              <i class="fa-solid fa-ban text-red-400"></i>
+              Propsを受け取っていません<br />（素通り）
+            </div>
+          </div>
+
+          <!-- 接続線 (Context -> Consumers) -->
+          <div
+            id="line-c-to-btn"
+            class="flow-line flow-down"
+            style="top: 290px; height: 80px; left: 35%"
+          ></div>
+          <div
+            id="line-c-to-txt"
+            class="flow-line flow-down"
+            style="top: 290px; height: 80px; left: 65%"
+          ></div>
+
+          <!-- アップリンク線 (Button -> Provider) -->
+          <div
+            id="line-btn-to-p"
+            class="flow-line flow-up"
+            style="
+              top: 110px;
+              height: 260px;
+              left: 25%;
+              width: 2px;
+              background-color: transparent;
+            "
+          ></div>
+
+          <div class="flex gap-4 md:gap-12 w-full justify-center">
+            <!-- 3A. Consumer (ボタン) -->
+            <div
+              id="btn-container"
+              class="theme-card z-10 w-full max-w-[200px] border-2 rounded-xl p-4 relative flex flex-col items-center"
+            >
+              <div
+                class="absolute -top-3 bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm"
+              >
+                &lt;ThemeToggleButton /&gt;
+              </div>
+              <div class="text-[10px] font-bold text-indigo-500 mb-2 mt-1">
+                useTheme() で接続
+              </div>
+
+              <!-- 実際に動くボタン -->
+              <button
+                onclick="handleToggleClick()"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all active:scale-95 flex flex-col items-center gap-1 group relative overflow-hidden"
+              >
+                <span
+                  class="absolute inset-0 w-full h-full bg-white/20 transform -translate-x-full group-hover:animate-[shimmer_1s_infinite]"
+                ></span>
+                <span class="text-xs">テーマ変更</span>
+                <span class="code-font text-sm"
+                  ><i class="fa-solid fa-moon"></i> /
+                  <i class="fa-solid fa-sun"></i
+                ></span>
+              </button>
+            </div>
+
+            <!-- 3B. Consumer (テキスト表示) -->
+            <div
+              id="demo-app"
+              class="theme-light theme-card z-10 w-full max-w-[200px] border-2 rounded-xl p-4 relative flex flex-col items-center justify-center"
+            >
+              <div
+                class="absolute -top-3 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm"
+              >
+                &lt;ContentArea /&gt;
+              </div>
+              <div class="text-[10px] font-bold text-emerald-600 mb-2 mt-1">
+                useTheme() で接続
+              </div>
+
+              <!-- 動的に変わるUI -->
+              <div class="text-center transition-colors duration-500">
+                <i
+                  id="demo-icon"
+                  class="fa-solid fa-sun text-4xl text-amber-500 mb-2"
+                ></i>
+                <div class="font-bold text-sm">現在のテーマ:</div>
+                <div class="code-font font-black text-xl" id="demo-theme-text">
+                  light
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. コード解説 -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-laptop-code text-indigo-500"></i> 2.
+          コードの構造とベストプラクティス
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- ① Contextの作成とProvider -->
+          <div
+            class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex flex-col"
+          >
+            <div
+              class="bg-slate-800 text-white px-4 py-2 text-sm font-bold flex justify-between items-center"
+            >
+              <span>① Context と Provider の作成</span>
+            </div>
+            <div
+              class="p-4 code-font text-[12px] leading-relaxed text-slate-800 overflow-x-auto flex-1"
+            >
+              <span class="text-slate-400">// トンネルの設計図（型）</span
+              ><br />
+              <span class="text-blue-600">type</span> ThemeContextType = {<br />
+              &nbsp;&nbsp;theme: <span class="text-amber-600">"light"</span> |
+              <span class="text-amber-600">"dark"</span>;<br />
+              &nbsp;&nbsp;toggleTheme: () =>
+              <span class="text-blue-600">void</span>;<br />
+              };<br /><br />
+
+              <span class="text-slate-400">// 魔法のトンネル本体を作成</span
+              ><br />
+              <span class="text-blue-600">const</span> ThemeContext =
+              <span class="text-purple-600">createContext</span
+              >&lt;ThemeContextType |
+              <span class="text-blue-600">null</span>&gt;(<span
+                class="text-blue-600"
+                >null</span
+              >);<br /><br />
+
+              <span class="text-slate-400"
+                >// トンネルにデータを流し込む装置（Provider）</span
+              ><br />
+              <span class="text-blue-600">function</span> ThemeProvider({
+              children }) {<br />
+              &nbsp;&nbsp;<span class="text-blue-600">const</span> [theme,
+              setTheme] = useState(<span class="text-amber-600">"light"</span
+              >);<br />
+              &nbsp;&nbsp;<span class="text-blue-600">const</span> toggleTheme =
+              () => { ... };<br /><br />
+              &nbsp;&nbsp;<span class="text-blue-600">return</span> (<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&lt;<span
+                class="text-react-blue font-bold"
+                >ThemeContext.Provider</span
+              >
+              value={{ theme, toggleTheme }}&gt;<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{children}
+              <span class="text-slate-400"
+                >// ← ここに入る全ての子孫がデータを使える</span
+              ><br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&lt;/<span
+                class="text-react-blue font-bold"
+                >ThemeContext.Provider</span
+              >&gt;<br />
+              &nbsp;&nbsp;);<br />
+              }
+            </div>
+          </div>
+
+          <!-- ② カスタムフックと使用 -->
+          <div
+            class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex flex-col"
+          >
+            <div
+              class="bg-slate-800 text-white px-4 py-2 text-sm font-bold flex justify-between items-center"
+            >
+              <span>② 安全な呼び出し（カスタムフック）</span>
+            </div>
+            <div
+              class="p-4 code-font text-[12px] leading-relaxed text-slate-800 overflow-x-auto flex-1 relative"
+            >
+              <span class="text-slate-400"
+                >// トンネルからデータを取り出す「専用の蛇口」を作る</span
+              ><br />
+              <span class="text-blue-600">function</span>
+              <span class="text-indigo-600 font-bold">useTheme</span>() {<br />
+              &nbsp;&nbsp;<span class="text-blue-600">const</span> ctx =
+              <span class="text-purple-600">useContext</span
+              >(ThemeContext);<br />
+              &nbsp;&nbsp;
+              <div class="bg-red-50 border-l-2 border-red-400 px-2 py-1 my-1">
+                <span class="text-blue-600">if</span> (!ctx)
+                <span class="text-blue-600">throw new Error</span>(<span
+                  class="text-amber-600"
+                  >"ThemeProviderの外では使えません"</span
+                >);
+              </div>
+              &nbsp;&nbsp;<span class="text-blue-600">return</span> ctx;<br />
+              }<br /><br />
+
+              <span class="text-slate-400"
+                >// 実際のコンポーネントでの使用（Propsリレー不要！）</span
+              ><br />
+              <span class="text-blue-600">function</span> ThemeToggleButton()
+              {<br />
+              &nbsp;&nbsp;<span class="text-slate-400"
+                >// 専用の蛇口をひねるだけでデータが出てくる</span
+              ><br />
+              &nbsp;&nbsp;<span class="text-blue-600">const</span> { theme,
+              toggleTheme } =
+              <span class="text-indigo-600 font-bold">useTheme</span
+              >();<br /><br />
+              &nbsp;&nbsp;<span class="text-blue-600">return</span> (<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&lt;button onClick={<span
+                class="text-amber-500 font-bold"
+                >toggleTheme</span
+              >}&gt;<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;現在のテーマ: {theme}<br />
+              &nbsp;&nbsp;&nbsp;&nbsp;&lt;/button&gt;<br />
+              &nbsp;&nbsp;);<br />
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- 解説メッセージ -->
+        <div
+          class="mt-6 bg-indigo-50 border-l-4 border-indigo-500 p-5 rounded-r-lg shadow-sm"
+        >
+          <h3
+            class="font-bold text-indigo-800 mb-2 flex items-center gap-2 text-lg"
+          >
+            <i class="fa-solid fa-graduation-cap text-indigo-600"></i>
+            なぜわざわざ「useTheme()」を作るの？
+          </h3>
+          <p class="text-sm text-indigo-900 leading-relaxed">
+            コンポーネント側で毎回
+            <code class="bg-indigo-100 px-1 rounded code-font"
+              >useContext(ThemeContext)</code
+            >
+            と書くこともできますが、ご提示いただいたコードのように
+            <strong>カスタムフック（useTheme）</strong>
+            を自作するのが現在のReact開発のベストプラクティス（定石）です。<br />
+            万が一、開発者が
+            <code class="bg-indigo-100 px-1 rounded code-font"
+              >&lt;ThemeProvider&gt;</code
+            >
+            で囲み忘れた場所でこの機能を使おうとした場合、<code
+              class="bg-indigo-100 px-1 rounded code-font"
+              >ctx</code
+            >
+            が
+            <code class="bg-indigo-100 px-1 rounded code-font">null</code>
+            になって原因不明のエラーでアプリが落ちてしまいます。カスタムフックの中で
+            <code class="bg-indigo-100 px-1 rounded code-font"
+              >if (!ctx) throw new Error(...)</code
+            >
+            とガードをかけておくことで、<strong>「囲み忘れてるよ！」とわかりやすいエラーを開発者に教えてくれる、極めて安全な設計</strong>になります。
+          </p>
+        </div>
       </section>
     </div>
+
+    <script>
+      // シミュレーションの状態
+      let currentTheme = "light";
+      let isAnimating = false;
+
+      function handleToggleClick() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const btnContainer = document.getElementById("btn-container");
+        const providerBox = document.getElementById("provider-box");
+        const providerStateVal = document.getElementById("provider-state-val");
+
+        const lineBtnToP = document.getElementById("line-btn-to-p");
+        const linePToC = document.getElementById("line-p-to-c");
+        const lineCToBtn = document.getElementById("line-c-to-btn");
+        const lineCToTxt = document.getElementById("line-c-to-txt");
+
+        const demoApp = document.getElementById("demo-app");
+        const demoIcon = document.getElementById("demo-icon");
+        const demoThemeText = document.getElementById("demo-theme-text");
+
+        // 1. ボタンクリック -> Providerの関数呼び出し (アップリンク)
+        btnContainer.classList.add("pulse-active");
+        lineBtnToP.classList.add("animating-up");
+
+        setTimeout(() => {
+          // 2. ProviderがStateを更新
+          currentTheme = currentTheme === "light" ? "dark" : "light";
+
+          providerBox.classList.add("pulse-active");
+
+          // State表示の更新
+          providerStateVal.innerText = `"${currentTheme}"`;
+          providerStateVal.style.transform = "scale(1.2)";
+          setTimeout(
+            () => (providerStateVal.style.transform = "scale(1)"),
+            200,
+          );
+
+          // 3. Provider -> Context -> Consumer へのデータフロー (ダウンリンク)
+          linePToC.classList.add("animating-down");
+
+          setTimeout(() => {
+            lineCToBtn.classList.add("animating-down");
+            lineCToTxt.classList.add("animating-down");
+
+            // 4. Consumer (下層UI) の再レンダリング・テーマ切り替え
+            setTimeout(() => {
+              if (currentTheme === "dark") {
+                demoApp.classList.remove("theme-light");
+                demoApp.classList.add("theme-dark");
+
+                demoIcon.className =
+                  "fa-solid fa-moon text-4xl text-indigo-300 mb-2";
+                demoThemeText.innerText = "dark";
+              } else {
+                demoApp.classList.remove("theme-dark");
+                demoApp.classList.add("theme-light");
+
+                demoIcon.className =
+                  "fa-solid fa-sun text-4xl text-amber-500 mb-2";
+                demoThemeText.innerText = "light";
+              }
+
+              // アニメーションクラスのクリーンアップ
+              setTimeout(() => {
+                btnContainer.classList.remove("pulse-active");
+                providerBox.classList.remove("pulse-active");
+                lineBtnToP.classList.remove("animating-up");
+                linePToC.classList.remove("animating-down");
+                lineCToBtn.classList.remove("animating-down");
+                lineCToTxt.classList.remove("animating-down");
+                isAnimating = false;
+              }, 500);
+            }, 400); // ダウンリンクが下まで届く頃
+          }, 400); // P -> C に届く頃
+        }, 600); // アップリンクが届く頃
+      }
+    </script>
   </body>
 </html>

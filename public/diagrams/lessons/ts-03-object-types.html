@@ -10,47 +10,793 @@
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 型枠（トレイ）のアクティブ化アニメーション */
+      @keyframes tray-glow {
+        0% {
+          box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+          border-color: #cbd5e1;
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(14, 165, 233, 0.5);
+          border-color: #0ea5e9;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+          border-color: #cbd5e1;
+        }
+      }
+      .tray-active {
+        animation: tray-glow 0.8s ease-out;
+      }
+
+      /* エラー時のシェイク */
+      @keyframes error-shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-10px);
+        }
+        40% {
+          transform: translateX(10px);
+        }
+        60% {
+          transform: translateX(-10px);
+        }
+        80% {
+          transform: translateX(10px);
+        }
+      }
+      .error-shake {
+        animation: error-shake 0.4s ease-in-out;
+        border-color: #ef4444 !important;
+        background-color: #fef2f2 !important;
+      }
+
+      /* ブロックが飛んでいくアニメーション */
+      @keyframes fly-block {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translate(
+              calc(var(--tx) * 0.5),
+              calc(var(--ty) * 0.5 - 20px)
+            )
+            scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+      }
+
+      @keyframes reject-block {
+        0% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        20% {
+          transform: translate(calc(var(--tx) - 10px), var(--ty));
+        }
+        40% {
+          transform: translate(calc(var(--tx) + 10px), var(--ty));
+        }
+        100% {
+          transform: translate(0, 0) scale(1) rotate(10deg);
+          opacity: 0;
+        }
+      }
+
+      .flying-obj {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        transition: opacity 0.3s;
+      }
+
+      .fly-in {
+        animation: fly-block 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      .reject-out {
+        animation: reject-block 0.5s ease-in forwards;
+      }
+
+      /* スロットにはまった時のピカッ */
+      @keyframes slot-flash {
+        0% {
+          background-color: #f8fafc;
+        }
+        50% {
+          background-color: #dcfce7;
+        }
+        100% {
+          background-color: #f8fafc;
+        }
+      }
+      .slot-filled {
+        animation: slot-flash 0.5s ease-out;
+        border-color: #10b981 !important;
+      }
+
+      /* ツールチップのアニメーション */
+      .tooltip-fade {
+        animation: fadeInOut 2.5s ease-in-out forwards;
+      }
+      @keyframes fadeInOut {
+        0% {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        15% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        85% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-sky-100 text-sky-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-sky-200"
+        >
+          TypeScript オブジェクトの基本
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >オブジェクトの型</span
+          構造をガッチリ定義する：<br class="md:hidden" /><span
+            class="text-sky-600"
+            >オブジェクト型</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          オブジェクトのプロパティに型を付けて、構造を明確にしましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          JavaScriptのオブジェクト（<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >{}</code
+          >）は何でも自由に入れられますが、TypeScriptでは<strong>「どんな名前のプロパティが、何型で入っているべきか」</strong>という設計図（型枠）を厳密に定義します。
         </p>
       </header>
 
+      <!-- 1. オブジェクト変数の型定義 -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative z-10"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-shapes text-sky-500"></i> 1.
+          変数へのオブジェクト代入
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-center justify-between"
+        >
+          <!-- 左側：型定義（トレイ） -->
+          <div
+            id="type-tray"
+            class="w-full lg:w-[45%] bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 relative shadow-lg transition-all"
+          >
+            <div
+              class="absolute -top-3 left-6 bg-sky-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm"
+            >
+              型アノテーション (期待する構造)
+            </div>
+
+            <div class="code-font text-sm text-white mb-3 mt-1">
+              <span class="text-blue-400">const</span> user: {
+            </div>
+
+            <div class="flex flex-col gap-3 pl-4">
+              <!-- name スロット -->
+              <div
+                id="slot-name"
+                class="bg-slate-900 border-2 border-dashed border-slate-500 rounded-lg p-3 flex justify-between items-center relative transition-colors"
+              >
+                <span class="code-font font-bold text-slate-300">name:</span>
+                <span
+                  class="code-font text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded"
+                  >string</span
+                >
+                <div
+                  id="val-name"
+                  class="absolute inset-0 bg-white border-2 border-blue-400 rounded-lg flex justify-between items-center px-3 opacity-0 transition-opacity"
+                >
+                  <span class="code-font font-bold text-slate-700">name:</span>
+                  <span class="code-font text-blue-600 font-bold">"Alice"</span>
+                </div>
+              </div>
+
+              <!-- age スロット -->
+              <div
+                id="slot-age"
+                class="bg-slate-900 border-2 border-dashed border-slate-500 rounded-lg p-3 flex justify-between items-center relative transition-colors"
+              >
+                <span class="code-font font-bold text-slate-300">age:</span>
+                <span
+                  class="code-font text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded"
+                  >number</span
+                >
+                <div
+                  id="val-age"
+                  class="absolute inset-0 bg-white border-2 border-amber-400 rounded-lg flex justify-between items-center px-3 opacity-0 transition-opacity"
+                >
+                  <span class="code-font font-bold text-slate-700">age:</span>
+                  <span class="code-font text-amber-600 font-bold">25</span>
+                </div>
+              </div>
+
+              <!-- isAdmin スロット -->
+              <div
+                id="slot-isAdmin"
+                class="bg-slate-900 border-2 border-dashed border-slate-500 rounded-lg p-3 flex justify-between items-center relative transition-colors"
+              >
+                <span class="code-font font-bold text-slate-300">isAdmin:</span>
+                <span
+                  class="code-font text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded"
+                  >boolean</span
+                >
+                <div
+                  id="val-isAdmin"
+                  class="absolute inset-0 bg-white border-2 border-emerald-400 rounded-lg flex justify-between items-center px-3 opacity-0 transition-opacity"
+                >
+                  <span class="code-font font-bold text-slate-700"
+                    >isAdmin:</span
+                  >
+                  <span class="code-font text-emerald-600 font-bold"
+                    >false</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="code-font text-sm text-white mt-3">} = ...;</div>
+
+            <!-- エラーメッセージ用 -->
+            <div
+              id="tray-error"
+              class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-600 text-white text-[11px] p-3 rounded-lg shadow-2xl hidden z-20 code-font border-2 border-red-300 text-center w-[90%]"
+            >
+              Type error message here.
+            </div>
+          </div>
+
+          <!-- 矢印 -->
+          <div class="hidden lg:flex text-slate-300 text-2xl">
+            <i class="fa-solid fa-arrow-left-long"></i>
+          </div>
+
+          <!-- 右側：代入アクション（実際の値） -->
+          <div class="w-full lg:w-[45%] flex flex-col gap-4">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              実際の値を代入する
+            </div>
+
+            <!-- 正常パターン -->
+            <button
+              onclick="assignObject('valid', this)"
+              class="bg-slate-50 hover:bg-sky-50 border-2 border-slate-200 hover:border-sky-300 rounded-xl p-4 text-left shadow-sm transition-all group relative"
+            >
+              <div
+                class="absolute top-2 right-2 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <i class="fa-solid fa-check-circle"></i>
+              </div>
+              <div class="code-font text-xs leading-relaxed text-slate-700">
+                {<br />
+                &nbsp;&nbsp;name:
+                <span class="text-blue-600">"Alice"</span>,<br />
+                &nbsp;&nbsp;age: <span class="text-amber-600">25</span>,<br />
+                &nbsp;&nbsp;isAdmin: <span class="text-emerald-600">false</span
+                ><br />
+                }
+              </div>
+            </button>
+
+            <!-- エラー：プロパティ不足 -->
+            <button
+              onclick="assignObject('missing', this)"
+              class="bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-400 rounded-xl p-4 text-left shadow-sm transition-all group relative mt-2 overflow-hidden"
+            >
+              <div
+                class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-bl font-bold"
+              >
+                プロパティ不足
+              </div>
+              <div class="code-font text-xs leading-relaxed text-slate-700">
+                {<br />
+                &nbsp;&nbsp;name:
+                <span class="text-blue-600">"Alice"</span>,<br />
+                &nbsp;&nbsp;age: <span class="text-amber-600">25</span><br />
+                &nbsp;&nbsp;<span class="text-slate-400 line-through"
+                  >/* isAdmin が無い */</span
+                ><br />
+                }
+              </div>
+            </button>
+
+            <!-- エラー：型間違い -->
+            <button
+              onclick="assignObject('wrongType', this)"
+              class="bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-400 rounded-xl p-4 text-left shadow-sm transition-all group relative mt-2 overflow-hidden"
+            >
+              <div
+                class="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-bl font-bold"
+              >
+                型間違い
+              </div>
+              <div class="code-font text-xs leading-relaxed text-slate-700">
+                {<br />
+                &nbsp;&nbsp;name:
+                <span class="text-blue-600">"Alice"</span>,<br />
+                &nbsp;&nbsp;age:
+                <span
+                  class="text-blue-600 underline decoration-red-500 decoration-wavy"
+                  >"25"</span
+                >,
+                <span class="text-slate-400 text-[10px]"
+                  >// stringになってる</span
+                ><br />
+                &nbsp;&nbsp;isAdmin: <span class="text-emerald-600">false</span
+                ><br />
+                }
+              </div>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 関数の引数（オプショナルプロパティ） -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 z-0"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-door-open text-indigo-500"></i> 2.
+          関数引数のオブジェクトと任意（?）
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-stretch justify-center"
+        >
+          <!-- 引数を渡す側 (関数呼び出し) -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-4">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              関数を呼び出す
+            </div>
+
+            <!-- 正常（必須のみ） -->
+            <button
+              onclick="callFunction('valid_min', this)"
+              class="bg-slate-50 hover:bg-indigo-50 border-2 border-slate-200 hover:border-indigo-300 rounded-xl p-3 text-left shadow-sm transition-all group"
+            >
+              <div class="text-[10px] font-bold text-indigo-500 mb-1">
+                必須プロパティのみで呼び出し
+              </div>
+              <div class="code-font text-xs text-slate-700">
+                getLabel({<br />
+                &nbsp;&nbsp;id: <span class="text-amber-600">1</span>,<br />
+                &nbsp;&nbsp;label: <span class="text-blue-600">"完了"</span
+                ><br />
+                })
+              </div>
+            </button>
+
+            <!-- 正常（フル） -->
+            <button
+              onclick="callFunction('valid_full', this)"
+              class="bg-slate-50 hover:bg-indigo-50 border-2 border-slate-200 hover:border-indigo-300 rounded-xl p-3 text-left shadow-sm transition-all group mt-2"
+            >
+              <div class="text-[10px] font-bold text-indigo-500 mb-1">
+                オプショナルも含めて呼び出し
+              </div>
+              <div class="code-font text-xs text-slate-700">
+                getLabel({<br />
+                &nbsp;&nbsp;id: <span class="text-amber-600">2</span>,<br />
+                &nbsp;&nbsp;label:
+                <span class="text-blue-600">"保留"</span>,<br />
+                &nbsp;&nbsp;count: <span class="text-pink-600">10</span><br />
+                })
+              </div>
+            </button>
+          </div>
+
+          <!-- 関数本体の可視化 -->
+          <div class="w-full lg:w-[65%] flex flex-col items-center">
+            <div
+              id="func-gate"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 relative shadow-xl transition-all duration-300"
+            >
+              <div
+                class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow-md"
+              >
+                function getLabel
+              </div>
+
+              <!-- 引数の型枠 (Gate) -->
+              <div
+                class="bg-slate-900 rounded-xl p-4 border border-slate-600 mb-4"
+              >
+                <div class="text-[10px] text-slate-400 mb-2 font-bold">
+                  引数 item の型ゲート
+                </div>
+                <div class="flex gap-2 justify-center">
+                  <div
+                    id="gate-id"
+                    class="border-2 border-slate-600 bg-slate-800 rounded p-2 text-center transition-colors"
+                  >
+                    <span class="code-font text-xs font-bold text-slate-300"
+                      >id: number</span
+                    >
+                    <div class="text-[9px] text-red-400 mt-1">必須</div>
+                  </div>
+                  <div
+                    id="gate-label"
+                    class="border-2 border-slate-600 bg-slate-800 rounded p-2 text-center transition-colors"
+                  >
+                    <span class="code-font text-xs font-bold text-slate-300"
+                      >label: string</span
+                    >
+                    <div class="text-[9px] text-red-400 mt-1">必須</div>
+                  </div>
+                  <div
+                    id="gate-count"
+                    class="border-2 border-slate-600 border-dashed bg-slate-800/50 rounded p-2 text-center transition-colors"
+                  >
+                    <span class="code-font text-xs font-bold text-slate-300"
+                      >count?: number</span
+                    >
+                    <div class="text-[9px] text-sky-400 mt-1">任意 (?)</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 関数の処理 -->
+              <div class="code-font text-sm text-slate-300 pl-2">
+                <span class="text-blue-400">return</span>
+                <span class="text-amber-300">"id:"</span> + item.id +
+                <span class="text-amber-300">" label:"</span> + item.label;
+              </div>
+            </div>
+
+            <!-- 出力結果 -->
+            <div
+              class="w-8 h-6 border-l-2 border-r-2 border-slate-300 bg-slate-100/50"
+            ></div>
+
+            <div
+              id="func-output"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl w-full max-w-sm p-4 text-center shadow-sm transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                戻り値 (string)
+              </div>
+              <div
+                id="result-val"
+                class="code-font text-lg font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-6 bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg shadow-sm"
+        >
+          <p class="text-sm text-indigo-900 leading-relaxed">
+            引数として渡すオブジェクトの型の中に
+            <code class="bg-indigo-100 px-1 rounded code-font font-bold"
+              >count?: number</code
+            >
+            と書かれています。<br />
+            この
+            <strong
+              ><code class="text-lg">?</code> (オプショナルプロパティ)</strong
+            >
+            があるおかげで、<code class="bg-indigo-100 px-1 rounded code-font"
+              >count</code
+            >
+            は「あってもなくても良い」という柔軟なルールになります。APIのオプション設定などを渡す際によく使われるテクニックです。
+          </p>
+        </div>
       </section>
     </div>
+
+    <!-- 飛行用ダミーエレメント -->
+    <div
+      id="flying-block"
+      class="flying-obj hidden bg-white border-2 border-slate-300 rounded-lg p-3"
+    >
+      <!-- JSで内容を注入 -->
+    </div>
+
+    <script>
+      let isAnimating = false;
+
+      // --- セクション1: オブジェクト代入のアニメーション ---
+      function assignObject(type, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const tray = document.getElementById("type-tray");
+        const errMsg = document.getElementById("tray-error");
+        const dummy = document.getElementById("flying-block");
+
+        // スロットの初期化
+        ["name", "age", "isAdmin"].forEach((key) => {
+          document.getElementById(`val-${key}`).style.opacity = "0";
+          document
+            .getElementById(`slot-${key}`)
+            .classList.remove("slot-filled");
+        });
+
+        // 飛ばすブロックの生成
+        let blockHTML = "";
+        if (type === "valid") {
+          blockHTML = `
+                    <div class="code-font text-xs text-slate-700 leading-tight">
+                        {<br>
+                        &nbsp;&nbsp;name: <span class="text-blue-600">"Alice"</span>,<br>
+                        &nbsp;&nbsp;age: <span class="text-amber-600">25</span>,<br>
+                        &nbsp;&nbsp;isAdmin: <span class="text-emerald-600">false</span><br>
+                        }
+                    </div>`;
+        } else if (type === "missing") {
+          blockHTML = `
+                    <div class="code-font text-xs text-slate-700 leading-tight">
+                        {<br>
+                        &nbsp;&nbsp;name: <span class="text-blue-600">"Alice"</span>,<br>
+                        &nbsp;&nbsp;age: <span class="text-amber-600">25</span><br>
+                        }
+                    </div>`;
+        } else if (type === "wrongType") {
+          blockHTML = `
+                    <div class="code-font text-xs text-slate-700 leading-tight">
+                        {<br>
+                        &nbsp;&nbsp;name: <span class="text-blue-600">"Alice"</span>,<br>
+                        &nbsp;&nbsp;age: <span class="text-blue-600">"25"</span>,<br>
+                        &nbsp;&nbsp;isAdmin: <span class="text-emerald-600">false</span><br>
+                        }
+                    </div>`;
+        }
+
+        // 飛行アニメーションの設定
+        const btnRect = btnEl.getBoundingClientRect();
+        const trayRect = tray.getBoundingClientRect();
+
+        dummy.innerHTML = blockHTML;
+        dummy.style.top = `${btnRect.top + window.scrollY}px`;
+        dummy.style.left = `${btnRect.left}px`;
+
+        const tx =
+          trayRect.left +
+          trayRect.width / 2 -
+          btnRect.left -
+          dummy.offsetWidth / 2 -
+          40;
+        const ty = trayRect.top + trayRect.height / 2 - btnRect.top - 80;
+
+        dummy.style.setProperty("--tx", `${tx}px`);
+        dummy.style.setProperty("--ty", `${ty}px`);
+
+        dummy.className =
+          "flying-obj bg-white border-2 border-slate-300 rounded-lg p-3"; // reset
+        dummy.classList.add("fly-in");
+
+        setTimeout(() => {
+          if (type === "valid") {
+            // 成功：トレイが光り、値が各スロットに収まる
+            dummy.style.opacity = "0";
+            tray.classList.add("tray-active");
+
+            setTimeout(() => {
+              ["name", "age", "isAdmin"].forEach((key, i) => {
+                setTimeout(() => {
+                  document.getElementById(`val-${key}`).style.opacity = "1";
+                  document
+                    .getElementById(`slot-${key}`)
+                    .classList.add("slot-filled");
+                }, i * 150);
+              });
+
+              setTimeout(() => {
+                tray.classList.remove("tray-active");
+                // 少し待ってリセット
+                setTimeout(() => {
+                  ["name", "age", "isAdmin"].forEach((key) => {
+                    document.getElementById(`val-${key}`).style.opacity = "0";
+                    document
+                      .getElementById(`slot-${key}`)
+                      .classList.remove("slot-filled");
+                  });
+                  dummy.classList.remove("fly-in");
+                  isAnimating = false;
+                }, 1500);
+              }, 1000);
+            }, 100);
+          } else {
+            // 失敗：弾かれるアニメーション
+            dummy.classList.remove("fly-in");
+            dummy.classList.add("reject-out");
+            tray.classList.add("error-shake");
+
+            // エラーメッセージの設定
+            if (type === "missing") {
+              errMsg.innerText =
+                "Property 'isAdmin' is missing in type '{ name: string; age: number; }' but required in type '{ ... }'.";
+            } else {
+              errMsg.innerText =
+                "Type 'string' is not assignable to type 'number' in property 'age'.";
+            }
+
+            errMsg.classList.remove("hidden");
+            errMsg.classList.remove("tooltip-fade");
+            void errMsg.offsetWidth;
+            errMsg.classList.add("tooltip-fade");
+
+            setTimeout(() => {
+              tray.classList.remove("error-shake");
+              setTimeout(() => {
+                errMsg.classList.add("hidden");
+                dummy.classList.remove("reject-out");
+                isAnimating = false;
+              }, 2000);
+            }, 400);
+          }
+        }, 600);
+      }
+
+      // --- セクション2: 関数呼び出し（オプショナル）のアニメーション ---
+      function callFunction(type, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const gate = document.getElementById("func-gate");
+        const resultBox = document.getElementById("func-output");
+        const resultVal = document.getElementById("result-val");
+
+        const gateId = document.getElementById("gate-id");
+        const gateLabel = document.getElementById("gate-label");
+        const gateCount = document.getElementById("gate-count");
+
+        const dummy = document.getElementById("flying-block");
+
+        // UIリセット
+        resultBox.classList.add("opacity-50");
+        resultBox.classList.remove("border-indigo-400", "bg-indigo-50");
+        resultVal.innerText = "---";
+        resultVal.className = "code-font text-lg font-bold text-slate-400";
+
+        [gateId, gateLabel, gateCount].forEach((g) => {
+          g.classList.remove("border-indigo-400", "bg-indigo-900/50");
+        });
+
+        // 飛ばすブロックの生成
+        let blockHTML = "";
+        let returnStr = "";
+        if (type === "valid_min") {
+          blockHTML = `
+                    <div class="code-font text-[10px] text-slate-700 leading-tight">
+                        { id: 1, label: "完了" }
+                    </div>`;
+          returnStr = `"id:1 label:完了"`;
+        } else {
+          blockHTML = `
+                    <div class="code-font text-[10px] text-slate-700 leading-tight">
+                        { id: 2, label: "保留", count: 10 }
+                    </div>`;
+          returnStr = `"id:2 label:保留"`; // countは結果に使われない
+        }
+
+        // 飛行アニメーション
+        const btnRect = btnEl.getBoundingClientRect();
+        const gateRect = gate.getBoundingClientRect();
+
+        dummy.innerHTML = blockHTML;
+        dummy.style.top = `${btnRect.top + window.scrollY}px`;
+        dummy.style.left = `${btnRect.left}px`;
+
+        const tx =
+          gateRect.left +
+          gateRect.width / 2 -
+          btnRect.left -
+          dummy.offsetWidth / 2;
+        const ty = gateRect.top - btnRect.top + 30;
+
+        dummy.style.setProperty("--tx", `${tx}px`);
+        dummy.style.setProperty("--ty", `${ty}px`);
+
+        dummy.className =
+          "flying-obj bg-indigo-50 border-2 border-indigo-300 rounded-lg p-2";
+        dummy.classList.add("fly-in");
+
+        // ゲートに到着
+        setTimeout(() => {
+          dummy.style.opacity = "0";
+          gate.style.boxShadow = "0 0 20px rgba(99, 102, 241, 0.4)";
+          gate.style.borderColor = "#6366f1";
+
+          // ゲートのチェック（ハイライト）
+          gateId.classList.add("border-indigo-400", "bg-indigo-900/50");
+          gateLabel.classList.add("border-indigo-400", "bg-indigo-900/50");
+          if (type === "valid_full") {
+            gateCount.classList.add("border-indigo-400", "bg-indigo-900/50");
+            gateCount.classList.remove("border-dashed", "bg-slate-800/50");
+          }
+
+          // 処理結果の出力
+          setTimeout(() => {
+            resultBox.classList.remove("opacity-50");
+            resultBox.classList.add("border-indigo-400", "bg-indigo-50");
+            resultVal.innerText = returnStr;
+            resultVal.className =
+              "code-font text-xl font-black text-indigo-600";
+
+            // リセット処理
+            setTimeout(() => {
+              gate.style.boxShadow = "";
+              gate.style.borderColor = "";
+              dummy.classList.remove("fly-in");
+
+              [gateId, gateLabel].forEach((g) => {
+                g.classList.remove("border-indigo-400", "bg-indigo-900/50");
+              });
+              gateCount.classList.remove(
+                "border-indigo-400",
+                "bg-indigo-900/50",
+              );
+              gateCount.classList.add("border-dashed", "bg-slate-800/50");
+
+              setTimeout(() => {
+                resultBox.classList.add("opacity-50");
+                resultBox.classList.remove("border-indigo-400", "bg-indigo-50");
+                resultVal.innerText = "---";
+                resultVal.className =
+                  "code-font text-lg font-bold text-slate-400";
+                isAnimating = false;
+              }, 1500);
+            }, 1000);
+          }, 600);
+        }, 600);
+      }
+    </script>
   </body>
 </html>

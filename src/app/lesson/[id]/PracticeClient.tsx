@@ -8,6 +8,7 @@ import { ModelAnswer } from "@/components/ModelAnswer";
 import { HintPanel } from "@/components/HintPanel";
 import type { Lesson } from "@curriculum/types";
 import { LESSON_DIAGRAM_LINKS } from "@/lib/lessonDiagramLinks";
+import { InlineCodeText } from "@/components/InlineCodeText";
 
 const DIAGNOSTICS_STORAGE_KEY = "ts-practice-editor-diagnostics-enabled";
 const THEME_STORAGE_KEY = "ts-practice-editor-theme";
@@ -161,7 +162,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">{lesson.order}. {lesson.title}</h1>
           <p className="text-green-700 font-medium mt-1 text-sm">
-            目標: {lesson.goal}
+            目標: <InlineCodeText text={lesson.goal} />
           </p>
         </div>
 
@@ -175,7 +176,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
                 説明
               </h2>
               <p className="text-sm text-gray-700 leading-relaxed">
-                {lesson.explanation}
+                <InlineCodeText text={lesson.explanation} />
               </p>
             </div>
 
@@ -203,7 +204,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
                     className="flex items-start gap-2 text-sm text-gray-600"
                   >
                     <span className="text-gray-300 mt-0.5 select-none">□</span>
-                    <span>{cp.description}</span>
+                    <span><InlineCodeText text={cp.description} /></span>
                   </li>
                 ))}
               </ul>

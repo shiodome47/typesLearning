@@ -3,54 +3,506 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: マップ型</title>
+    <title>TypeScript 図解: Mapped Types</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
-        background-color: #f8fafc;
+        background-color: #f5f3ff; /* violet-50 */
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 抽出・処理のアニメーション */
+      .processing-row {
+        box-shadow: 0 0 15px rgba(139, 92, 246, 0.5); /* violet-500 */
+        background-color: #ede9fe; /* violet-100 */
+        border-color: #8b5cf6;
+        transform: scale(1.05) translateX(10px);
+        z-index: 10;
+      }
+
+      /* 出力結果のアイテム追加アニメーション */
+      @keyframes slideInRight {
+        0% {
+          opacity: 0;
+          transform: translateX(30px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      .animate-slide-in {
+        animation: slideInRight 0.4s ease-out forwards;
+      }
+
+      /* 工場の歯車回転 */
+      @keyframes spin-slow {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .machine-active .gear {
+        animation: spin-slow 2s linear infinite;
+        color: #c4b5fd; /* violet-300 */
+      }
+      .machine-active {
+        box-shadow: 0 0 20px rgba(167, 139, 250, 0.6); /* violet-400 */
+        border-color: #a78bfa !important;
+      }
+
+      /* エラーアニメーション */
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-5px);
+        }
+        50% {
+          transform: translateX(5px);
+        }
+        75% {
+          transform: translateX(-5px);
+        }
+      }
+      .error-shake {
+        animation: shake 0.4s ease-in-out;
+        background-color: #fef2f2 !important;
+        border-color: #ef4444 !important;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-violet-100 text-violet-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-violet-200"
+        >
+          TypeScript 型変換の工場
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >マップ型</span
+          型をループで一気に加工する：<br class="md:hidden" /><span
+            class="text-violet-600"
+            >Mapped Types</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          既存の型のプロパティを変換して新しい型を作るマップ型を学びましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font"
+            >[K in keyof T]</code
+          >
+          という構文は、JavaScriptの
+          <code class="bg-slate-200 px-1 rounded code-font">for...in</code>
+          ループの「型バージョン」です。元の型のプロパティを1つずつ取り出し、まとめて
+          <code class="bg-slate-200 px-1 rounded code-font">readonly</code> や
+          <code class="bg-slate-200 px-1 rounded code-font">?</code
+          >（任意）を付けた「新しい型」を自動生成します。
         </p>
       </header>
 
+      <!-- 1. 型変換の工場 (アニメーション) -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-industry text-violet-500"></i> 1.
+          型加工工場のシミュレーション
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="flex justify-center gap-4 mb-8">
+          <button
+            onclick="startFactory('readonly')"
+            class="bg-white hover:bg-blue-50 border-2 border-blue-300 text-blue-700 font-bold py-2 px-6 rounded-xl shadow-sm transition-all flex flex-col items-center"
+          >
+            <span class="text-sm">実行：MyReadonly&lt;User&gt;</span>
+            <span class="code-font text-xs text-blue-500 mt-1"
+              >すべてを読み取り専用に</span
+            >
+          </button>
+          <button
+            onclick="startFactory('partial')"
+            class="bg-white hover:bg-orange-50 border-2 border-orange-300 text-orange-700 font-bold py-2 px-6 rounded-xl shadow-sm transition-all flex flex-col items-center"
+          >
+            <span class="text-sm">実行：MyPartial&lt;User&gt;</span>
+            <span class="code-font text-xs text-orange-500 mt-1"
+              >すべてを省略可能に</span
+            >
+          </button>
+        </div>
+
+        <div
+          class="flex flex-col md:flex-row gap-4 items-stretch justify-center relative"
+        >
+          <!-- 入力 (User型) -->
+          <div
+            class="w-full md:w-[28%] bg-slate-50 border-2 border-slate-200 rounded-xl p-4 flex flex-col"
+          >
+            <div class="text-xs font-bold text-slate-500 text-center mb-2">
+              ① 原本 (Input)
+            </div>
+            <div class="code-font font-bold text-slate-700 mb-2">
+              type User = {
+            </div>
+            <div class="flex flex-col gap-2 pl-4 flex-1">
+              <div
+                id="src-id"
+                class="transition-all-custom border border-transparent rounded p-2 bg-white shadow-sm flex justify-between"
+              >
+                <span class="text-amber-600 font-bold">id</span
+                ><span class="text-pink-500">number</span>
+              </div>
+              <div
+                id="src-name"
+                class="transition-all-custom border border-transparent rounded p-2 bg-white shadow-sm flex justify-between"
+              >
+                <span class="text-amber-600 font-bold">name</span
+                ><span class="text-pink-500">string</span>
+              </div>
+              <div
+                id="src-email"
+                class="transition-all-custom border border-transparent rounded p-2 bg-white shadow-sm flex justify-between"
+              >
+                <span class="text-amber-600 font-bold">email</span
+                ><span class="text-pink-500">string</span>
+              </div>
+            </div>
+            <div class="code-font font-bold text-slate-700 mt-2">};</div>
+          </div>
+
+          <!-- 加工マシン (Mapped Type) -->
+          <div class="w-full md:w-[36%] flex flex-col justify-center">
+            <div class="text-xs font-bold text-slate-500 text-center mb-2">
+              ② 変換ループ処理 (Mapped Type)
+            </div>
+            <div
+              id="factory-machine"
+              class="transition-all-custom bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden flex flex-col items-center justify-center min-h-[160px]"
+            >
+              <i
+                class="fa-solid fa-gear gear absolute -top-4 -right-4 text-6xl text-slate-600 opacity-50"
+              ></i>
+              <i
+                class="fa-solid fa-gear gear absolute -bottom-4 -left-4 text-5xl text-slate-600 opacity-50"
+                style="animation-direction: reverse"
+              ></i>
+
+              <div
+                id="machine-code"
+                class="code-font text-sm text-center relative z-10 w-full"
+              >
+                <div class="text-slate-400 mb-2">/* 待機中 */</div>
+                <div class="text-slate-500">
+                  上のボタンで加工を開始してください
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 出力結果 -->
+          <div
+            class="w-full md:w-[32%] bg-violet-50 border-2 border-violet-200 rounded-xl p-4 flex flex-col relative min-h-[250px]"
+          >
+            <div class="text-xs font-bold text-violet-600 text-center mb-2">
+              ③ 完成した型 (Output)
+            </div>
+            <div
+              id="output-header"
+              class="code-font font-bold text-violet-800 mb-2 opacity-0 transition-opacity"
+            >
+              type Result = {
+            </div>
+
+            <div id="output-container" class="flex flex-col gap-2 pl-4 flex-1">
+              <!-- 結果がここに追加される -->
+            </div>
+
+            <div
+              id="output-footer"
+              class="code-font font-bold text-violet-800 mt-2 opacity-0 transition-opacity"
+            >
+              };
+            </div>
+
+            <div
+              id="success-mark"
+              class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-5xl text-emerald-400 opacity-0 transition-all scale-50"
+            >
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 完成した型の動作確認 (デモ) -->
+      <section
+        id="demo-section"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 opacity-50 pointer-events-none transition-opacity duration-500"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-laptop-code text-blue-500"></i> 2.
+          作成した型の動作確認
+        </h2>
+
+        <!-- Readonly のデモ -->
+        <div
+          id="demo-readonly"
+          class="hidden flex-col md:flex-row gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200"
+        >
+          <div class="flex-1">
+            <div
+              class="code-font text-sm bg-slate-800 text-white p-4 rounded-lg shadow-inner mb-4"
+            >
+              <span class="text-blue-400">const</span> ro:
+              <span class="text-violet-300">MyReadonly&lt;User&gt;</span> = {<br />
+              &nbsp;&nbsp;id: <span class="text-pink-400">1</span>,<br />
+              &nbsp;&nbsp;name:
+              <span class="text-amber-300">"Alice"</span>,<br />
+              &nbsp;&nbsp;email: <span class="text-amber-300">"a@b.com"</span
+              ><br />
+              };<br /><br />
+              <span id="ro-code-line" class="transition-colors rounded px-1"
+                >ro.name = <span class="text-amber-300">"Bob"</span>;</span
+              >
+            </div>
+            <button
+              onclick="simulateReadonlyError()"
+              class="bg-red-100 hover:bg-red-200 border border-red-300 text-red-700 font-bold py-2 px-4 rounded shadow-sm transition-colors text-sm w-full"
+            >
+              <i class="fa-solid fa-bolt"></i> ro.name に上書きしてみる
+            </button>
+          </div>
+          <div class="flex-1 flex flex-col justify-center">
+            <div
+              id="ro-error-msg"
+              class="bg-white border-l-4 border-red-500 p-4 shadow-sm opacity-0 transition-opacity transform translate-y-2"
+            >
+              <div class="text-red-600 font-bold text-sm mb-1">
+                <i class="fa-solid fa-triangle-exclamation"></i> TypeScript
+                Error
+              </div>
+              <div class="code-font text-xs text-slate-700">
+                Cannot assign to 'name' because it is a read-only property.
+              </div>
+              <div class="text-xs text-slate-500 mt-2">
+                すべてのプロパティに readonly
+                が付与されたため、値の変更をコンパイル時にブロックします。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Partial のデモ -->
+        <div
+          id="demo-partial"
+          class="hidden flex-col md:flex-row gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200"
+        >
+          <div class="flex-1">
+            <div
+              class="code-font text-sm bg-slate-800 text-white p-4 rounded-lg shadow-inner mb-4"
+            >
+              <span class="text-blue-400">const</span> p:
+              <span class="text-violet-300">MyPartial&lt;User&gt;</span> = {<br />
+              &nbsp;&nbsp;id: <span class="text-pink-400">1</span><br />
+              &nbsp;&nbsp;<span class="text-slate-500">/* name は省略 */</span
+              ><br />
+              &nbsp;&nbsp;<span class="text-slate-500">/* email は省略 */</span
+              ><br />
+              };
+            </div>
+            <div
+              class="bg-emerald-50 border border-emerald-200 p-3 rounded text-sm text-emerald-800"
+            >
+              <i class="fa-solid fa-circle-check"></i> エラーは出ません！
+            </div>
+          </div>
+          <div class="flex-1 flex flex-col justify-center">
+            <div class="bg-white p-4 shadow-sm border border-slate-200 rounded">
+              <div class="text-emerald-600 font-bold text-sm mb-1">
+                <i class="fa-solid fa-circle-info"></i> 省略可能 (Optional) の力
+              </div>
+              <div class="text-xs text-slate-600 leading-relaxed">
+                すべてのプロパティに
+                <code class="bg-slate-100 px-1 rounded code-font font-bold"
+                  >?</code
+                >
+                が付与されたため、<code
+                  class="bg-slate-100 px-1 rounded code-font"
+                  >name</code
+                >
+                や
+                <code class="bg-slate-100 px-1 rounded code-font">email</code>
+                を書かなくても、エラーにならず安全にオブジェクトを作成できます（APIの更新処理などに便利です）。
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      const props = [
+        { id: "id", type: "number" },
+        { id: "name", type: "string" },
+        { id: "email", type: "string" },
+      ];
+
+      // 工場のアニメーション関数
+      async function startFactory(mode) {
+        // UIリセット
+        const machine = document.getElementById("factory-machine");
+        const machineCode = document.getElementById("machine-code");
+        const outContainer = document.getElementById("output-container");
+        const demoSection = document.getElementById("demo-section");
+        const demoRo = document.getElementById("demo-readonly");
+        const demoPa = document.getElementById("demo-partial");
+
+        document.getElementById("output-header").style.opacity = "1";
+        document.getElementById("output-footer").style.opacity = "1";
+
+        const successMark = document.getElementById("success-mark");
+        successMark.style.opacity = "0";
+        successMark.classList.remove("scale-100");
+        successMark.classList.add("scale-50");
+
+        // リセット
+        props.forEach((p) => {
+          document
+            .getElementById(`src-${p.id}`)
+            .classList.remove("processing-row");
+        });
+        outContainer.innerHTML = "";
+        machine.classList.add("machine-active");
+
+        // デモエリアを隠す
+        demoSection.classList.add("opacity-50", "pointer-events-none");
+        demoRo.classList.add("hidden");
+        demoPa.classList.add("hidden");
+        document
+          .getElementById("ro-error-msg")
+          .classList.remove("opacity-100", "translate-y-0");
+        document
+          .getElementById("ro-error-msg")
+          .classList.add("opacity-0", "translate-y-2");
+        document
+          .getElementById("ro-code-line")
+          .classList.remove("bg-red-500", "text-white");
+
+        // マシンの表示切り替え
+        if (mode === "readonly") {
+          machineCode.innerHTML = `
+                    <div class="text-blue-300 font-bold mb-2">MyReadonly&lt;T&gt;</div>
+                    <div class="bg-slate-900 p-2 rounded border border-slate-700 text-left">
+                        <span class="text-blue-400 font-bold">readonly</span> [<span class="text-amber-300">K</span> in <span class="text-pink-400">keyof</span> T]: T[<span class="text-amber-300">K</span>];
+                    </div>
+                `;
+        } else {
+          machineCode.innerHTML = `
+                    <div class="text-orange-300 font-bold mb-2">MyPartial&lt;T&gt;</div>
+                    <div class="bg-slate-900 p-2 rounded border border-slate-700 text-left">
+                        [<span class="text-amber-300">K</span> in <span class="text-pink-400">keyof</span> T]<span class="text-orange-400 font-bold">?</span>: T[<span class="text-amber-300">K</span>];
+                    </div>
+                `;
+        }
+
+        // ループ処理のアニメーション
+        for (let i = 0; i < props.length; i++) {
+          const p = props[i];
+
+          // 1. ソースをハイライト
+          const srcEl = document.getElementById(`src-${p.id}`);
+          srcEl.classList.add("processing-row");
+
+          // 待機
+          await new Promise((r) => setTimeout(r, 600));
+
+          // 2. 結果に出力
+          let resultHTML = "";
+          if (mode === "readonly") {
+            resultHTML = `
+                        <div class="bg-white border-2 border-blue-200 rounded p-2 shadow-sm flex justify-between items-center animate-slide-in">
+                            <span class="code-font"><span class="text-blue-600 font-bold mr-1 text-xs">readonly</span><span class="text-amber-700 font-bold">${p.id}</span></span>
+                            <span class="code-font text-pink-600 text-sm">${p.type}</span>
+                        </div>
+                    `;
+          } else {
+            resultHTML = `
+                        <div class="bg-white border-2 border-orange-200 rounded p-2 shadow-sm flex justify-between items-center animate-slide-in">
+                            <span class="code-font"><span class="text-amber-700 font-bold">${p.id}</span><span class="text-orange-500 font-bold text-lg leading-none">?</span></span>
+                            <span class="code-font text-pink-600 text-sm">${p.type}</span>
+                        </div>
+                    `;
+          }
+          outContainer.innerHTML += resultHTML;
+
+          // 待機して次へ
+          await new Promise((r) => setTimeout(r, 400));
+          srcEl.classList.remove("processing-row");
+        }
+
+        // 完了処理
+        machine.classList.remove("machine-active");
+        machineCode.innerHTML = `
+                <div class="text-emerald-400 font-bold mb-2"><i class="fa-solid fa-check"></i> 変換完了！</div>
+            `;
+
+        successMark.style.opacity = "1";
+        successMark.classList.remove("scale-50");
+        successMark.classList.add("scale-100");
+        setTimeout(() => (successMark.style.opacity = "0"), 1000);
+
+        // デモセクションの解放
+        setTimeout(() => {
+          demoSection.classList.remove("opacity-50", "pointer-events-none");
+          if (mode === "readonly") {
+            demoRo.classList.remove("hidden");
+            demoRo.classList.add("flex");
+          } else {
+            demoPa.classList.remove("hidden");
+            demoPa.classList.add("flex");
+          }
+        }, 500);
+      }
+
+      // Readonlyエラーのシミュレーション
+      function simulateReadonlyError() {
+        const codeLine = document.getElementById("ro-code-line");
+        const errMsg = document.getElementById("ro-error-msg");
+
+        codeLine.classList.add("bg-red-500", "text-white", "error-shake");
+
+        setTimeout(() => {
+          codeLine.classList.remove("error-shake");
+        }, 400);
+
+        errMsg.classList.remove("opacity-0", "translate-y-2");
+        errMsg.classList.add("opacity-100", "translate-y-0");
+      }
+    </script>
   </body>
 </html>

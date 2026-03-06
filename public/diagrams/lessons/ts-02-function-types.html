@@ -3,54 +3,657 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: 関数の型</title>
+    <title>TypeScript 図解: 関数の引数と void 型</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* エラーアニメーション */
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-10px);
+        }
+        40% {
+          transform: translateX(10px);
+        }
+        60% {
+          transform: translateX(-10px);
+        }
+        80% {
+          transform: translateX(10px);
+        }
+      }
+      .error-shake {
+        animation: shake 0.4s ease-in-out;
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+      }
+
+      /* 成功アニメーション */
+      @keyframes success-glow {
+        0% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #334155;
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+          border-color: #10b981;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(16, 185, 129, 0);
+          border-color: #334155;
+        }
+      }
+      .success-glow {
+        animation: success-glow 1s ease-out;
+      }
+
+      /* パイプラインのアニメーション */
+      @keyframes flow-down {
+        0% {
+          transform: translateY(-100%);
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+      }
+      .flow-line {
+        position: relative;
+        overflow: hidden;
+      }
+      .flow-line::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          to bottom,
+          transparent,
+          #3b82f6,
+          transparent
+        );
+        display: none;
+      }
+      .flow-active::after {
+        display: block;
+        animation: flow-down 0.8s linear;
+      }
+
+      /* タイプライター風アニメーション（void用） */
+      .typing-cursor::after {
+        content: "_";
+        animation: blink 1s step-end infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-purple-100 text-purple-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-purple-200"
+        >
+          TypeScript 関数のルール
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >関数の型</span
+          入口と出口の厳格なチェック：<br class="md:hidden" /><span
+            class="text-purple-600"
+            >引数 と void 型</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          関数の引数と戻り値に型を付けて、安全な関数を定義しましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          JavaScriptでは引数を渡し忘れても無視されますが、TypeScriptでは<strong
+            >「数が合わない呼び出し」をエラーとして防ぎます。</strong
+          ><br class="hidden md:block" />省略しても良い引数には
+          <code class="bg-slate-200 px-1 rounded code-font">?</code>
+          を付け、何も返さない関数には
+          <code class="bg-slate-200 px-1 rounded code-font">void</code>
+          を指定します。
         </p>
       </header>
 
+      <!-- 1. 必須引数とオプショナル引数 -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-filter text-blue-500"></i> 1.
+          必須引数と任意引数（?）
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-stretch justify-center"
+        >
+          <!-- 操作パネル -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-4">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              関数を呼び出す
+            </div>
+
+            <div
+              class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-2"
+            >
+              <div class="text-[10px] font-bold text-slate-400 mb-1">
+                必須引数のみの関数
+              </div>
+
+              <!-- 正常な呼び出し -->
+              <button
+                onclick="runAdd(1, 2, this)"
+                class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-400 rounded-lg p-2 text-left shadow-sm transition-all group relative"
+              >
+                <span class="code-font font-bold text-slate-700"
+                  >add(<span class="text-blue-500">1</span>,
+                  <span class="text-blue-500">2</span>)</span
+                >
+                <i
+                  class="fa-solid fa-play absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-300 opacity-0 group-hover:opacity-100"
+                ></i>
+              </button>
+
+              <!-- 引数不足のエラー -->
+              <button
+                onclick="runAddError(1, this)"
+                class="bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-400 rounded-lg p-2 text-left shadow-sm transition-all group relative overflow-hidden mt-1"
+              >
+                <div
+                  class="absolute top-0 right-0 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-bl font-bold"
+                >
+                  引数不足
+                </div>
+                <span class="code-font font-bold text-slate-700"
+                  >add(<span class="text-blue-500">1</span>)</span
+                >
+                <i
+                  class="fa-solid fa-bolt absolute right-3 top-1/2 transform -translate-y-1/2 text-red-400 opacity-0 group-hover:opacity-100"
+                ></i>
+              </button>
+            </div>
+
+            <div
+              class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-2"
+            >
+              <div class="text-[10px] font-bold text-slate-400 mb-1">
+                オプショナル（?）を持つ関数
+              </div>
+
+              <!-- 正常（両方） -->
+              <button
+                onclick="runGreet('Alice', 25, this)"
+                class="bg-white hover:bg-purple-50 border-2 border-slate-200 hover:border-purple-400 rounded-lg p-2 text-left shadow-sm transition-all group relative"
+              >
+                <span class="code-font font-bold text-slate-700"
+                  >greet(<span class="text-amber-500">"Alice"</span>,
+                  <span class="text-amber-500">25</span>)</span
+                >
+              </button>
+
+              <!-- 正常（省略） -->
+              <button
+                onclick="runGreet('Bob', undefined, this)"
+                class="bg-white hover:bg-purple-50 border-2 border-slate-200 hover:border-purple-400 rounded-lg p-2 text-left shadow-sm transition-all group relative mt-1"
+              >
+                <span class="code-font font-bold text-slate-700"
+                  >greet(<span class="text-amber-500">"Bob"</span>)</span
+                >
+                <span
+                  class="text-[10px] text-slate-400 ml-2 border border-slate-300 px-1 rounded"
+                  >2つ目を省略OK</span
+                >
+              </button>
+            </div>
+          </div>
+
+          <!-- 関数の可視化 (greet をメインに表示) -->
+          <div class="w-full lg:w-[65%] flex flex-col items-center">
+            <div
+              id="func-machine"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 relative z-10 shadow-xl transition-all duration-300"
+            >
+              <!-- 引数の受け皿 -->
+              <div class="flex justify-center gap-6 mb-6">
+                <div
+                  class="bg-slate-900 border-2 border-dashed border-slate-600 rounded-lg p-3 text-center w-32 relative"
+                >
+                  <div class="text-[10px] text-slate-400 mb-1">
+                    引数1 (必須)
+                  </div>
+                  <div class="code-font text-sm font-bold text-amber-300">
+                    name: string
+                  </div>
+                  <div
+                    id="slot-name"
+                    class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-amber-100 text-amber-800 code-font text-xs font-bold px-2 py-0.5 rounded shadow opacity-0 transition-opacity"
+                  >
+                    "Alice"
+                  </div>
+                </div>
+
+                <div
+                  class="bg-slate-900 border-2 border-dashed border-slate-600 rounded-lg p-3 text-center w-32 relative"
+                >
+                  <div class="text-[10px] text-slate-400 mb-1">
+                    引数2 (任意)
+                    <span class="text-pink-400 font-bold text-lg leading-none"
+                      >?</span
+                    >
+                  </div>
+                  <div class="code-font text-sm font-bold text-blue-300">
+                    age?: number
+                  </div>
+                  <div
+                    id="slot-age"
+                    class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-100 text-blue-800 code-font text-xs font-bold px-2 py-0.5 rounded shadow opacity-0 transition-opacity"
+                  >
+                    25
+                  </div>
+                </div>
+              </div>
+
+              <!-- 処理のロジック -->
+              <div
+                class="bg-slate-900 rounded-xl p-4 border border-slate-600 code-font text-sm text-slate-300"
+              >
+                <span class="text-purple-400">function</span> greet(name, age)
+                {<br />
+                &nbsp;&nbsp;<span
+                  id="logic-if"
+                  class="transition-colors rounded px-1"
+                  ><span class="text-blue-400">if</span> (age !==
+                  <span class="text-blue-400">undefined</span>) {</span
+                ><br />
+                &nbsp;&nbsp;&nbsp;&nbsp;<span
+                  id="logic-branch-true"
+                  class="transition-colors rounded px-1"
+                  ><span class="text-purple-400">return</span>
+                  <span class="text-amber-300">"Hello, "</span> + name +
+                  <span class="text-amber-300">" ("</span> + age +
+                  <span class="text-amber-300">")"</span>;</span
+                ><br />
+                &nbsp;&nbsp;}<br />
+                &nbsp;&nbsp;<span
+                  id="logic-branch-false"
+                  class="transition-colors rounded px-1"
+                  ><span class="text-purple-400">return</span>
+                  <span class="text-amber-300">"Hello, "</span> + name;</span
+                ><br />
+                }
+              </div>
+
+              <!-- エラーメッセージ用 -->
+              <div
+                id="func-error-msg"
+                class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-600 text-white text-xs p-3 rounded shadow-2xl hidden z-20 code-font whitespace-nowrap border-2 border-red-300"
+              >
+                Expected 2 arguments, but got 1.
+              </div>
+            </div>
+
+            <!-- 出力結果 -->
+            <div
+              class="w-8 h-8 border-l-2 border-r-2 border-slate-300 flow-line"
+              id="out-pipe"
+            ></div>
+
+            <div
+              id="func-output"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl w-full max-w-sm p-4 text-center shadow-sm transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                戻り値 (string)
+              </div>
+              <div
+                id="result-val"
+                class="code-font text-lg font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. void 型 (戻り値なし) -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-8 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-black-hole text-slate-800"></i> 2. 値を返さない
+          void 型
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-center justify-center"
+        >
+          <!-- 操作パネル -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-4">
+            <button
+              onclick="runLogMessage()"
+              class="bg-white hover:bg-slate-100 border-2 border-slate-300 rounded-xl p-4 text-left shadow-sm transition-all group"
+            >
+              <div class="text-[10px] font-bold text-slate-400 mb-1">
+                副作用だけを起こす関数
+              </div>
+              <span class="code-font font-bold text-slate-700 text-lg"
+                >logMessage(<span class="text-amber-600">"done"</span>)</span
+              >
+            </button>
+
+            <div
+              class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded text-sm text-blue-800 mt-4"
+            >
+              <i class="fa-solid fa-circle-info"></i>
+              <strong>void型の意味</strong><br />
+              「この関数は中で処理をして終わりで、外には何も結果を返しませんよ」という宣言です。<br />これにより、間違って戻り値を変数に代入しようとするミスを防げます。
+            </div>
+          </div>
+
+          <!-- void関数の可視化 -->
+          <div class="w-full lg:w-[65%] flex flex-col items-center">
+            <div
+              id="void-machine"
+              class="w-full max-w-sm bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 relative z-10 shadow-xl"
+            >
+              <div
+                class="code-font text-sm text-slate-300 mb-4 border-b border-slate-600 pb-2"
+              >
+                <span class="text-purple-400">function</span>
+                logMessage(message):
+                <span class="bg-slate-700 text-white px-1 rounded font-bold"
+                  >void</span
+                >
+                {<br />
+                &nbsp;&nbsp;console.log(message);<br />
+                }
+              </div>
+
+              <!-- コンソール画面 -->
+              <div
+                class="bg-black rounded-lg p-3 font-mono text-sm text-green-400 min-h-[80px] border border-slate-600 relative"
+              >
+                <div class="text-slate-500 text-[10px] absolute top-1 right-2">
+                  Terminal
+                </div>
+                <span class="text-slate-300">></span>
+                <span id="terminal-text" class="typing-cursor"></span>
+              </div>
+            </div>
+
+            <!-- 出力結果（出口が塞がっている） -->
+            <div
+              class="w-8 h-8 border-l-2 border-r-2 border-slate-300 border-b-4 border-b-red-400 relative"
+              id="void-pipe"
+            >
+              <div
+                class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-[10px] font-bold text-red-500 whitespace-nowrap bg-red-50 px-1 rounded"
+              >
+                出口なし (void)
+              </div>
+            </div>
+
+            <div
+              class="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl w-full max-w-sm p-4 text-center mt-6"
+            >
+              <div class="text-[10px] font-bold text-slate-400 mb-1">
+                戻り値を受け取ろうとすると…
+              </div>
+              <div class="code-font text-sm text-slate-500">
+                <span class="text-blue-500">const</span> result =
+                logMessage("...");<br />
+                <span class="text-slate-400 text-xs"
+                  >// result は undefined になります</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+
+      // --- セクション1: add関数のエラーシミュレーション ---
+      function runAddError(val, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const machine = document.getElementById("func-machine");
+        const errMsg = document.getElementById("func-error-msg");
+
+        // 擬似的にgreetの箱をaddのエラーとして使い回す（視覚的効果のみ）
+        errMsg.innerText = "Expected 2 arguments, but got 1.";
+
+        machine.classList.add("error-shake");
+        errMsg.classList.remove("hidden");
+
+        setTimeout(() => {
+          machine.classList.remove("error-shake");
+          setTimeout(() => {
+            errMsg.classList.add("hidden");
+            isAnimating = false;
+          }, 2000);
+        }, 400);
+      }
+
+      // --- セクション1: add関数の正常シミュレーション ---
+      function runAdd(a, b, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const machine = document.getElementById("func-machine");
+        const outPipe = document.getElementById("out-pipe");
+        const resultBox = document.getElementById("func-output");
+        const resultVal = document.getElementById("result-val");
+
+        // 成功の光
+        machine.classList.add("success-glow");
+
+        setTimeout(() => {
+          outPipe.classList.add("flow-active");
+
+          setTimeout(() => {
+            resultBox.classList.remove("opacity-50");
+            resultBox.classList.add("border-emerald-400", "bg-emerald-50");
+            resultVal.innerText = (a + b).toString();
+            resultVal.className =
+              "code-font text-2xl font-black text-emerald-600";
+
+            setTimeout(() => {
+              machine.classList.remove("success-glow");
+              outPipe.classList.remove("flow-active");
+
+              setTimeout(() => {
+                resultBox.classList.add("opacity-50");
+                resultBox.classList.remove(
+                  "border-emerald-400",
+                  "bg-emerald-50",
+                );
+                resultVal.innerText = "---";
+                resultVal.className =
+                  "code-font text-lg font-bold text-slate-400";
+                isAnimating = false;
+              }, 1000);
+            }, 800);
+          }, 400);
+        }, 400);
+      }
+
+      // --- セクション1: greet関数のシミュレーション ---
+      function runGreet(name, age, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const machine = document.getElementById("func-machine");
+        const slotName = document.getElementById("slot-name");
+        const slotAge = document.getElementById("slot-age");
+        const logicIf = document.getElementById("logic-if");
+        const logicTrue = document.getElementById("logic-branch-true");
+        const logicFalse = document.getElementById("logic-branch-false");
+        const outPipe = document.getElementById("out-pipe");
+        const resultBox = document.getElementById("func-output");
+        const resultVal = document.getElementById("result-val");
+
+        // 1. スロットに値が入る
+        slotName.innerText = `"${name}"`;
+        slotName.style.opacity = "1";
+        slotName.style.transform = "translate(-50%, -10px)";
+
+        if (age !== undefined) {
+          slotAge.innerText = age;
+          slotAge.className =
+            "absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-100 text-blue-800 code-font text-xs font-bold px-2 py-0.5 rounded shadow transition-all duration-300";
+        } else {
+          slotAge.innerText = "undefined";
+          slotAge.className =
+            "absolute -top-3 left-1/2 transform -translate-x-1/2 bg-slate-200 text-slate-600 code-font text-[10px] font-bold px-2 py-0.5 rounded shadow transition-all duration-300";
+        }
+        slotAge.style.opacity = "1";
+        slotAge.style.transform = "translate(-50%, -10px)";
+
+        machine.classList.add("success-glow");
+
+        // 2. if文の評価
+        setTimeout(() => {
+          logicIf.classList.add("bg-slate-700");
+
+          setTimeout(() => {
+            logicIf.classList.remove("bg-slate-700");
+
+            let finalString = "";
+            if (age !== undefined) {
+              logicTrue.classList.add("bg-emerald-900", "text-emerald-300");
+              finalString = `"Hello, ${name} (${age})"`;
+            } else {
+              logicFalse.classList.add("bg-emerald-900", "text-emerald-300");
+              finalString = `"Hello, ${name}"`;
+            }
+
+            // 3. 出力
+            setTimeout(() => {
+              outPipe.classList.add("flow-active");
+
+              setTimeout(() => {
+                resultBox.classList.remove("opacity-50");
+                resultBox.classList.add("border-purple-400", "bg-purple-50");
+                resultVal.innerText = finalString;
+                resultVal.className =
+                  "code-font text-xl font-black text-purple-600";
+
+                // リセット
+                setTimeout(() => {
+                  slotName.style.opacity = "0";
+                  slotAge.style.opacity = "0";
+                  slotName.style.transform = "translate(-50%, 0)";
+                  slotAge.style.transform = "translate(-50%, 0)";
+                  logicTrue.classList.remove(
+                    "bg-emerald-900",
+                    "text-emerald-300",
+                  );
+                  logicFalse.classList.remove(
+                    "bg-emerald-900",
+                    "text-emerald-300",
+                  );
+                  machine.classList.remove("success-glow");
+                  outPipe.classList.remove("flow-active");
+
+                  setTimeout(() => {
+                    resultBox.classList.add("opacity-50");
+                    resultBox.classList.remove(
+                      "border-purple-400",
+                      "bg-purple-50",
+                    );
+                    resultVal.innerText = "---";
+                    resultVal.className =
+                      "code-font text-lg font-bold text-slate-400";
+                    isAnimating = false;
+                  }, 1500);
+                }, 1500);
+              }, 400);
+            }, 500);
+          }, 400);
+        }, 600);
+      }
+
+      // --- セクション2: void関数のシミュレーション ---
+      function runLogMessage() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const machine = document.getElementById("void-machine");
+        const termText = document.getElementById("terminal-text");
+
+        // 成功の光
+        machine.classList.add("success-glow");
+        termText.innerText = "";
+
+        // タイプライターアニメーション
+        const msg = "done";
+        let i = 0;
+
+        setTimeout(() => {
+          const typeInterval = setInterval(() => {
+            termText.innerText += msg.charAt(i);
+            i++;
+            if (i >= msg.length) {
+              clearInterval(typeInterval);
+
+              // 処理終了（戻り値なし）
+              setTimeout(() => {
+                machine.classList.remove("success-glow");
+
+                setTimeout(() => {
+                  termText.innerText = "";
+                  isAnimating = false;
+                }, 2000);
+              }, 1000);
+            }
+          }, 100);
+        }, 400);
+      }
+    </script>
   </body>
 </html>

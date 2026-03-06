@@ -111,6 +111,26 @@
       .flow-line.active::after {
         display: block;
       }
+
+      /* エラー時の揺れアニメーション */
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-5px);
+        }
+        40% {
+          transform: translateX(5px);
+        }
+        60% {
+          transform: translateX(-5px);
+        }
+        80% {
+          transform: translateX(5px);
+        }
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
@@ -138,7 +158,7 @@
           は、指定したすべての
           <strong>キー（Keys）</strong> に対して、必ず指定した
           <strong>型（Type）</strong>
-          の値を持たせることを強制する型です。「書き忘れ」や「タイポ」を完全に防ぎます。
+          の値を持たせることを強制する型です。「設定の書き忘れ」や「タイポ」をコンパイル時に完全に防ぎます。
         </p>
       </header>
 
@@ -194,10 +214,10 @@
 
           <!-- 辞書 (Record) -->
           <div
-            class="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-4 w-full md:w-1/2 relative"
+            class="bg-indigo-50 border-2 border-indigo-200 rounded-xl p-4 w-full md:w-1/2 relative z-10"
           >
             <div
-              class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm"
+              class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm whitespace-nowrap"
             >
               Record&lt;Status, string&gt;
             </div>
@@ -208,30 +228,31 @@
             </div>
 
             <div
-              class="code-font text-sm text-slate-700 bg-white p-4 rounded border border-indigo-100 shadow-inner"
+              class="code-font text-sm text-slate-700 bg-white p-4 rounded border border-indigo-100 shadow-inner relative"
             >
               <div class="text-slate-400">
                 const statusLabels: Record&lt;Status, string&gt; = {
               </div>
-              <div class="pl-4 py-1 flex justify-between">
-                <span class="text-indigo-600">idle:</span>
-                <span class="text-emerald-600">"待機中"</span>,
+              <div class="pl-4 py-1 flex">
+                <span class="text-indigo-600 w-20">idle:</span>
+                <span><span class="text-emerald-600">"待機中"</span>,</span>
               </div>
-              <div class="pl-4 py-1 flex justify-between">
-                <span class="text-indigo-600">loading:</span>
-                <span class="text-emerald-600">"読込中"</span>,
+              <div class="pl-4 py-1 flex">
+                <span class="text-indigo-600 w-20">loading:</span>
+                <span><span class="text-emerald-600">"読込中"</span>,</span>
               </div>
-              <div class="pl-4 py-1 flex justify-between">
-                <span class="text-indigo-600">success:</span>
-                <span class="text-emerald-600">"成功"</span>,
+              <div class="pl-4 py-1 flex">
+                <span class="text-indigo-600 w-20">success:</span>
+                <span><span class="text-emerald-600">"成功"</span>,</span>
               </div>
+
+              <!-- エラーデモ用の行 -->
               <div
                 id="error-demo-row"
-                class="pl-4 py-1 flex justify-between relative group cursor-pointer"
-                onclick="toggleErrorDemo()"
+                class="pl-4 py-1 flex relative transition-all duration-300"
               >
                 <span
-                  class="text-indigo-600 transition-colors"
+                  class="text-indigo-600 transition-colors w-20"
                   id="error-demo-key"
                   >error:</span
                 >
@@ -244,18 +265,21 @@
                 <!-- エラーメッセージツールチップ -->
                 <div
                   id="error-tooltip"
-                  class="absolute left-0 -top-10 bg-red-600 text-white text-[10px] p-2 rounded shadow-lg hidden w-full z-20 code-font"
+                  class="absolute left-0 -top-12 bg-red-600 text-white text-[10px] p-2 rounded shadow-lg hidden w-full z-20 code-font leading-tight"
                 >
                   Property 'error' is missing in type '{ ... }' but required in
                   type 'Record&lt;Status, string&gt;'.
                 </div>
               </div>
+
               <div class="text-slate-400">};</div>
             </div>
-            <div class="mt-3 text-center">
+
+            <div class="mt-4 text-center">
               <button
                 onclick="toggleErrorDemo()"
-                class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded border border-red-200 transition-colors"
+                id="btn-error-demo"
+                class="text-sm font-bold bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg border border-red-300 transition-colors shadow-sm active:scale-95"
               >
                 <i class="fa-solid fa-bug"></i> 「error」の行を書き忘れたら？
               </button>
@@ -286,51 +310,51 @@
           class="flex flex-col lg:flex-row gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200 items-stretch"
         >
           <!-- STEP 1: 入力 (引数) -->
-          <div class="w-full lg:w-1/4 flex flex-col gap-3">
-            <div class="text-sm font-bold text-slate-500 text-center mb-1">
+          <div class="w-full lg:w-[25%] flex flex-col gap-3">
+            <div class="text-sm font-bold text-slate-500 text-center mb-2">
               ① 引数を渡す
             </div>
 
             <button
-              onclick="fetchLabel('idle')"
-              class="hover:scale-[1.02] transition-transform bg-white border-2 border-slate-300 hover:border-slate-500 rounded-lg p-3 text-center shadow-sm font-bold text-slate-600 code-font"
+              onclick="fetchLabel('idle', this)"
+              class="hover:scale-[1.02] transition-transform bg-white border-2 border-slate-300 hover:border-slate-500 rounded-lg p-3 text-center shadow-sm font-bold text-slate-600 code-font active:scale-95"
             >
-              "idle"
+              getLabel("idle")
             </button>
             <button
-              onclick="fetchLabel('loading')"
-              class="hover:scale-[1.02] transition-transform bg-white border-2 border-blue-300 hover:border-blue-500 rounded-lg p-3 text-center shadow-sm font-bold text-blue-600 code-font"
+              onclick="fetchLabel('loading', this)"
+              class="hover:scale-[1.02] transition-transform bg-white border-2 border-blue-300 hover:border-blue-500 rounded-lg p-3 text-center shadow-sm font-bold text-blue-600 code-font active:scale-95"
             >
-              "loading"
+              getLabel("loading")
             </button>
             <button
-              onclick="fetchLabel('success')"
-              class="hover:scale-[1.02] transition-transform bg-white border-2 border-emerald-300 hover:border-emerald-500 rounded-lg p-3 text-center shadow-sm font-bold text-emerald-600 code-font"
+              onclick="fetchLabel('success', this)"
+              class="hover:scale-[1.02] transition-transform bg-white border-2 border-emerald-300 hover:border-emerald-500 rounded-lg p-3 text-center shadow-sm font-bold text-emerald-600 code-font active:scale-95"
             >
-              "success"
+              getLabel("success")
             </button>
             <button
-              onclick="fetchLabel('error')"
-              class="hover:scale-[1.02] transition-transform bg-white border-2 border-rose-300 hover:border-rose-500 rounded-lg p-3 text-center shadow-sm font-bold text-rose-600 code-font"
+              onclick="fetchLabel('error', this)"
+              class="hover:scale-[1.02] transition-transform bg-white border-2 border-rose-300 hover:border-rose-500 rounded-lg p-3 text-center shadow-sm font-bold text-rose-600 code-font active:scale-95"
             >
-              "error"
+              getLabel("error")
             </button>
           </div>
 
           <!-- STEP 2: 辞書検索 -->
-          <div class="w-full lg:w-2/4 flex flex-col justify-center relative">
-            <div class="text-sm font-bold text-slate-500 text-center mb-1">
+          <div class="w-full lg:w-[45%] flex flex-col justify-center relative">
+            <div class="text-sm font-bold text-slate-500 text-center mb-2">
               ② 辞書（Record）で照合
             </div>
 
             <!-- 関数ヘッダー -->
             <div
-              class="bg-slate-800 text-white p-3 rounded-t-xl text-sm code-font border-b border-slate-700 flex justify-between items-center z-20 relative"
+              class="bg-slate-800 text-white p-4 rounded-t-xl text-sm code-font border-b border-slate-700 flex justify-between items-center z-20 relative shadow-md"
             >
               <span
                 ><span class="text-blue-400">function</span> getLabel(<span
                   id="arg-display"
-                  class="text-yellow-300"
+                  class="text-yellow-300 transition-colors duration-300"
                   >status</span
                 >) {</span
               >
@@ -341,14 +365,16 @@
 
             <!-- 辞書本体 -->
             <div
-              class="bg-white border-2 border-slate-800 rounded-b-xl p-4 shadow-lg z-10 relative"
+              class="bg-white border-x-2 border-b-2 border-slate-800 rounded-b-xl p-5 shadow-lg z-10 relative"
             >
-              <div class="code-font text-sm text-slate-700 flex flex-col gap-1">
-                <div class="text-slate-400 mb-1">statusLabels:</div>
+              <div class="code-font text-sm text-slate-700 flex flex-col gap-2">
+                <div class="text-slate-400 mb-1 border-b border-slate-100 pb-1">
+                  statusLabels:
+                </div>
 
                 <div
                   id="row-idle"
-                  class="dict-row border border-transparent rounded px-2 py-1 flex justify-between items-center bg-slate-50"
+                  class="dict-row border-2 border-transparent rounded-lg px-3 py-2 flex justify-between items-center bg-slate-50"
                 >
                   <span class="text-slate-600 font-bold">"idle"</span>
                   <span class="text-slate-400 text-xs"
@@ -359,7 +385,7 @@
 
                 <div
                   id="row-loading"
-                  class="dict-row border border-transparent rounded px-2 py-1 flex justify-between items-center bg-slate-50"
+                  class="dict-row border-2 border-transparent rounded-lg px-3 py-2 flex justify-between items-center bg-slate-50"
                 >
                   <span class="text-blue-600 font-bold">"loading"</span>
                   <span class="text-slate-400 text-xs"
@@ -370,7 +396,7 @@
 
                 <div
                   id="row-success"
-                  class="dict-row border border-transparent rounded px-2 py-1 flex justify-between items-center bg-slate-50"
+                  class="dict-row border-2 border-transparent rounded-lg px-3 py-2 flex justify-between items-center bg-slate-50"
                 >
                   <span class="text-emerald-600 font-bold">"success"</span>
                   <span class="text-slate-400 text-xs"
@@ -381,7 +407,7 @@
 
                 <div
                   id="row-error"
-                  class="dict-row border border-transparent rounded px-2 py-1 flex justify-between items-center bg-slate-50"
+                  class="dict-row border-2 border-transparent rounded-lg px-3 py-2 flex justify-between items-center bg-slate-50"
                 >
                   <span class="text-rose-600 font-bold">"error"</span>
                   <span class="text-slate-400 text-xs"
@@ -400,38 +426,59 @@
           </div>
 
           <!-- STEP 3: 出力 (戻り値) -->
-          <div class="w-full lg:w-1/4 flex flex-col gap-2 justify-center">
-            <div class="text-sm font-bold text-slate-500 text-center mb-1">
+          <div class="w-full lg:w-[30%] flex flex-col justify-center">
+            <div class="text-sm font-bold text-slate-500 text-center mb-2">
               ③ 戻り値 (string)
             </div>
 
             <div
-              class="bg-slate-800 rounded-xl p-5 shadow-inner relative overflow-hidden flex flex-col items-center justify-center min-h-[120px]"
+              class="bg-slate-900 border-2 border-slate-700 rounded-xl p-5 shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[160px]"
             >
               <div
                 id="result-indicator"
                 class="absolute top-0 left-0 w-full h-1 bg-slate-600 transition-colors duration-300"
               ></div>
               <div
-                class="text-xs text-slate-400 code-font mb-2 w-full text-left"
+                class="text-xs text-slate-500 code-font mb-4 absolute top-3 left-4"
               >
                 > console.log(...)
               </div>
 
               <div
                 id="final-result"
-                class="text-2xl font-bold text-slate-500 opacity-50 transition-all"
+                class="text-2xl font-bold text-slate-600 opacity-50 transition-all text-center"
               >
                 ---
               </div>
             </div>
           </div>
         </div>
+
+        <div
+          class="mt-6 bg-indigo-50 border-l-4 border-indigo-500 p-4 rounded-r-lg shadow-sm"
+        >
+          <h3
+            class="font-bold text-indigo-800 mb-1 flex items-center gap-2 text-sm"
+          >
+            <i class="fa-solid fa-lightbulb text-amber-500"></i> もし switch
+            文で書いたら…？
+          </h3>
+          <p class="text-xs text-indigo-900 leading-relaxed">
+            同じことを
+            <code class="bg-white px-1 rounded code-font">switch</code>
+            文で書くこともできますが、コードが縦に長くなり見通しが悪くなります。<br />
+            <code class="bg-white px-1 rounded code-font">Record</code>
+            型を使ったこの
+            <strong>オブジェクトマップ・パターン</strong>
+            を使うと、データ（辞書）とロジック（関数）を分離でき、コードが非常にシンプルで宣言的になります。
+          </p>
+        </div>
       </section>
     </div>
 
     <script>
       let errorDemoActive = false;
+      let isAnimating = false;
 
       // エラーのシミュレーション（Record型の強みを視覚化）
       function toggleErrorDemo() {
@@ -439,6 +486,7 @@
         const key = document.getElementById("error-demo-key");
         const val = document.getElementById("error-demo-val");
         const tooltip = document.getElementById("error-tooltip");
+        const btn = document.getElementById("btn-error-demo");
 
         errorDemoActive = !errorDemoActive;
 
@@ -448,51 +496,71 @@
           val.classList.add("line-through", "text-slate-300", "opacity-50");
           row.classList.add(
             "bg-red-50",
-            "border",
-            "border-red-200",
+            "border-2",
+            "border-red-300",
             "border-dashed",
-            "rounded",
+            "rounded-lg",
           );
           tooltip.classList.remove("hidden");
 
           // エラーアニメーション
           row.style.animation = "shake 0.4s ease-in-out";
           setTimeout(() => (row.style.animation = ""), 400);
+
+          btn.innerHTML =
+            '<i class="fa-solid fa-rotate-left"></i> エラーを直す（元に戻す）';
+          btn.className =
+            "text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg border border-slate-300 transition-colors shadow-sm active:scale-95";
         } else {
           // 元に戻す
           key.classList.remove("line-through", "text-slate-300", "opacity-50");
           val.classList.remove("line-through", "text-slate-300", "opacity-50");
           row.classList.remove(
             "bg-red-50",
-            "border",
-            "border-red-200",
+            "border-2",
+            "border-red-300",
             "border-dashed",
-            "rounded",
+            "rounded-lg",
           );
           tooltip.classList.add("hidden");
+
+          btn.innerHTML =
+            '<i class="fa-solid fa-bug"></i> 「error」の行を書き忘れたら？';
+          btn.className =
+            "text-sm font-bold bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg border border-red-300 transition-colors shadow-sm active:scale-95";
         }
       }
 
       // インタラクティブな動作確認
-      function fetchLabel(status) {
+      function fetchLabel(status, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        // もしエラーデモ中なら元に戻す
+        if (errorDemoActive) {
+          toggleErrorDemo();
+        }
+
         // UIリセット
         const statuses = ["idle", "loading", "success", "error"];
         statuses.forEach((s) => {
           const el = document.getElementById(`row-${s}`);
-          el.className = `dict-row border border-transparent rounded px-2 py-1 flex justify-between items-center bg-slate-50`;
+          el.className = `dict-row border-2 border-transparent rounded-lg px-3 py-2 flex justify-between items-center bg-slate-50`;
         });
 
         document.getElementById("arg-display").innerText = `"${status}"`;
-        document.getElementById("arg-display").className = "text-yellow-300";
+        document.getElementById("arg-display").className =
+          "text-yellow-300 transition-colors duration-300";
 
         const resultEl = document.getElementById("final-result");
         resultEl.innerText = "---";
-        resultEl.className = "text-2xl font-bold text-slate-500 opacity-50";
+        resultEl.className =
+          "text-2xl font-bold text-slate-600 opacity-50 transition-all text-center";
 
         document.getElementById("result-indicator").className =
           "absolute top-0 left-0 w-full h-1 bg-slate-600 transition-colors duration-300";
 
-        // 1. 引数が渡された
+        // 1. 引数が渡された色の変化
         const argColor = {
           idle: "text-slate-400",
           loading: "text-blue-400",
@@ -504,13 +572,13 @@
           document
             .getElementById("arg-display")
             .classList.replace("text-yellow-300", argColor[status]);
-        }, 200);
+        }, 300);
 
         // 2. 辞書検索（行のハイライト）
         setTimeout(() => {
           const row = document.getElementById(`row-${status}`);
           row.classList.add("active", `row-${status}`);
-        }, 600);
+        }, 800);
 
         // 3. 結果の出力
         setTimeout(() => {
@@ -540,11 +608,16 @@
           const data = dictionary[status];
 
           resultEl.innerText = data.label;
-          resultEl.className = `text-2xl font-bold ${data.color} code-font animate-pop`;
+          resultEl.className = `text-2xl font-bold ${data.color} code-font animate-pop text-center`;
 
           document.getElementById("result-indicator").className =
             `absolute top-0 left-0 w-full h-1 ${data.bar} transition-colors duration-300`;
-        }, 1200);
+
+          // アニメーション終了フラグのリセット
+          setTimeout(() => {
+            isAnimating = false;
+          }, 800);
+        }, 1400);
       }
     </script>
   </body>

@@ -3,54 +3,650 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: カスタムフックパターン</title>
+    <title>React 図解: カスタムフックと LocalStorage</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* データの送信アニメーション（State -> LocalStorage） */
+      @keyframes flow-to-storage {
+        0% {
+          transform: translateX(0) scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: translateX(100px) scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: translateX(200px) scale(0.5);
+          opacity: 0;
+        }
+      }
+
+      /* データの復元アニメーション（LocalStorage -> State） */
+      @keyframes flow-to-state {
+        0% {
+          transform: translateX(200px) scale(0.5);
+          opacity: 0;
+        }
+        50% {
+          transform: translateX(100px) scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: translateX(0) scale(1);
+          opacity: 1;
+        }
+      }
+
+      .data-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .data-packet.saving {
+        animation: flow-to-storage 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)
+          forwards;
+      }
+
+      .data-packet.loading {
+        animation: flow-to-state 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* 箱（LocalStorage）のパカッと開くアニメーション */
+      @keyframes open-box {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+        }
+        50% {
+          transform: scale(1.05);
+          box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+          border-color: #f59e0b;
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+        }
+      }
+      .box-active {
+        animation: open-box 0.6s ease-in-out;
+      }
+
+      /* State の更新パルス */
+      @keyframes pulse-state {
+        0% {
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.6);
+        }
+        70% {
+          box-shadow: 0 0 0 10px rgba(6, 182, 212, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(6, 182, 212, 0);
+        }
+      }
+      .state-active {
+        animation: pulse-state 0.5s ease-out;
+        border-color: #06b6d4 !important;
+      }
+
+      /* リロード画面フラッシュ */
+      @keyframes flash-screen {
+        0% {
+          background-color: white;
+          opacity: 1;
+        }
+        100% {
+          background-color: transparent;
+          opacity: 0;
+          display: none;
+        }
+      }
+      .screen-flash {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: white;
+        z-index: 100;
+        animation: flash-screen 0.8s ease-out forwards;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-violet-100 text-violet-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-violet-200"
+        >
+          ロジックの隠蔽・再利用
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >カスタムフックパターン</span
+          2つのフックを1つに合体：<br class="md:hidden" /><span
+            class="text-violet-600"
+            >カスタムフック</span
           >
           の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          カスタムフックに型を付けて、ロジックの再利用を型安全に実現しましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">useState</code> と
+          <code class="bg-slate-200 px-1 rounded code-font">useEffect</code>
+          を組み合わせた複雑な処理を、1つの関数
+          <code
+            class="bg-slate-200 px-1 rounded code-font text-violet-600 font-bold"
+            >useLocalStorage</code
+          >
+          に閉じ込めました。<br
+            class="hidden md:block"
+          />使う側（コンポーネント）からは、<strong
+            >普通の useState
+            と全く同じ使い方で、勝手にデータが保存・復元される</strong
+          >ようになります。
         </p>
       </header>
 
+      <!-- 1. インタラクティブ・シミュレーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-8 relative overflow-hidden"
+      >
+        <div
+          class="flex justify-between items-end border-b-2 border-slate-100 pb-3 mb-8 relative z-10"
+        >
+          <h2 class="text-2xl font-bold flex items-center gap-2 text-slate-700">
+            <i class="fa-solid fa-arrows-rotate text-violet-500"></i> 1.
+            同期メカニズムのシミュレーション
+          </h2>
+          <button
+            onclick="simulateReload()"
+            class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-all flex items-center gap-2 text-sm"
+          >
+            <i class="fa-solid fa-rotate-right"></i>
+            ページをリロード（再読み込み）
+          </button>
+        </div>
+
+        <!-- リロード時の白フラッシュ用カバー -->
+        <div id="flash-overlay" class="hidden rounded-2xl"></div>
+
+        <div
+          class="relative flex flex-col lg:flex-row gap-6 items-stretch justify-between min-h-[350px]"
+        >
+          <!-- 飛行するデータのプレースホルダー -->
+          <div
+            id="flying-data"
+            class="data-packet bg-white border-2 border-amber-400 rounded-lg p-2 flex items-center gap-2"
+          >
+            <i class="fa-solid fa-file-code text-amber-500"></i>
+            <span
+              id="flying-text"
+              class="code-font text-xs font-bold text-slate-700"
+            ></span>
+          </div>
+
+          <!-- ① Appコンポーネント (UI) -->
+          <div
+            class="w-full lg:w-[35%] bg-slate-50 border-2 border-slate-200 rounded-2xl p-5 relative z-10 flex flex-col shadow-sm"
+          >
+            <div
+              class="absolute -top-3 bg-slate-600 text-white text-xs font-bold px-3 py-1 rounded shadow-sm"
+            >
+              &lt;App /&gt; (UI)
+            </div>
+
+            <div class="text-xs font-bold text-slate-500 mb-2 mt-2">
+              1. 使う時はシンプル
+            </div>
+            <div
+              class="bg-white p-3 rounded-lg border border-slate-200 code-font text-[11px] text-slate-700 mb-6 shadow-inner"
+            >
+              <span class="text-blue-500">const</span> [name, setName] =
+              <span class="text-violet-500 font-bold">useLocalStorage</span
+              >(<span class="text-amber-600">"username"</span>,
+              <span class="text-amber-600">"ゲスト"</span>);
+            </div>
+
+            <div
+              class="flex-1 flex flex-col items-center justify-center bg-white border-2 border-dashed border-slate-300 rounded-xl p-4"
+            >
+              <div class="text-sm text-slate-500 mb-2">
+                名前:
+                <span
+                  id="ui-display"
+                  class="font-bold text-xl text-slate-800 code-font"
+                  >---</span
+                >
+              </div>
+
+              <div class="flex gap-2 w-full mt-2">
+                <input
+                  type="text"
+                  id="name-input"
+                  placeholder="名前を入力"
+                  class="border-2 border-slate-200 rounded-lg px-3 py-2 w-full text-sm focus:outline-none focus:border-cyan-400 transition-colors"
+                  value=""
+                  onkeydown="handleEnter(event)"
+                />
+                <button
+                  onclick="handleInputSubmit()"
+                  class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm whitespace-nowrap"
+                >
+                  変更
+                </button>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-2">
+                ※入力して変更を押してください
+              </div>
+            </div>
+          </div>
+
+          <!-- ② カスタムフック (魔法の仲介役) -->
+          <div
+            class="w-full lg:w-[30%] bg-violet-50 border-4 border-violet-200 rounded-2xl p-5 relative z-10 flex flex-col shadow-md"
+          >
+            <div
+              class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-violet-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow-md"
+            >
+              useLocalStorage
+            </div>
+
+            <div class="flex-1 flex flex-col justify-center gap-4">
+              <!-- State (メモリ) -->
+              <div
+                id="hook-state"
+                class="transition-all-custom bg-white border-2 border-cyan-300 rounded-xl p-4 text-center shadow-sm relative"
+              >
+                <div
+                  class="absolute -top-2 -left-2 bg-cyan-500 text-white text-[10px] px-2 py-0.5 rounded"
+                >
+                  useState
+                </div>
+                <div class="text-[10px] font-bold text-slate-400 mb-1">
+                  現在のメモリ(State)
+                </div>
+                <div
+                  id="state-val"
+                  class="code-font text-2xl font-black text-cyan-600"
+                >
+                  "---"
+                </div>
+              </div>
+
+              <!-- 矢印 (useEffect) -->
+              <div class="flex flex-col items-center justify-center">
+                <div
+                  class="text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200 z-10 relative"
+                >
+                  useEffect が変化を検知
+                </div>
+                <div
+                  class="h-6 border-l-2 border-dashed border-slate-400 my-[-10px]"
+                ></div>
+                <i class="fa-solid fa-chevron-down text-slate-400"></i>
+              </div>
+
+              <!-- 保存処理 -->
+              <div
+                id="hook-effect"
+                class="transition-all-custom bg-white border-2 border-slate-300 rounded-xl p-3 text-center shadow-sm"
+              >
+                <div class="code-font text-[10px] text-slate-600">
+                  localStorage.<span class="text-amber-600 font-bold"
+                    >setItem</span
+                  >(...)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ③ ブラウザ (LocalStorage) -->
+          <div
+            id="storage-box"
+            class="w-full lg:w-[25%] bg-amber-50 border-4 border-amber-200 rounded-2xl p-5 relative z-10 flex flex-col shadow-sm transition-all duration-300"
+          >
+            <div
+              class="absolute -top-3 right-4 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded shadow-sm flex items-center gap-1"
+            >
+              <i class="fa-solid fa-box-open"></i> LocalStorage
+            </div>
+
+            <div class="text-xs font-bold text-amber-700 mb-4 mt-2">
+              ブラウザの倉庫（永続化）
+            </div>
+
+            <div
+              class="flex-1 bg-white border border-amber-200 rounded-xl p-4 shadow-inner flex flex-col gap-2"
+            >
+              <div
+                class="text-[10px] text-slate-400 border-b border-slate-100 pb-1 flex justify-between"
+              >
+                <span>Key</span><span>Value (JSON文字列)</span>
+              </div>
+
+              <!-- 格納されているデータ -->
+              <div
+                class="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-200"
+              >
+                <span class="code-font text-xs font-bold text-slate-600"
+                  >"username"</span
+                >
+                <span
+                  id="storage-val"
+                  class="code-font text-sm font-bold text-amber-600"
+                  >---</span
+                >
+              </div>
+            </div>
+
+            <div
+              id="storage-status"
+              class="text-center text-[10px] font-bold text-slate-400 mt-3 transition-colors"
+            >
+              保存されています
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. コード解説とベストプラクティス -->
       <section
         class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-laptop-code text-indigo-500"></i> 2.
+          なぜこの書き方なのか？（解説）
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- 遅延初期化 -->
+          <div
+            class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex flex-col"
+          >
+            <div
+              class="bg-slate-800 text-white px-4 py-2 text-sm font-bold flex justify-between items-center"
+            >
+              <span>① useState の 遅延初期化 (Lazy Initialization)</span>
+            </div>
+            <div
+              class="p-4 code-font text-[12px] leading-relaxed text-slate-800 overflow-x-auto"
+            >
+              <span class="text-blue-600">const</span> [value, setValue] =
+              useState(() => {<br />
+              &nbsp;&nbsp;<span class="text-slate-400"
+                >// localStorageへのアクセスは重い処理！</span
+              ><br />
+              &nbsp;&nbsp;<span class="text-blue-600">const</span> item =
+              localStorage.<span class="text-amber-600">getItem</span
+              >(key);<br />
+              &nbsp;&nbsp;<span class="text-blue-600">return</span> item ?
+              JSON.parse(item) : initialValue;<br />
+              });
+            </div>
+            <div
+              class="p-4 bg-white border-t border-slate-200 text-sm text-slate-600 flex-1"
+            >
+              <strong
+                >なぜ関数
+                <code class="bg-slate-100 px-1 rounded code-font"
+                  >() => { ... }</code
+                >
+                を渡すの？</strong
+              ><br />
+              LocalStorageからの読み込みは、通常のメモリ操作より時間がかかります。もし関数で包まずに直接書くと、<strong
+                >画面が再レンダリングされるたびに毎回重い読み込み処理が走ってしまいます。</strong
+              >
+              関数を渡すことで、Reactは「最初の1回目（マウント時）だけ」この処理を実行してくれるようになります。
+            </div>
+          </div>
+
+          <!-- 自動保存 -->
+          <div
+            class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex flex-col"
+          >
+            <div
+              class="bg-slate-800 text-white px-4 py-2 text-sm font-bold flex justify-between items-center"
+            >
+              <span>② useEffect による自動保存</span>
+            </div>
+            <div
+              class="p-4 code-font text-[12px] leading-relaxed text-slate-800 overflow-x-auto"
+            >
+              <span class="text-emerald-600 font-bold">useEffect</span>(() =>
+              {<br />
+              &nbsp;&nbsp;localStorage.<span class="text-amber-600"
+                >setItem</span
+              >(key, JSON.stringify(<span class="text-cyan-600 font-bold"
+                >value</span
+              >));<br />
+              }, [key, <span class="text-cyan-600 font-bold">value</span>]);
+              <span class="text-slate-400">// ← 依存配列</span>
+            </div>
+            <div
+              class="p-4 bg-white border-t border-slate-200 text-sm text-slate-600 flex-1"
+            >
+              <strong>なぜ useEffect を使うの？</strong><br />
+              「値が変わった時」にだけ処理を走らせたいからです。依存配列（<code
+                class="bg-slate-100 px-1 rounded code-font"
+                >[key, value]</code
+              >）を指定することで、<code
+                class="bg-slate-100 px-1 rounded code-font"
+                >value</code
+              >
+              が更新された直後に自動的に保存処理が走ります。<br />使う側（Appコンポーネント）は「保存すること」を一切意識せずに、ただ
+              <code class="bg-slate-100 px-1 rounded code-font">setName</code>
+              を呼ぶだけで良くなります。
+            </div>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      // シミュレーション用の「偽LocalStorage」と状態
+      let fakeStorage = {};
+      let currentState = "ゲスト";
+      let isAnimating = false;
+
+      // UI Elements
+      const uiDisplay = document.getElementById("ui-display");
+      const nameInput = document.getElementById("name-input");
+      const stateVal = document.getElementById("state-val");
+      const storageVal = document.getElementById("storage-val");
+
+      const hookState = document.getElementById("hook-state");
+      const hookEffect = document.getElementById("hook-effect");
+      const storageBox = document.getElementById("storage-box");
+      const storageStatus = document.getElementById("storage-status");
+
+      const flyingData = document.getElementById("flying-data");
+      const flyingText = document.getElementById("flying-text");
+      const flashOverlay = document.getElementById("flash-overlay");
+
+      // 初期ロードのシミュレーション（即時実行）
+      window.onload = () => {
+        // ストレージは空としてスタート
+        fakeStorage = {};
+        runLoadSimulation();
+      };
+
+      function handleEnter(e) {
+        if (e.key === "Enter") handleInputSubmit();
+      }
+
+      // 入力があった時 (State変更 -> 保存)
+      function handleInputSubmit() {
+        if (isAnimating) return;
+        const newVal = nameInput.value.trim();
+        if (!newVal || newVal === currentState) return;
+
+        isAnimating = true;
+        currentState = newVal;
+
+        // 1. UIとStateの更新 (useStateの動き)
+        uiDisplay.innerText = currentState;
+        stateVal.innerText = `"${currentState}"`;
+
+        hookState.classList.add("state-active");
+
+        // 2. useEffectが検知してLocalStorageへ保存
+        setTimeout(() => {
+          hookState.classList.remove("state-active");
+          hookEffect.classList.add("bg-slate-100", "border-amber-400");
+
+          // 飛行アニメーション準備
+          flyingText.innerText = `"${currentState}"`;
+
+          // 位置のざっくり計算（レスポンシブでも崩れないように）
+          flyingData.style.top = "160px";
+          flyingData.style.left = "45%";
+
+          flyingData.classList.remove("loading");
+          flyingData.classList.add("saving");
+
+          // 3. LocalStorageに到着
+          setTimeout(() => {
+            hookEffect.classList.remove("bg-slate-100", "border-amber-400");
+
+            storageBox.classList.add("box-active");
+            fakeStorage["username"] = currentState; // 実際に保存
+
+            storageVal.innerText = `"${fakeStorage["username"]}"`;
+            storageVal.classList.add("text-emerald-600");
+            storageStatus.innerText = "新しく保存されました！";
+            storageStatus.className =
+              "text-center text-[10px] font-bold text-emerald-500 mt-3 transition-colors";
+
+            // クリーンアップ
+            setTimeout(() => {
+              storageBox.classList.remove("box-active");
+              flyingData.classList.remove("saving");
+              storageVal.classList.remove("text-emerald-600");
+              storageStatus.innerText = "保存されています";
+              storageStatus.className =
+                "text-center text-[10px] font-bold text-slate-400 mt-3 transition-colors";
+
+              isAnimating = false;
+              nameInput.value = ""; // 入力欄をクリア
+            }, 1000);
+          }, 800);
+        }, 500);
+      }
+
+      // リロード時のシミュレーション (LocalStorage -> State への復元)
+      function simulateReload() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        // 1. 画面のフラッシュ（リロード表現）と初期化
+        flashOverlay.classList.remove("hidden");
+        flashOverlay.classList.add("screen-flash");
+
+        uiDisplay.innerText = "---";
+        stateVal.innerText = "---";
+        currentState = "";
+
+        setTimeout(() => {
+          flashOverlay.classList.remove("screen-flash");
+          flashOverlay.classList.add("hidden");
+
+          // 2. カスタムフックがLocalStorageを見に行く (Lazy Init)
+          storageBox.classList.add("box-active");
+
+          let loadedVal = fakeStorage["username"];
+          let isRestored = true;
+
+          if (!loadedVal) {
+            loadedVal = "ゲスト"; // 初期値
+            isRestored = false;
+            storageStatus.innerText = "空なので初期値を使います";
+          } else {
+            storageStatus.innerText = "データを復元します！";
+            storageStatus.className =
+              "text-center text-[10px] font-bold text-amber-500 mt-3 transition-colors";
+          }
+
+          // 飛行アニメーション準備（逆方向）
+          flyingText.innerText = `"${loadedVal}"`;
+          flyingData.style.top = "160px";
+          flyingData.style.left = "45%";
+
+          flyingData.classList.remove("saving");
+          flyingData.classList.add("loading");
+
+          // 3. Stateに到着してUI反映
+          setTimeout(() => {
+            currentState = loadedVal;
+
+            uiDisplay.innerText = currentState;
+            stateVal.innerText = `"${currentState}"`;
+
+            hookState.classList.add("state-active");
+
+            if (isRestored) {
+              uiDisplay.classList.add("text-amber-600");
+              setTimeout(
+                () => uiDisplay.classList.remove("text-amber-600"),
+                1000,
+              );
+            }
+
+            // クリーンアップ
+            setTimeout(() => {
+              storageBox.classList.remove("box-active");
+              flyingData.classList.remove("loading");
+              hookState.classList.remove("state-active");
+
+              storageStatus.innerText = "保存されています";
+              storageStatus.className =
+                "text-center text-[10px] font-bold text-slate-400 mt-3 transition-colors";
+
+              isAnimating = false;
+            }, 800);
+          }, 800);
+        }, 400); // フラッシュが少し消えかけたタイミング
+      }
+
+      // 初期ロード用（アニメーションなし）
+      function runLoadSimulation() {
+        let loadedVal = fakeStorage["username"];
+        if (!loadedVal) loadedVal = "ゲスト";
+
+        currentState = loadedVal;
+        uiDisplay.innerText = currentState;
+        stateVal.innerText = `"${currentState}"`;
+        storageVal.innerText = fakeStorage["username"]
+          ? `"${fakeStorage["username"]}"`
+          : "空 (undefined)";
+      }
+    </script>
   </body>
 </html>

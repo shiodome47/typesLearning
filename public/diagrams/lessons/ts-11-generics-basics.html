@@ -3,54 +3,666 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: ジェネリクスの基礎</title>
+    <title>TypeScript 図解: ジェネリクス (Generics)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
-        background-color: #f8fafc;
+        background-color: #f8fafc; /* slate-50 */
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Tの変身アニメーション */
+      @keyframes t-transform {
+        0% {
+          transform: scale(1);
+          background-color: #f1f5f9;
+          color: #94a3b8;
+          border-color: #cbd5e1;
+        }
+        50% {
+          transform: scale(1.3);
+          background-color: #fef08a;
+          color: #b45309;
+          border-color: #f59e0b;
+          box-shadow: 0 0 15px rgba(245, 158, 11, 0.5);
+        }
+        100% {
+          transform: scale(1);
+          background-color: var(--target-bg);
+          color: var(--target-text);
+          border-color: var(--target-border);
+        }
+      }
+      .t-animating {
+        animation: t-transform 0.8s ease-in-out forwards;
+      }
+
+      /* データの飛行アニメーション (ゆっくり) */
+      @keyframes fly-packet {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(
+              calc(var(--tx) * 0.5),
+              calc(var(--ty) * 0.5 - 30px)
+            )
+            scale(1.1);
+          opacity: 1;
+        }
+        80% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0.8);
+          opacity: 0;
+        }
+      }
+
+      .data-packet {
+        position: absolute;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+        border-width: 2px;
+      }
+
+      .flying {
+        animation: fly-packet 2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* プロセッサーの処理中アニメーション */
+      @keyframes process-glow {
+        0% {
+          box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+          border-color: #94a3b8;
+        }
+        50% {
+          box-shadow: 0 0 20px rgba(14, 165, 233, 0.5);
+          border-color: #0ea5e9;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+          border-color: #94a3b8;
+        }
+      }
+      .processing {
+        animation: process-glow 1.5s ease-in-out;
+      }
+
+      /* Box (ApiResponse) が開くアニメーション */
+      @keyframes box-open {
+        0% {
+          transform: scale(0.9);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.05);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .box-opening {
+        animation: box-open 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)
+          forwards;
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
       <header class="text-center mb-10">
+        <div
+          class="inline-block bg-sky-100 text-sky-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-sky-200"
+        >
+          TypeScript 型の柔軟性
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >ジェネリクスの基礎</span
+          「型の変数」で汎用的にする：<br class="md:hidden" /><span
+            class="text-sky-600"
+            >ジェネリクス (Generics)</span
           >
-          の図解
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          型パラメータを使って、汎用的で型安全なコードを書きましょう。
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">&lt;T&gt;</code>
+          は、一時的な「型の変数（空き箱）」です。<br class="hidden md:block" />
+          使う時になって初めて「今回は
+          <code class="bg-slate-200 px-1 rounded code-font">string</code>
+          ね！」と型が決定し、関数やオブジェクト全体にその型が自動的に伝わっていく強力な仕組みです。
         </p>
       </header>
 
+      <!-- 1. identity 関数のシミュレーション -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 mb-10 relative z-20 overflow-hidden"
       >
         <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
+          <i class="fa-solid fa-arrow-right-arrow-left text-blue-500"></i> 1.
+          型が伝播する汎用関数 (identity)
         </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-center lg:items-stretch justify-center relative min-h-[300px]"
+        >
+          <!-- 左側：呼び出し元 -->
+          <div class="w-full lg:w-[30%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              引数を渡す
+            </div>
+
+            <button
+              onclick="runIdentity('string', this)"
+              class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-400 rounded-xl p-3 text-left shadow-sm transition-all group relative mt-2"
+            >
+              <span class="code-font font-bold text-slate-700"
+                >identity( <span class="text-blue-500">"hello"</span> )</span
+              >
+            </button>
+
+            <button
+              onclick="runIdentity('number', this)"
+              class="bg-white hover:bg-amber-50 border-2 border-slate-200 hover:border-amber-400 rounded-xl p-3 text-left shadow-sm transition-all group relative mt-2"
+            >
+              <span class="code-font font-bold text-slate-700"
+                >identity( <span class="text-amber-500">42</span> )</span
+              >
+            </button>
+          </div>
+
+          <!-- 飛行するデータパケット -->
+          <div id="id-packet" class="data-packet code-font text-sm">
+            <!-- JSで内容を注入 -->
+          </div>
+
+          <!-- 中央：関数本体 -->
+          <div class="w-full lg:w-[45%] flex flex-col justify-center">
+            <div
+              id="id-box"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-6 relative shadow-xl transition-all duration-300"
+            >
+              <div
+                class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md"
+              >
+                function identity
+              </div>
+
+              <div
+                class="code-font text-sm leading-relaxed text-white flex flex-col gap-3"
+              >
+                <div class="flex items-center flex-wrap gap-1">
+                  <span class="text-purple-400">function</span> identity
+                  <!-- T の宣言 -->
+                  <span
+                    id="id-t-decl"
+                    class="bg-slate-700 text-slate-400 border-2 border-slate-600 px-1.5 py-0.5 rounded transition-colors"
+                    >&lt;T&gt;</span
+                  >
+                  (
+                  <span class="text-slate-300">value</span>:
+                  <!-- 引数の T -->
+                  <span
+                    id="id-t-arg"
+                    class="bg-slate-700 text-slate-400 border-2 border-slate-600 px-1.5 py-0.5 rounded transition-colors"
+                    >T</span
+                  >
+                  ):
+                  <!-- 戻り値の T -->
+                  <span
+                    id="id-t-ret"
+                    class="bg-slate-700 text-slate-400 border-2 border-slate-600 px-1.5 py-0.5 rounded transition-colors"
+                    >T</span
+                  >
+                  {
+                </div>
+                <div class="pl-6" id="id-logic">
+                  <span class="text-purple-400">return</span> value;
+                </div>
+                <div>}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側：出力結果 -->
+          <div class="w-full lg:w-[25%] flex flex-col gap-2 justify-center">
+            <div class="text-sm font-bold text-slate-500 text-center mb-1">
+              戻り値と推論された型
+            </div>
+
+            <div
+              id="id-output-box"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50 relative min-h-[100px] flex flex-col justify-center"
+            >
+              <div
+                id="id-out-val"
+                class="code-font text-xl font-bold text-slate-400"
+              >
+                ---
+              </div>
+              <div
+                id="id-out-type"
+                class="code-font text-[10px] text-slate-400 mt-2 border-t border-slate-300 pt-1"
+              >
+                型: ---
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. ApiResponse と wrap 関数のシミュレーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10 relative z-10 overflow-hidden"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-box-open text-emerald-500"></i> 2.
+          任意の型をラップする (ApiResponse)
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-8 items-stretch justify-center relative min-h-[450px]"
+        >
+          <!-- 左側：呼び出し元 -->
+          <div class="w-full lg:w-[30%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 text-center border-b border-slate-200 pb-2"
+            >
+              データを渡して包む
+            </div>
+
+            <button
+              onclick="runWrap(this)"
+              class="bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-400 rounded-xl p-4 text-left shadow-sm transition-all group relative mt-4"
+            >
+              <div class="text-[10px] font-bold text-emerald-600 mb-1">
+                配列を渡す
+              </div>
+              <div
+                class="code-font font-bold text-slate-700 text-sm leading-tight"
+              >
+                wrap( <br />
+                &nbsp;&nbsp;<span class="text-emerald-600"
+                  >["Alice", "Bob"]</span
+                >
+                <br />
+                )
+              </div>
+            </button>
+          </div>
+
+          <!-- 飛行するデータパケット -->
+          <div
+            id="wrap-packet"
+            class="data-packet code-font text-sm flex flex-col items-center"
+          >
+            <!-- JSで内容を注入 -->
+          </div>
+
+          <!-- 中央：型定義と関数 -->
+          <div class="w-full lg:w-[45%] flex flex-col gap-6">
+            <!-- 型定義 (ApiResponse) -->
+            <div
+              class="w-full bg-slate-50 border-2 border-slate-300 rounded-xl p-4 shadow-inner relative"
+            >
+              <div
+                class="text-[10px] font-bold text-slate-500 absolute -top-3 left-4 bg-white px-2 border border-slate-300 rounded"
+              >
+                型の設計図
+              </div>
+              <div class="code-font text-sm leading-relaxed text-slate-700">
+                <span class="text-blue-500">type</span> ApiResponse<span
+                  id="api-t-decl"
+                  class="bg-slate-200 text-slate-500 px-1 rounded transition-colors"
+                  >&lt;T&gt;</span
+                >
+                = {<br />
+                &nbsp;&nbsp;success:
+                <span class="text-purple-500">boolean</span>;<br />
+                &nbsp;&nbsp;data:
+                <span
+                  id="api-t-prop"
+                  class="bg-slate-200 text-slate-500 px-1 rounded transition-colors border-b-2 border-slate-300"
+                  >T</span
+                >;<br />
+                &nbsp;&nbsp;error?:
+                <span class="text-blue-500">string</span>;<br />
+                };
+              </div>
+            </div>
+
+            <!-- 関数本体 (wrap) -->
+            <div
+              id="wrap-box"
+              class="w-full bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 relative shadow-xl transition-all duration-300"
+            >
+              <div
+                class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-emerald-500 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow-md"
+              >
+                function wrap
+              </div>
+
+              <div class="code-font text-[13px] leading-relaxed text-white">
+                <span class="text-purple-400">function</span> wrap<span
+                  id="wrap-t-decl"
+                  class="bg-slate-700 text-slate-400 border border-slate-600 px-1 rounded transition-colors"
+                  >&lt;T&gt;</span
+                >(data:
+                <span
+                  id="wrap-t-arg"
+                  class="bg-slate-700 text-slate-400 border border-slate-600 px-1 rounded transition-colors"
+                  >T</span
+                >):
+                <span
+                  id="wrap-t-ret"
+                  class="bg-slate-700 text-slate-400 border border-slate-600 px-1 rounded transition-colors"
+                  >ApiResponse&lt;T&gt;</span
+                >
+                {<br />
+                &nbsp;&nbsp;<span class="text-purple-400">return</span> { <br />
+                &nbsp;&nbsp;&nbsp;&nbsp;success:
+                <span class="text-amber-300">true</span>, <br />
+                &nbsp;&nbsp;&nbsp;&nbsp;data
+                <span class="text-slate-400 text-[10px]"
+                  >// data: data の省略形</span
+                ><br />
+                &nbsp;&nbsp;};<br />
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- 右側：出力結果 -->
+          <div class="w-full lg:w-[25%] flex flex-col gap-2 justify-center">
+            <div class="text-sm font-bold text-slate-500 text-center mb-1">
+              完成したオブジェクト
+            </div>
+
+            <div
+              id="wrap-output-box"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl p-4 shadow-sm transition-all opacity-0 scale-95 relative flex flex-col"
+            >
+              <div
+                class="text-[10px] font-bold text-emerald-600 mb-2 border-b border-slate-200 pb-1"
+              >
+                型: ApiResponse&lt;string[]&gt;
+              </div>
+              <div class="code-font text-xs text-slate-700 leading-relaxed">
+                {<br />
+                &nbsp;&nbsp;success:
+                <span class="text-amber-600 font-bold">true</span>,<br />
+                &nbsp;&nbsp;data:
+                <span class="text-emerald-600 font-bold">["Alice", "Bob"]</span
+                ><br />
+                }
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating1 = false;
+      let isAnimating2 = false;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // T要素のアニメーションを管理するヘルパー
+      async function animateT(elementId, targetType, config) {
+        const el = document.getElementById(elementId);
+        // CSS変数を設定
+        el.style.setProperty("--target-bg", config.bg);
+        el.style.setProperty("--target-text", config.text);
+        el.style.setProperty("--target-border", config.border);
+
+        // アニメーション開始
+        el.classList.add("t-animating");
+
+        // 中間の膨らんだタイミングで文字を書き換える
+        setTimeout(() => {
+          let dispText = targetType;
+          if (elementId.includes("decl")) dispText = `<${targetType}>`;
+          if (elementId === "wrap-t-ret")
+            dispText = `ApiResponse<${targetType}>`;
+
+          el.innerText = dispText;
+        }, 400);
+
+        await sleep(800); // アニメーション終了を待つ
+        el.classList.remove("t-animating");
+
+        // 最終状態を固定
+        el.style.backgroundColor = config.bg;
+        el.style.color = config.text;
+        el.style.borderColor = config.border;
+      }
+
+      function resetT(elementId, originalText) {
+        const el = document.getElementById(elementId);
+        el.innerText = originalText;
+        el.style.backgroundColor = "";
+        el.style.color = "";
+        el.style.borderColor = "";
+        el.classList.remove("t-animating");
+      }
+
+      // ==========================================
+      // 1. identity のアニメーション
+      // ==========================================
+      async function runIdentity(valType, btnEl) {
+        if (isAnimating1) return;
+        isAnimating1 = true;
+
+        const packet = document.getElementById("id-packet");
+        const box = document.getElementById("id-box");
+        const logic = document.getElementById("id-logic");
+        const outBox = document.getElementById("id-output-box");
+        const outVal = document.getElementById("id-out-val");
+        const outType = document.getElementById("id-out-type");
+
+        // UIリセット
+        resetT("id-t-decl", "<T>");
+        resetT("id-t-arg", "T");
+        resetT("id-t-ret", "T");
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        outBox.className =
+          "bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm transition-all opacity-50 relative min-h-[100px] flex flex-col justify-center";
+        outVal.innerText = "---";
+        outType.innerText = "型: ---";
+
+        let valStr = "";
+        let config = {};
+
+        if (valType === "string") {
+          valStr = '"hello"';
+          config = {
+            bg: "#eff6ff",
+            text: "#2563eb",
+            border: "#60a5fa",
+            colorClass: "text-blue-600",
+            borderClass: "border-blue-400",
+          };
+        } else {
+          valStr = "42";
+          config = {
+            bg: "#fffbeb",
+            text: "#d97706",
+            border: "#fcd34d",
+            colorClass: "text-amber-600",
+            borderClass: "border-amber-400",
+          };
+        }
+
+        packet.innerHTML = valStr;
+        packet.className = `data-packet code-font text-base border-2 ${config.colorClass} ${config.borderClass}`;
+
+        // 飛行設定
+        const btnRect = btnEl.getBoundingClientRect();
+        const logicRect = logic.getBoundingClientRect();
+        const containerRect = packet.parentElement.getBoundingClientRect();
+
+        packet.style.top = `${btnRect.top - containerRect.top + btnRect.height / 2 - 15}px`;
+        packet.style.left = `${btnRect.left - containerRect.left + btnRect.width / 2 - 30}px`;
+
+        const tx = logicRect.left + 50 - (btnRect.left + btnRect.width / 2);
+        const ty = logicRect.top - (btnRect.top + btnRect.height / 2);
+
+        packet.style.setProperty("--tx", `${tx}px`);
+        packet.style.setProperty("--ty", `${ty}px`);
+
+        packet.style.opacity = "1";
+        packet.classList.add("flying");
+
+        // 1. 引数が到着する頃に T が確定するアニメーション
+        await sleep(1000);
+        box.classList.add("processing");
+
+        // Tが順番に伝播していく
+        animateT("id-t-arg", valType, config);
+        await sleep(300);
+        animateT("id-t-decl", valType, config);
+        await sleep(300);
+        animateT("id-t-ret", valType, config);
+
+        // 2. 出力
+        await sleep(500); // 飛行アニメーション終了付近
+        packet.style.opacity = "0";
+
+        outBox.classList.remove("opacity-50");
+        outBox.classList.add(
+          `bg-${valType === "string" ? "blue" : "amber"}-50`,
+          `border-${valType === "string" ? "blue" : "amber"}-300`,
+        );
+        outVal.innerText = valStr;
+        outVal.className = `code-font text-3xl font-black ${config.colorClass}`;
+        outType.innerText = `型: ${valType}`;
+        outType.className = `code-font text-xs font-bold mt-2 border-t pt-1 ${config.colorClass}`;
+
+        // 終了処理
+        await sleep(1500);
+        box.classList.remove("processing");
+        packet.classList.remove("flying");
+        isAnimating1 = false;
+      }
+
+      // ==========================================
+      // 2. wrap (ApiResponse) のアニメーション
+      // ==========================================
+      async function runWrap(btnEl) {
+        if (isAnimating2) return;
+        isAnimating2 = true;
+
+        const packet = document.getElementById("wrap-packet");
+        const wrapBox = document.getElementById("wrap-box");
+        const outBox = document.getElementById("wrap-output-box");
+
+        // UIリセット
+        resetT("wrap-t-decl", "<T>");
+        resetT("wrap-t-arg", "T");
+        resetT("wrap-t-ret", "ApiResponse<T>");
+        resetT("api-t-decl", "<T>");
+        resetT("api-t-prop", "T");
+
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        outBox.classList.remove("box-opening");
+        outBox.style.opacity = "0";
+        outBox.style.transform = "scale(0.9)";
+
+        const valType = "string[]";
+        const config = {
+          bg: "#ecfdf5",
+          text: "#059669",
+          border: "#34d399",
+          colorClass: "text-emerald-600",
+          borderClass: "border-emerald-400",
+        };
+
+        packet.innerHTML = `["Alice", "Bob"]`;
+        packet.className = `data-packet code-font text-sm border-2 ${config.colorClass} ${config.borderClass} bg-white shadow-lg`;
+
+        // 飛行設定
+        const btnRect = btnEl.getBoundingClientRect();
+        const wrapRect = wrapBox.getBoundingClientRect();
+        const containerRect = packet.parentElement.getBoundingClientRect();
+
+        packet.style.top = `${btnRect.top - containerRect.top + btnRect.height / 2 - 15}px`;
+        packet.style.left = `${btnRect.left - containerRect.left + btnRect.width / 2 - 50}px`;
+
+        const tx = wrapRect.left + 50 - (btnRect.left + btnRect.width / 2);
+        const ty = wrapRect.top + 30 - (btnRect.top + btnRect.height / 2);
+
+        packet.style.setProperty("--tx", `${tx}px`);
+        packet.style.setProperty("--ty", `${ty}px`);
+
+        packet.style.opacity = "1";
+        packet.classList.add("flying");
+
+        // 1. 関数の T が確定
+        await sleep(800);
+        wrapBox.classList.add("processing");
+
+        animateT("wrap-t-arg", valType, config);
+        await sleep(300);
+        animateT("wrap-t-decl", valType, config);
+        await sleep(300);
+        animateT("wrap-t-ret", valType, config);
+
+        // 2. 型定義 (ApiResponse) へ T が伝播
+        await sleep(400);
+        animateT("api-t-decl", valType, config);
+        await sleep(300);
+        animateT("api-t-prop", valType, config);
+
+        // 3. 出力 (箱が開くアニメーション)
+        await sleep(600); // パケットが到着・消失した後
+        packet.style.opacity = "0";
+
+        outBox.classList.add("box-opening");
+
+        // 終了処理
+        await sleep(1000);
+        wrapBox.classList.remove("processing");
+        packet.classList.remove("flying");
+        isAnimating2 = false;
+      }
+    </script>
   </body>
 </html>

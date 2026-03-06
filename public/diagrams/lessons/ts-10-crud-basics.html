@@ -3,54 +3,629 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TypeScript 図解: CRUDの基礎</title>
+    <title>TypeScript 図解: イミュータブルな配列操作 (CRUD)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
       rel="stylesheet"
     />
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
 
       body {
         font-family: "Noto Sans JP", sans-serif;
         background-color: #f8fafc;
         color: #334155;
+        overflow-x: hidden;
       }
 
       .code-font {
         font-family: "Fira Code", monospace;
       }
+
+      /* スクロールバーの非表示 */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* 処理中のプロセッサーのアニメーション */
+      @keyframes process-pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+        }
+        70% {
+          box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+      }
+      .processing {
+        animation: process-pulse 1.5s infinite;
+        border-color: #3b82f6 !important;
+        background-color: #eff6ff !important;
+      }
+
+      /* パケット（飛ぶカード）のスタイル */
+      .fly-packet {
+        position: fixed;
+        z-index: 100;
+        pointer-events: none;
+        box-shadow:
+          0 15px 30px -5px rgba(0, 0, 0, 0.2),
+          0 10px 10px -5px rgba(0, 0, 0, 0.1);
+      }
+
+      /* コードブロックのハイライト */
+      .code-active {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
+        transform: translateY(-2px);
+      }
     </style>
   </head>
   <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
     <div class="max-w-6xl w-full">
-      <header class="text-center mb-10">
+      <!-- ヘッダー -->
+      <header class="text-center mb-8">
+        <div
+          class="inline-block bg-blue-100 text-blue-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-blue-200"
+        >
+          React開発の超・必須知識
+        </div>
         <h1
           class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
         >
-          TypeScriptの魔法：<br class="md:hidden" /><span class="text-blue-600"
-            >CRUDの基礎</span
+          元データを壊さず新しく作る：<br class="md:hidden" /><span
+            class="text-blue-600"
+            >イミュータブル (不変)</span
           >
-          の図解
+          な配列操作
         </h1>
-        <p class="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
-          Create, Read, Update, Delete の基本操作を型安全に実装しましょう。
+        <p class="text-slate-600 text-base max-w-3xl mx-auto leading-relaxed">
+          <code class="bg-slate-200 px-1 rounded code-font">push()</code> や
+          <code class="bg-slate-200 px-1 rounded code-font">splice()</code>
+          のように元の配列を直接書き換える操作（破壊的変更）は、バグの温床になります。<br
+            class="hidden md:block"
+          />
+          常に<strong>「元の配列をコピーして、新しい配列を作り直す」</strong>という安全なアプローチを視覚的に体感してください。
         </p>
       </header>
 
+      <!-- インタラクティブ UI エリア -->
       <section
-        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-10 mb-10 relative"
       >
-        <h2
-          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2"
+        <!-- 上部アクションボタン -->
+        <div
+          class="flex justify-between items-end mb-6 border-b-2 border-slate-100 pb-4"
         >
-          <i class="fa-solid fa-cubes text-blue-500"></i> 型の構造
-        </h2>
-        <p class="text-slate-600">
-          （図解コンテンツは今後追加予定です）
-        </p>
+          <h2 class="text-xl font-bold text-slate-700 flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-blue-500"></i> Todo
+            アプリ・シミュレーター
+          </h2>
+          <button
+            onclick="runAddTodo()"
+            id="btn-add"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 text-sm"
+          >
+            <i class="fa-solid fa-plus"></i> addTodo (追加)
+          </button>
+        </div>
+
+        <!-- ステップ1: 現在の状態 (Current State) -->
+        <div class="mb-6">
+          <div
+            class="text-sm font-bold text-slate-500 mb-2 flex items-center gap-2"
+          >
+            <span
+              class="bg-slate-500 text-white px-2 py-0.5 rounded text-[10px]"
+              >Step 1</span
+            >
+            現在の配列 (todos)
+            <span class="text-xs font-normal">※これは書き換えずに残します</span>
+          </div>
+          <div
+            id="current-state"
+            class="flex gap-4 p-4 bg-slate-100 border-2 border-slate-200 rounded-2xl min-h-[160px] overflow-x-auto no-scrollbar items-center"
+          >
+            <!-- カードがJSで注入される -->
+          </div>
+        </div>
+
+        <!-- ステップ2: 処理インジケーター (アニメーション時のみ表示) -->
+        <div
+          id="processor-area"
+          class="flex flex-col items-center justify-center my-6 opacity-0 transition-opacity duration-300 h-0 overflow-hidden"
+        >
+          <div class="h-8 border-l-2 border-dashed border-blue-400 mb-2"></div>
+          <div
+            id="processor-badge"
+            class="bg-white border-2 border-blue-400 text-blue-700 px-6 py-2 rounded-full font-bold text-sm shadow-md flex items-center gap-2 code-font z-10"
+          >
+            <i class="fa-solid fa-gears fa-spin"></i> 処理中...
+          </div>
+          <div class="h-8 border-l-2 border-dashed border-blue-400 mt-2"></div>
+        </div>
+
+        <!-- ステップ3: 新しい状態 (Next State) -->
+        <div
+          id="next-state-wrapper"
+          class="mt-2 transition-all duration-500 opacity-30 pointer-events-none"
+        >
+          <div
+            class="text-sm font-bold text-blue-600 mb-2 flex items-center gap-2"
+          >
+            <span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px]"
+              >Step 2</span
+            >
+            新しく生成された配列 (return される値)
+          </div>
+          <div
+            id="next-state"
+            class="flex gap-4 p-4 bg-blue-50/50 border-2 border-dashed border-blue-300 rounded-2xl min-h-[160px] overflow-x-auto no-scrollbar items-center"
+          >
+            <!-- アニメーションでパケットが到着する場所 -->
+            <div class="w-full text-center text-blue-300 font-bold text-sm">
+              ここに新しい配列が作られます
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- コード解説セクション -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Add -->
+        <div
+          id="code-add"
+          class="bg-white rounded-2xl shadow-sm border-2 border-slate-200 p-5 transition-all duration-300"
+        >
+          <div
+            class="font-bold text-slate-800 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2"
+          >
+            <i class="fa-solid fa-plus-circle text-blue-500"></i> 追加
+            (スプレッド構文)
+          </div>
+          <div
+            class="code-font text-[11px] text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 mb-3 leading-relaxed"
+          >
+            <span class="text-blue-500">function</span> addTodo(todos, title)
+            {<br />
+            &nbsp;&nbsp;<span class="text-blue-500">const</span> newTodo = { id:
+            ..., title, ... };<br />
+            &nbsp;&nbsp;<span class="text-purple-500 font-bold">return</span>
+            [<span class="text-blue-600 font-bold">...todos</span>, newTodo];<br />
+            }
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <code class="bg-slate-100 px-1 rounded code-font font-bold"
+              >...todos</code
+            >
+            で現在の要素をすべて「新しい箱（配列）」に展開してコピーし、最後に新しい要素を付け足して返します。
+          </p>
+        </div>
+
+        <!-- Toggle -->
+        <div
+          id="code-toggle"
+          class="bg-white rounded-2xl shadow-sm border-2 border-slate-200 p-5 transition-all duration-300"
+        >
+          <div
+            class="font-bold text-slate-800 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2"
+          >
+            <i class="fa-solid fa-arrows-rotate text-emerald-500"></i> 更新 (map
+            メソッド)
+          </div>
+          <div
+            class="code-font text-[11px] text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 mb-3 leading-relaxed"
+          >
+            <span class="text-blue-500">function</span> toggle(todos, id) {<br />
+            &nbsp;&nbsp;<span class="text-purple-500 font-bold">return</span>
+            todos.<span class="text-emerald-600 font-bold">map</span>(t =>
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;t.id === id <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;? {
+            <span class="text-blue-600 font-bold">...t</span>, done: !t.done }
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: t<br />
+            &nbsp;&nbsp;);<br />
+            }
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            対象のIDを見つけたら、オブジェクトの中身も
+            <code class="bg-slate-100 px-1 rounded code-font font-bold"
+              >...t</code
+            >
+            でコピーし、<code class="bg-slate-100 px-1 rounded code-font"
+              >done</code
+            >
+            だけを反転させた「新しいオブジェクト」にすり替えます。
+          </p>
+        </div>
+
+        <!-- Delete -->
+        <div
+          id="code-delete"
+          class="bg-white rounded-2xl shadow-sm border-2 border-slate-200 p-5 transition-all duration-300"
+        >
+          <div
+            class="font-bold text-slate-800 mb-3 flex items-center gap-2 border-b border-slate-100 pb-2"
+          >
+            <i class="fa-solid fa-trash text-rose-500"></i> 削除 (filter
+            メソッド)
+          </div>
+          <div
+            class="code-font text-[11px] text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 mb-3 leading-relaxed"
+          >
+            <span class="text-blue-500">function</span> delete(todos, id) {<br />
+            &nbsp;&nbsp;<span class="text-purple-500 font-bold">return</span>
+            todos.<span class="text-rose-600 font-bold">filter</span>(t =>
+            <br />
+            &nbsp;&nbsp;&nbsp;&nbsp;t.id !== id<br />
+            &nbsp;&nbsp;);<br />
+            }
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            指定されたIDと「一致しない（<code
+              class="bg-slate-100 px-1 rounded code-font"
+              >!==</code
+            >）」ものだけを通過させ、対象の要素が除外された新しい配列を作ります。
+          </p>
+        </div>
       </section>
     </div>
+
+    <script>
+      let isAnimating = false;
+      let idCounter = 2;
+
+      // アプリケーションの状態
+      let currentTodos = [
+        { id: 1, title: "TypeScriptを学ぶ", done: true },
+        { id: 2, title: "Reactを学ぶ", done: false },
+      ];
+
+      const taskTitles = [
+        "アプリを作る",
+        "APIを設計する",
+        "テストを書く",
+        "デプロイする",
+        "UIを改善する",
+        "ドキュメントを書く",
+      ];
+
+      // ユーティリティ: 指定ミリ秒待機
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // 初期描画
+      window.onload = () => {
+        renderCurrentState();
+      };
+
+      function renderCurrentState() {
+        const container = document.getElementById("current-state");
+        container.innerHTML = "";
+        currentTodos.forEach((todo) => {
+          container.innerHTML += createCardHTML(todo, false, `todo-${todo.id}`);
+        });
+      }
+
+      // カードHTMLの生成
+      function createCardHTML(todo, isDummy = false, idAttr = "") {
+        const doneStyle = todo.done
+          ? "bg-emerald-100 text-emerald-700"
+          : "bg-slate-200 text-slate-600";
+        const doneIcon = todo.done
+          ? '<i class="fa-solid fa-check"></i>'
+          : '<i class="fa-regular fa-square"></i>';
+        const borderStyle = todo.done
+          ? "border-emerald-300"
+          : "border-slate-200";
+
+        let buttons = "";
+        if (!isDummy) {
+          buttons = `
+                    <div class="flex gap-1 mt-3">
+                        <button onclick="runToggleTodo(${todo.id})" class="flex-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-200 text-slate-600 text-[10px] py-1.5 rounded font-bold transition-colors shadow-sm"><i class="fa-solid fa-arrows-rotate"></i> Toggle</button>
+                        <button onclick="runDeleteTodo(${todo.id})" class="flex-1 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 border border-slate-200 text-slate-600 text-[10px] py-1.5 rounded font-bold transition-colors shadow-sm"><i class="fa-solid fa-trash"></i> Delete</button>
+                    </div>
+                `;
+        }
+
+        return `
+                <div id="${idAttr}" class="bg-white border-2 ${borderStyle} rounded-xl p-3 w-44 shrink-0 flex flex-col shadow-sm h-full relative transition-all duration-300">
+                    <div class="flex justify-between items-center mb-2 border-b border-slate-100 pb-2">
+                        <span class="text-[10px] text-slate-400 font-bold code-font">ID: ${todo.id}</span>
+                        <span class="text-[9px] px-2 py-0.5 rounded font-bold code-font ${doneStyle}">${doneIcon} ${todo.done ? "true" : "false"}</span>
+                    </div>
+                    <div class="text-[13px] font-bold text-slate-700 leading-tight flex-1 break-words">${todo.title}</div>
+                    ${buttons}
+                </div>
+            `;
+      }
+
+      // UIの準備処理
+      function prepareAnimationUI(codeId, processorText) {
+        // コードブロックのハイライト
+        ["add", "toggle", "delete"].forEach((id) => {
+          document.getElementById(`code-${id}`).classList.remove("code-active");
+        });
+        document.getElementById(`code-${codeId}`).classList.add("code-active");
+
+        // プロセッサーの表示
+        const procArea = document.getElementById("processor-area");
+        const procBadge = document.getElementById("processor-badge");
+        procArea.style.height = "auto";
+        procArea.style.opacity = "1";
+        procBadge.innerHTML = `<i class="fa-solid fa-gears fa-spin"></i> ${processorText}`;
+        procBadge.classList.add("processing");
+
+        // Next State枠の表示
+        const nextWrapper = document.getElementById("next-state-wrapper");
+        const nextContainer = document.getElementById("next-state");
+        nextWrapper.classList.remove("opacity-30", "pointer-events-none");
+        nextContainer.classList.replace("bg-blue-50/50", "bg-blue-50");
+        nextContainer.classList.replace("border-dashed", "border-solid");
+        nextContainer.innerHTML = ""; // 空にする
+
+        return nextContainer;
+      }
+
+      // アニメーションの終了処理
+      async function finishAnimation() {
+        await sleep(800); // 完了を見せる時間
+
+        // 状態の更新と再描画
+        renderCurrentState();
+
+        // UIリセット
+        const procArea = document.getElementById("processor-area");
+        const procBadge = document.getElementById("processor-badge");
+        const nextWrapper = document.getElementById("next-state-wrapper");
+        const nextContainer = document.getElementById("next-state");
+
+        procArea.style.opacity = "0";
+        setTimeout(() => {
+          procArea.style.height = "0";
+        }, 300);
+        procBadge.classList.remove("processing");
+
+        nextWrapper.classList.add("opacity-30", "pointer-events-none");
+        nextContainer.classList.replace("bg-blue-50", "bg-blue-50/50");
+        nextContainer.classList.replace("border-solid", "border-dashed");
+        nextContainer.innerHTML =
+          '<div class="w-full text-center text-blue-300 font-bold text-sm transition-opacity duration-300">新しい配列がここに上書きされました</div>';
+
+        ["add", "toggle", "delete"].forEach((id) => {
+          document.getElementById(`code-${id}`).classList.remove("code-active");
+        });
+
+        isAnimating = false;
+      }
+
+      // 飛行アニメーションのコア関数
+      function flyPacket(fromEl, toEl, data, type = "normal", nextData = null) {
+        return new Promise((resolve) => {
+          const packet = document.createElement("div");
+          packet.className = "fly-packet";
+          packet.innerHTML = createCardHTML(data, true); // ボタンなしのダミー
+          document.body.appendChild(packet);
+
+          const fromRect = fromEl.getBoundingClientRect();
+
+          // Fixed positioning based on viewport
+          packet.style.top = `${fromRect.top}px`;
+          packet.style.left = `${fromRect.left}px`;
+          packet.style.width = `${fromRect.width}px`;
+          packet.style.height = `${fromRect.height}px`;
+
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (type === "normal" || type === "add") {
+                const toRect = toEl.getBoundingClientRect();
+                packet.style.transition =
+                  "transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease";
+                packet.style.transform = `translate(${toRect.left - fromRect.left}px, ${toRect.top - fromRect.top}px)`;
+
+                setTimeout(() => {
+                  toEl.style.opacity = "1";
+                  packet.remove();
+                  resolve();
+                }, 600);
+              } else if (type === "toggle") {
+                const toRect = toEl.getBoundingClientRect();
+                const midX = (toRect.left - fromRect.left) / 2;
+                const midY = (toRect.top - fromRect.top) / 2 - 30; // ちょっと浮かせる
+
+                packet.style.transition = "transform 0.4s ease-out";
+                packet.style.transform = `translate(${midX}px, ${midY}px) scale(1.1)`;
+
+                setTimeout(() => {
+                  // 内容を更新して光らせる
+                  packet.innerHTML = createCardHTML(nextData, true);
+                  packet
+                    .querySelector("div")
+                    .classList.replace("border-slate-200", "border-blue-400");
+                  packet.querySelector("div").style.boxShadow =
+                    "0 0 20px rgba(59, 130, 246, 0.6)";
+
+                  setTimeout(() => {
+                    packet.style.transition = "transform 0.4s ease-in";
+                    packet.style.transform = `translate(${toRect.left - fromRect.left}px, ${toRect.top - fromRect.top}px) scale(1)`;
+
+                    setTimeout(() => {
+                      toEl.style.opacity = "1";
+                      packet.remove();
+                      resolve();
+                    }, 400);
+                  }, 500); // 変化を見せる時間
+                }, 400);
+              } else if (type === "delete") {
+                const midX = 0;
+                const midY = 40;
+
+                packet.style.transition = "transform 0.3s ease-out";
+                packet.style.transform = `translate(${midX}px, ${midY}px) scale(1.1)`;
+
+                setTimeout(() => {
+                  const cardDiv = packet.querySelector("div");
+                  cardDiv.style.borderColor = "#ef4444";
+                  cardDiv.style.backgroundColor = "#fef2f2";
+                  cardDiv.innerHTML += `<div class="absolute inset-0 flex items-center justify-center text-red-500 text-6xl opacity-80"><i class="fa-solid fa-xmark"></i></div>`;
+
+                  setTimeout(() => {
+                    packet.style.transition =
+                      "transform 0.4s ease-in, opacity 0.4s ease-in";
+                    packet.style.transform = `translate(${midX}px, ${midY + 100}px) scale(0.8) rotate(15deg)`;
+                    packet.style.opacity = "0";
+
+                    setTimeout(() => {
+                      packet.remove();
+                      resolve();
+                    }, 400);
+                  }, 500);
+                }, 300);
+              }
+            });
+          });
+        });
+      }
+
+      // ==========================================
+      // 1. addTodo のシミュレーション
+      // ==========================================
+      async function runAddTodo() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const nextContainer = prepareAnimationUI("add", "[...todos, newTodo]");
+
+        // データ準備
+        idCounter++;
+        const randomTitle =
+          taskTitles[Math.floor(Math.random() * taskTitles.length)];
+        const newTodo = { id: idCounter, title: randomTitle, done: false };
+        const nextTodos = [...currentTodos, newTodo];
+
+        // プレースホルダーの作成
+        nextTodos.forEach((t) => {
+          const el = document.createElement("div");
+          el.innerHTML = createCardHTML(t, false, `ph-${t.id}`);
+          const innerCard = el.firstElementChild;
+          innerCard.style.opacity = "0"; // 中身だけ透明に
+          nextContainer.appendChild(innerCard);
+        });
+
+        // 既存の要素をコピーして飛ばす
+        for (const t of currentTodos) {
+          const fromEl = document.getElementById(`todo-${t.id}`);
+          const toEl = document.getElementById(`ph-${t.id}`);
+          fromEl.style.opacity = "0.5"; // コピー元を薄く
+          flyPacket(fromEl, toEl, t, "normal"); // 同時に飛ばす
+          await sleep(150);
+        }
+
+        await sleep(500);
+
+        // 新しい要素を飛ばす (ボタンの位置から)
+        const addBtn = document.getElementById("btn-add");
+        const toEl = document.getElementById(`ph-${newTodo.id}`);
+        await flyPacket(addBtn, toEl, newTodo, "add");
+
+        currentTodos = nextTodos;
+        await finishAnimation();
+      }
+
+      // ==========================================
+      // 2. toggleTodo のシミュレーション
+      // ==========================================
+      async function runToggleTodo(targetId) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const nextContainer = prepareAnimationUI("toggle", "todos.map(...)");
+
+        const nextTodos = currentTodos.map((t) =>
+          t.id === targetId ? { ...t, done: !t.done } : t,
+        );
+
+        // プレースホルダーの作成
+        nextTodos.forEach((t) => {
+          const el = document.createElement("div");
+          el.innerHTML = createCardHTML(t, false, `ph-${t.id}`);
+          const innerCard = el.firstElementChild;
+          innerCard.style.opacity = "0";
+          nextContainer.appendChild(innerCard);
+        });
+
+        // 順番にループ処理
+        for (const t of currentTodos) {
+          const fromEl = document.getElementById(`todo-${t.id}`);
+          const toEl = document.getElementById(`ph-${t.id}`);
+          fromEl.style.opacity = "0.5";
+
+          if (t.id === targetId) {
+            // 対象要素はトグルアニメーション（待つ）
+            const nextData = nextTodos.find((nt) => nt.id === targetId);
+            await flyPacket(fromEl, toEl, t, "toggle", nextData);
+          } else {
+            // 対象外はそのままコピー
+            await flyPacket(fromEl, toEl, t, "normal");
+          }
+          await sleep(100);
+        }
+
+        currentTodos = nextTodos;
+        await finishAnimation();
+      }
+
+      // ==========================================
+      // 3. deleteTodo のシミュレーション
+      // ==========================================
+      async function runDeleteTodo(targetId) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const nextContainer = prepareAnimationUI("delete", "todos.filter(...)");
+
+        const nextTodos = currentTodos.filter((t) => t.id !== targetId);
+
+        // プレースホルダーの作成 (残る要素分だけ)
+        nextTodos.forEach((t) => {
+          const el = document.createElement("div");
+          el.innerHTML = createCardHTML(t, false, `ph-${t.id}`);
+          const innerCard = el.firstElementChild;
+          innerCard.style.opacity = "0";
+          nextContainer.appendChild(innerCard);
+        });
+
+        // 順番にループ処理
+        for (const t of currentTodos) {
+          const fromEl = document.getElementById(`todo-${t.id}`);
+          fromEl.style.opacity = "0.5";
+
+          if (t.id === targetId) {
+            // 対象要素は削除アニメーション
+            await flyPacket(fromEl, null, t, "delete");
+          } else {
+            // 対象外はそのままコピー
+            const toEl = document.getElementById(`ph-${t.id}`);
+            await flyPacket(fromEl, toEl, t, "normal");
+          }
+          await sleep(100);
+        }
+
+        currentTodos = nextTodos;
+        await finishAnimation();
+      }
+    </script>
   </body>
 </html>
