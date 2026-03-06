@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TypeScript 図解: 関数の型の抽出</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
+
+      body {
+        font-family: "Noto Sans JP", sans-serif;
+        background-color: #f8fafc;
+        color: #334155;
+        overflow-x: hidden;
+      }
+
+      .code-font {
+        font-family: "Fira Code", monospace;
+      }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* データの飛行アニメーション */
+      @keyframes fly-packet {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(
+              calc(var(--tx) * 0.4),
+              calc(var(--ty) * 0.4 - 30px)
+            )
+            scale(1.1);
+          opacity: 1;
+        }
+        80% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0.9);
+          opacity: 0;
+        }
+      }
+
+      .data-packet {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+        border-width: 2px;
+      }
+
+      .flying {
+        animation: fly-packet 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+
+      /* 箱が光るアニメーション */
+      @keyframes box-glow {
+        0% {
+          box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+          transform: scale(1);
+        }
+        50% {
+          box-shadow: 0 0 20px var(--glow-color);
+          transform: scale(1.05);
+          border-color: var(--border-color) !important;
+        }
+        100% {
+          box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+          transform: scale(1);
+        }
+      }
+      .glowing {
+        animation: box-glow 0.8s ease-out;
+      }
+
+      /* Awaited マシンの殻割りアニメーション */
+      @keyframes crack-open {
+        0% {
+          transform: scale(1);
+          filter: brightness(1);
+        }
+        40% {
+          transform: scale(1.2) rotate(-5deg);
+          filter: brightness(1.2);
+          box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
+          border-color: #10b981;
+        }
+        60% {
+          transform: scale(1.2) rotate(5deg);
+        }
+        100% {
+          transform: scale(1) rotate(0);
+          filter: brightness(1);
+        }
+      }
+      .cracking {
+        animation: crack-open 0.8s ease-in-out;
+      }
+
+      /* テキスト置換（Part3） */
+      @keyframes text-replace {
+        0% {
+          background-color: rgba(255, 255, 255, 0);
+          transform: scale(1);
+        }
+        50% {
+          background-color: rgba(250, 204, 21, 0.5);
+          transform: scale(1.1);
+          color: #b45309;
+        }
+        100% {
+          background-color: rgba(255, 255, 255, 0);
+          transform: scale(1);
+        }
+      }
+      .text-replace-anim {
+        animation: text-replace 0.8s ease-in-out;
+      }
+
+      /* ターミナルのカーソル */
+      .terminal-cursor::after {
+        content: "█";
+        animation: blink 1s step-end infinite;
+        color: #4ade80;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
+    <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
+      <header class="text-center mb-10">
+        <div
+          class="inline-block bg-indigo-100 text-indigo-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-indigo-200"
+        >
+          TypeScript 型の抽出テクニック
+        </div>
+        <h1
+          class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
+        >
+          関数の「型」を自由自在に操る：<br class="md:hidden" /><span
+            class="text-indigo-600"
+            >Parameters, ReturnType, Awaited</span
+          >
+        </h1>
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          他の人が作った関数やライブラリの「引数」や「戻り値」と同じ型を使いたい時、手書きでコピーする必要はありません。<br
+            class="hidden md:block"
+          />
+          TypeScriptの<strong>ユーティリティ型（Utility Types）</strong
+          >を使えば、関数から直接「型だけを吸い出す」ことができます。
+        </p>
+      </header>
+
+      <!-- Part 1: Parameters と ReturnType -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8 relative"
+        id="sec-part1"
+      >
+        <h2
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-syringe text-indigo-500"></i> 1.
+          関数から「引数」と「戻り値」の型を吸い出す
+        </h2>
+
+        <div class="flex flex-col lg:flex-row gap-8 items-stretch relative">
+          <!-- 飛行パケット -->
+          <div id="packet-1" class="data-packet code-font text-[13px]"></div>
+
+          <!-- 左側：対象の関数 -->
+          <div class="w-full lg:w-[45%] flex flex-col gap-4">
+            <div class="text-sm font-bold text-slate-500 mb-1">
+              対象の関数 (formatUser)
+            </div>
+
+            <div
+              class="bg-slate-800 text-white p-5 rounded-2xl border-4 border-slate-700 shadow-lg code-font text-[13px] leading-loose relative z-10"
+            >
+              <span class="text-purple-400">function</span> formatUser(<br />
+              &nbsp;&nbsp;<span
+                id="p1-args-hl"
+                class="transition-colors rounded border border-transparent px-1 py-0.5"
+                >id: <span class="text-amber-300">number</span>, name:
+                <span class="text-amber-300">string</span></span
+              ><br />
+              ):
+              <span
+                id="p1-ret-hl"
+                class="transition-colors rounded border border-transparent px-1 py-0.5 text-blue-300"
+                >{ id: number; label: string }</span
+              >
+              {<br />
+              &nbsp;&nbsp;<span class="text-purple-400">return</span> { id,
+              label:
+              <span class="text-emerald-300">\`[\${id}] \${name}\`</span>
+              };<br />
+              }
+            </div>
+
+            <!-- アクションボタン -->
+            <div class="flex flex-col sm:flex-row gap-3 mt-2 relative z-20">
+              <button
+                onclick="runPart1('params', this)"
+                class="flex-1 bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 text-amber-800 font-bold py-2 px-4 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <i
+                  class="fa-solid fa-arrow-right-from-bracket rotate-90 text-amber-500"
+                ></i>
+                Parameters 抽出
+              </button>
+              <button
+                onclick="runPart1('ret', this)"
+                class="flex-1 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 text-blue-800 font-bold py-2 px-4 rounded-xl shadow-sm transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <i
+                  class="fa-solid fa-arrow-right-from-bracket rotate-90 text-blue-500"
+                ></i>
+                ReturnType 抽出
+              </button>
+            </div>
+          </div>
+
+          <!-- 右側：抽出結果 -->
+          <div
+            class="w-full lg:w-[55%] flex flex-col gap-4 justify-center relative z-10"
+          >
+            <!-- Parameters 結果 -->
+            <div
+              id="p1-box-params"
+              class="bg-slate-50 p-4 rounded-xl border-2 border-slate-200 transition-all duration-300 relative flex flex-col h-full min-h-[140px]"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-2">
+                引数の型 (タプルとして抽出)
+              </div>
+              <div class="code-font text-sm text-slate-700 font-bold">
+                <span class="text-blue-500">type</span> FormatUserParams =
+                <span class="text-amber-600 bg-amber-100 px-1 rounded"
+                  >Parameters</span
+                >&lt;<span class="text-purple-500">typeof</span> formatUser&gt;;
+              </div>
+              <div
+                class="mt-3 border-t border-slate-200 pt-3 flex-1 flex items-center justify-center"
+              >
+                <div
+                  id="p1-val-params"
+                  class="code-font text-lg font-black text-slate-300 transition-colors"
+                >
+                  ---
+                </div>
+              </div>
+            </div>
+
+            <!-- ReturnType 結果 -->
+            <div
+              id="p1-box-ret"
+              class="bg-slate-50 p-4 rounded-xl border-2 border-slate-200 transition-all duration-300 relative flex flex-col h-full min-h-[140px]"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-2">
+                戻り値の型
+              </div>
+              <div class="code-font text-sm text-slate-700 font-bold">
+                <span class="text-blue-500">type</span> FormatUserReturn =
+                <span class="text-blue-600 bg-blue-100 px-1 rounded"
+                  >ReturnType</span
+                >&lt;<span class="text-purple-500">typeof</span> formatUser&gt;;
+              </div>
+              <div
+                class="mt-3 border-t border-slate-200 pt-3 flex-1 flex items-center justify-center"
+              >
+                <div
+                  id="p1-val-ret"
+                  class="code-font text-sm font-black text-slate-300 transition-colors"
+                >
+                  ---
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Part 2: Awaited -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8 relative"
+        id="sec-part2"
+      >
+        <h2
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-hammer text-emerald-500"></i> 2. Promise
+          の殻を割って中身を取り出す (Awaited)
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-6 items-center justify-between relative min-h-[250px]"
+        >
+          <div
+            id="packet-2"
+            class="data-packet border-2 code-font text-[11px] flex items-center justify-center"
+          ></div>
+
+          <!-- 左側：非同期関数 -->
+          <div class="w-full lg:w-[35%] flex flex-col gap-4 relative z-20">
+            <div
+              class="bg-slate-800 text-white p-5 rounded-2xl border-4 border-slate-700 shadow-lg code-font text-[12px] leading-loose"
+            >
+              <span class="text-purple-400">async function</span>
+              fetchProduct(id) { ... }<br /><br />
+              <span class="text-slate-400 text-[10px]"
+                >// まず ReturnType で戻り値を抽出</span
+              ><br />
+              <span class="text-blue-400">type</span> Result =
+              <span
+                id="p2-ret-hl"
+                class="transition-colors rounded border border-transparent px-1 py-0.5"
+                ><span class="text-emerald-400">Promise&lt;</span
+                ><span class="text-blue-300">{ id: number; name: string }</span
+                ><span class="text-emerald-400">&gt;</span></span
+              >;
+            </div>
+
+            <button
+              onclick="runPart2(this)"
+              class="bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-300 text-emerald-800 font-bold py-3 px-4 rounded-xl shadow-sm transition-all active:scale-95 flex justify-center items-center gap-2"
+            >
+              <i class="fa-solid fa-bolt text-emerald-500"></i> Awaited
+              で中身を抽出
+            </button>
+          </div>
+
+          <!-- 中央：Awaited マシン -->
+          <div
+            class="w-full lg:w-[25%] flex justify-center relative z-10 my-8 lg:my-0"
+          >
+            <div
+              id="awaited-machine"
+              class="bg-slate-50 border-4 border-slate-300 rounded-full w-32 h-32 flex flex-col items-center justify-center relative shadow-inner transition-colors duration-300"
+            >
+              <i
+                class="fa-solid fa-hammer text-3xl text-slate-400 mb-1 transition-colors"
+                id="awaited-icon"
+              ></i>
+              <span
+                class="font-bold text-slate-500 code-font text-sm transition-colors"
+                id="awaited-text"
+                >Awaited</span
+              >
+            </div>
+          </div>
+
+          <!-- 右側：最終結果 -->
+          <div
+            class="w-full lg:w-[35%] flex flex-col justify-center relative z-10"
+          >
+            <div
+              id="p2-out-box"
+              class="bg-slate-50 border-2 border-slate-200 rounded-xl p-5 shadow-sm transition-all opacity-50"
+            >
+              <div
+                class="text-[10px] font-bold text-slate-500 mb-2 border-b border-slate-200 pb-2"
+              >
+                <span
+                  class="text-emerald-600 bg-emerald-100 px-1 rounded code-font"
+                  >Awaited</span
+                >&lt;Result&gt;
+              </div>
+              <div
+                class="flex-1 flex items-center justify-center mt-2 min-h-[60px]"
+              >
+                <div
+                  id="p2-out-val"
+                  class="code-font text-sm font-black text-slate-300 transition-colors leading-relaxed"
+                >
+                  ---
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-4 bg-emerald-50 border-l-4 border-emerald-500 p-3 text-xs text-emerald-900 rounded-r"
+        >
+          API通信などの非同期関数（<code class="code-font font-bold">async</code
+          >）の戻り値は必ず
+          <code class="code-font font-bold">Promise</code>
+          に包まれています。<code class="code-font font-bold">Awaited</code>
+          は、そのPromiseの殻をパカッと割って、本当に欲しかった中身の型だけを取り出してくれる便利なユーティリティです。
+        </div>
+      </section>
+
+      <!-- Part 3: 高階関数 (withLogging) -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 relative"
+        id="sec-part3"
+      >
+        <h2
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-boxes-packing text-pink-500"></i> 3.
+          実践：元の型を完全に引き継ぐラッパー関数
+        </h2>
+        <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+          ログ出力などの共通処理を挟む「ラッパー関数」を作る時、<code
+            class="code-font bg-slate-100 px-1 rounded font-bold"
+            >Parameters</code
+          >
+          と
+          <code class="code-font bg-slate-100 px-1 rounded font-bold"
+            >ReturnType</code
+          >
+          を使うことで、<strong>「どんな関数を渡しても、元の引数や戻り値の型をそのまま引き継いでくれる」</strong>安全な仕組みが作れます。
+        </p>
+
+        <div class="flex flex-col lg:flex-row gap-8 items-stretch relative">
+          <!-- パケットダミー -->
+          <div
+            id="packet-3"
+            class="data-packet border-2 code-font text-sm"
+          ></div>
+
+          <!-- コード定義 -->
+          <div
+            class="w-full lg:w-[55%] bg-slate-800 text-white p-5 rounded-2xl border-4 border-slate-700 shadow-xl code-font text-[13px] leading-loose relative z-10"
+          >
+            <div
+              class="absolute -top-3 left-6 bg-pink-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow"
+            >
+              高階関数 withLogging
+            </div>
+
+            <span class="text-purple-400">function</span> withLogging&lt;<span
+              class="text-teal-300"
+              >T</span
+            >
+            <span class="text-slate-400 text-[10px]"
+              >extends (...args: any[]) => any</span
+            >&gt;(fn: <span class="text-teal-300">T</span>) {<br />
+            &nbsp;&nbsp;<span class="text-purple-400">return</span> (...args:
+            <span
+              id="p3-params-target"
+              class="transition-colors rounded px-1 font-bold text-amber-400 bg-slate-700"
+              >Parameters&lt;T&gt;</span
+            >):
+            <span
+              id="p3-ret-target"
+              class="transition-colors rounded px-1 font-bold text-blue-300 bg-slate-700"
+              >ReturnType&lt;T&gt;</span
+            >
+            => {<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;console.log(<span class="text-amber-300"
+              >"calling:"</span
+            >, fn.name);<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-purple-400">return</span>
+            fn(...args);<br />
+            &nbsp;&nbsp;};<br />
+            }
+          </div>
+
+          <!-- 実行エリア -->
+          <div class="w-full lg:w-[45%] flex flex-col gap-4 relative z-20">
+            <!-- 生成ボタン -->
+            <div
+              class="flex flex-col sm:flex-row items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-3"
+            >
+              <div
+                class="code-font text-xs text-slate-700 leading-relaxed w-full"
+              >
+                <span class="text-blue-600">const</span> loggedFormat = <br />
+                &nbsp;&nbsp;withLogging(<span
+                  class="text-purple-600 font-bold bg-purple-100 px-1 rounded"
+                  >formatUser</span
+                >);
+              </div>
+              <button
+                onclick="runPart3Generate(this)"
+                id="btn-p3-gen"
+                class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 whitespace-nowrap w-full sm:w-auto shrink-0"
+              >
+                生成 (Tを決定)
+              </button>
+            </div>
+
+            <!-- 実行ボタン -->
+            <div
+              id="p3-exec-area"
+              class="flex flex-col sm:flex-row items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200 gap-3 opacity-50 pointer-events-none transition-opacity duration-500"
+            >
+              <div
+                class="code-font text-[13px] text-slate-700 font-bold w-full"
+              >
+                loggedFormat(<span class="text-blue-500">1</span>,
+                <span class="text-blue-500">"Alice"</span>);
+              </div>
+              <button
+                onclick="runPart3Exec(this)"
+                id="btn-p3-exec"
+                class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 whitespace-nowrap w-full sm:w-auto shrink-0"
+              >
+                関数を実行
+              </button>
+            </div>
+
+            <!-- Terminal -->
+            <div
+              class="bg-black border border-slate-600 rounded-xl p-4 font-mono text-sm text-green-400 min-h-[120px] relative mt-2 shadow-inner flex flex-col"
+            >
+              <div class="text-slate-500 text-[10px] absolute top-1 right-2">
+                Console & Output
+              </div>
+              <div id="p3-terminal-1" class="mb-1 text-slate-300"></div>
+              <div id="p3-terminal-2" class="mt-auto"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      let isAnimating1 = false;
+      let isAnimating2 = false;
+      let isAnimating3 = false;
+      let isGenerated = false;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // パケットの絶対座標計算ヘルパー（基準を親要素に固定してズレを解消）
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        if (!packet || !targetEl) return;
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = packet.parentElement.getBoundingClientRect();
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+        return { x, y };
+      }
+
+      // ==========================================
+      // Part 1: Parameters & ReturnType
+      // ==========================================
+      async function runPart1(type, btnEl) {
+        if (isAnimating1) return;
+        isAnimating1 = true;
+
+        const packet = document.getElementById("packet-1");
+        const container = document.getElementById("sec-part1");
+
+        const hlEl =
+          type === "params"
+            ? document.getElementById("p1-args-hl")
+            : document.getElementById("p1-ret-hl");
+        const boxEl =
+          type === "params"
+            ? document.getElementById("p1-box-params")
+            : document.getElementById("p1-box-ret");
+        const valEl =
+          type === "params"
+            ? document.getElementById("p1-val-params")
+            : document.getElementById("p1-val-ret");
+
+        // UI リセット
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        hlEl.className =
+          "transition-colors rounded border border-transparent px-1 py-0.5";
+        boxEl.style.boxShadow = "none";
+        boxEl.style.borderColor = "#e2e8f0"; // slate-200
+        valEl.innerText = "---";
+        valEl.className =
+          "code-font text-lg font-black text-slate-300 transition-colors";
+
+        // 1. ソースコードのハイライト
+        const hlBg = type === "params" ? "bg-amber-500/30" : "bg-blue-500/30";
+        const hlBorder =
+          type === "params" ? "border-amber-400" : "border-blue-400";
+        hlEl.classList.add(hlBg, hlBorder);
+
+        // パケットの準備
+        const packetText =
+          type === "params"
+            ? "[number, string]"
+            : "{ id: number; label: string }";
+        const packetColor =
+          type === "params"
+            ? "text-amber-600 border-amber-400 bg-amber-50"
+            : "text-blue-600 border-blue-400 bg-blue-50";
+        packet.innerHTML = packetText;
+        packet.className = `data-packet code-font text-[13px] ${packetColor}`;
+        void packet.offsetWidth;
+
+        await sleep(400);
+
+        // 2. 飛行開始（ハイライトされたソースコード位置からスタート）
+        setPacketPosAbsolute(packet, hlEl);
+        packet.style.opacity = "1";
+
+        await sleep(100);
+
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s";
+        // 目的地を値が表示される要素(valEl)の中央に設定して枠内にピタッと収める
+        setPacketPosAbsolute(packet, valEl);
+
+        await sleep(1000);
+
+        // 3. ボックスに到着
+        packet.style.opacity = "0";
+
+        boxEl.style.setProperty(
+          "--glow-color",
+          type === "params"
+            ? "rgba(245, 158, 11, 0.5)"
+            : "rgba(59, 130, 246, 0.5)",
+        );
+        boxEl.style.setProperty(
+          "--border-color",
+          type === "params" ? "#f59e0b" : "#3b82f6",
+        );
+        boxEl.classList.add("glowing");
+
+        valEl.innerText = packetText;
+        valEl.className = `code-font ${type === "params" ? "text-xl" : "text-sm"} font-black ${type === "params" ? "text-amber-600" : "text-blue-600"}`;
+
+        // 後片付け
+        setTimeout(() => {
+          hlEl.classList.remove(hlBg, hlBorder);
+          boxEl.classList.remove("glowing");
+          boxEl.style.borderColor = "#e2e8f0";
+          isAnimating1 = false;
+        }, 1000);
+      }
+
+      // ==========================================
+      // Part 2: Awaited
+      // ==========================================
+      async function runPart2(btnEl) {
+        if (isAnimating2) return;
+        isAnimating2 = true;
+
+        const packet = document.getElementById("packet-2");
+        const container = document.getElementById("sec-part2");
+        const hlEl = document.getElementById("p2-ret-hl");
+        const machine = document.getElementById("awaited-machine");
+        const mIcon = document.getElementById("awaited-icon");
+        const mText = document.getElementById("awaited-text");
+        const outBox = document.getElementById("p2-out-box");
+        const outVal = document.getElementById("p2-out-val");
+
+        // UI リセット
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        hlEl.className =
+          "transition-colors rounded border border-transparent px-1 py-0.5";
+        machine.className =
+          "bg-slate-50 border-4 border-slate-300 rounded-full w-32 h-32 flex flex-col items-center justify-center relative shadow-inner transition-colors duration-300";
+        mIcon.className =
+          "fa-solid fa-hammer text-3xl text-slate-400 mb-1 transition-colors";
+        mText.className =
+          "font-bold text-slate-500 code-font text-sm transition-colors";
+        outBox.className =
+          "bg-slate-50 border-2 border-slate-200 rounded-xl p-5 shadow-sm transition-all opacity-50";
+        outVal.innerText = "---";
+        outVal.className =
+          "code-font text-sm font-black text-slate-300 transition-colors leading-relaxed";
+
+        // 1. ハイライト
+        hlEl.classList.add("bg-emerald-500/30", "border-emerald-400");
+        await sleep(400);
+
+        // パケット準備（Promiseで包まれた状態）
+        packet.innerHTML = `<span class="text-emerald-500 transition-opacity" id="p2-prom-text">Promise&lt;</span> <span class="text-blue-600">{ id: number; name: string }</span> <span class="text-emerald-500 transition-opacity" id="p2-prom-text2">&gt;</span>`;
+        packet.className =
+          "data-packet border-2 border-emerald-400 bg-emerald-50 code-font text-[11px] flex items-center justify-center shadow-lg";
+        void packet.offsetWidth;
+
+        // 2. マシンへ飛行（ソースコードからスタート）
+        setPacketPosAbsolute(packet, hlEl);
+        packet.style.opacity = "1";
+
+        await sleep(100);
+
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        setPacketPosAbsolute(packet, machine);
+
+        await sleep(1000);
+
+        // 3. マシンで殻割り (Cracking!)
+        machine.classList.add("bg-emerald-100", "border-emerald-400");
+        mIcon.classList.replace("text-slate-400", "text-emerald-600");
+        mText.classList.replace("text-slate-500", "text-emerald-800");
+        machine.classList.add("cracking");
+
+        await sleep(400); // 割れる瞬間に合わせる
+
+        // Promise の文字が消える（殻が割れた表現）
+        document.getElementById("p2-prom-text").style.opacity = "0";
+        document.getElementById("p2-prom-text2").style.opacity = "0";
+        packet.classList.replace("border-emerald-400", "border-blue-400");
+        packet.classList.replace("bg-emerald-50", "bg-blue-50");
+
+        await sleep(600);
+
+        // 4. 結果ボックスへ飛行
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-in 0.7s";
+        setPacketPosAbsolute(packet, outVal);
+
+        await sleep(1000);
+
+        // 結果表示
+        outBox.classList.remove("opacity-50");
+        outBox.classList.add("border-blue-400", "bg-blue-50");
+        outVal.innerHTML =
+          "{<br>&nbsp;&nbsp;id: number;<br>&nbsp;&nbsp;name: string<br>}";
+        outVal.className =
+          "code-font text-sm font-black text-blue-700 transition-colors leading-relaxed";
+
+        packet.style.opacity = "0";
+
+        // 後片付け
+        setTimeout(() => {
+          hlEl.classList.remove("bg-emerald-500/30", "border-emerald-400");
+          machine.classList.remove("cracking");
+          machine.className =
+            "bg-slate-50 border-4 border-slate-300 rounded-full w-32 h-32 flex flex-col items-center justify-center relative shadow-inner transition-colors duration-300";
+          mIcon.className =
+            "fa-solid fa-hammer text-3xl text-slate-400 mb-1 transition-colors";
+          mText.className =
+            "font-bold text-slate-500 code-font text-sm transition-colors";
+          isAnimating2 = false;
+        }, 1500);
+      }
+
+      // ==========================================
+      // Part 3: withLogging
+      // ==========================================
+      async function runPart3Generate(btnEl) {
+        if (isAnimating3 || isGenerated) return;
+        isAnimating3 = true;
+        btnEl.disabled = true;
+
+        const paramsEl = document.getElementById("p3-params-target");
+        const retEl = document.getElementById("p3-ret-target");
+        const execArea = document.getElementById("p3-exec-area");
+
+        // 置換アニメーション
+        paramsEl.classList.add("text-replace-anim");
+        retEl.classList.add("text-replace-anim");
+
+        await sleep(400); // アニメーションのピークで文字を変える
+
+        paramsEl.innerText = "[id: number, name: string]";
+        paramsEl.classList.replace("text-amber-400", "text-amber-300");
+        paramsEl.classList.replace("bg-slate-700", "bg-slate-800");
+        paramsEl.classList.remove("font-bold");
+
+        retEl.innerText = "{ id: number, label: string }";
+        retEl.classList.replace("text-blue-300", "text-blue-300");
+        retEl.classList.replace("bg-slate-700", "bg-slate-800");
+        retEl.classList.remove("font-bold");
+
+        await sleep(600);
+
+        // 実行エリアをアクティブに
+        execArea.classList.remove("opacity-50", "pointer-events-none");
+        execArea.classList.add("border-blue-300", "bg-white", "shadow-md");
+
+        btnEl.innerText = "生成済";
+        btnEl.classList.replace("bg-indigo-500", "bg-slate-400");
+        btnEl.classList.replace("hover:bg-indigo-600", "hover:bg-slate-400");
+
+        isGenerated = true;
+        isAnimating3 = false;
+      }
+
+      async function runPart3Exec(btnEl) {
+        if (isAnimating3 || !isGenerated) return;
+        isAnimating3 = true;
+
+        const packet = document.getElementById("packet-3");
+        const term1 = document.getElementById("p3-terminal-1");
+        const term2 = document.getElementById("p3-terminal-2");
+        const paramsTarget = document.getElementById("p3-params-target");
+
+        // UIリセット
+        term1.innerHTML = "";
+        term2.innerHTML = "";
+        term2.className = "mt-auto text-emerald-400 terminal-cursor"; // cursor on
+
+        // パケット生成
+        packet.innerHTML =
+          '<span class="text-blue-600">1</span>, <span class="text-blue-600">"Alice"</span>';
+        packet.className =
+          "data-packet border-2 border-blue-400 bg-blue-50 code-font text-sm shadow-md";
+        void packet.offsetWidth;
+
+        // ボタンから引数の場所へ飛ぶ (少し左にずらすオフセット)
+        setPacketPosAbsolute(packet, btnEl, -50, 0);
+        packet.style.opacity = "1";
+
+        await sleep(50);
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        setPacketPosAbsolute(packet, paramsTarget);
+
+        await sleep(1000);
+        packet.style.opacity = "0"; // 吸収される
+
+        // ターミナル出力 (console.log)
+        term1.innerHTML = "> calling: formatUser";
+        await sleep(600);
+
+        // ターミナル出力 (戻り値)
+        const resultStr = '> { id: 1, label: "[1] Alice" }';
+        let i = 0;
+        const typeInterval = setInterval(() => {
+          term2.innerText = resultStr.substring(0, i);
+          i++;
+          if (i > resultStr.length) {
+            clearInterval(typeInterval);
+            term2.classList.remove("terminal-cursor");
+            isAnimating3 = false;
+          }
+        }, 50);
+      }
+    </script>
+  </body>
+</html>

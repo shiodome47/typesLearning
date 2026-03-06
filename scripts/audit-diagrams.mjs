@@ -21,6 +21,7 @@ const CURRICULUM_DIRS = [
   "curriculum/phase3-real-app",
   "curriculum/phase4-react",
   "curriculum/phase5-advanced-patterns",
+  "curriculum/phase6-modern-ts",
 ];
 
 const lessonIds = [];

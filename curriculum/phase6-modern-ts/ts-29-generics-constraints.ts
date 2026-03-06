@@ -18,8 +18,7 @@ export const lesson29: Lesson = {
   starterCode: `// ── Part 1: T extends object ──────────────────────────────
 // 1. getKeys<T extends object>(obj: T): (keyof T)[] を実装してください
 //    - Object.keys(obj) を返す（ただし as (keyof T)[] でキャストする）
-//    - 制約なし版 getKeysAny<T>(obj: T) と比べて、
-//      getKeys(42) がコンパイルエラーになることを確認してください（コメントで示すだけでOK）
+//    - 制約なし版と比べて getKeys(42) がコンパイルエラーになることを確認してください（コメントで示すだけでOK）
 
 // ── Part 2: K extends keyof T ─────────────────────────────
 // 2. getProp<T extends object, K extends keyof T>(obj: T, key: K): T[K] を実装してください
@@ -45,7 +44,7 @@ function getKeys<T extends object>(obj: T): (keyof T)[] {
 }
 
 // 制約なし版との比較（コメント）
-// function getKeysAny<T>(obj: T): (keyof T)[] { return Object.keys(obj as object) as (keyof T)[]; }
+// function getKeysAny<T>(obj: T) { return Object.keys(obj as object) as (keyof T)[]; }
 // getKeysAny(42);  // エラーにならない（危険）
 // getKeys(42);     // 型エラー: number は object を満たさない
 

@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React 図解: 汎用コンポーネント (Generics)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
+
+      body {
+        font-family: "Noto Sans JP", sans-serif;
+        background-color: #f8fafc; /* slate-50 */
+        color: #334155;
+        overflow-x: hidden;
+      }
+
+      .code-font {
+        font-family: "Fira Code", monospace;
+      }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* React/TSカラー */
+      .react-blue {
+        color: #06b6d4;
+      }
+      .ts-blue {
+        color: #3b82f6;
+      }
+
+      /* Tの変身アニメーション */
+      @keyframes t-transform {
+        0% {
+          transform: scale(1);
+          background-color: transparent;
+        }
+        50% {
+          transform: scale(1.3);
+          background-color: var(--target-light-bg);
+          color: var(--target-text);
+          border-color: var(--target-border);
+          box-shadow: 0 0 15px var(--target-shadow);
+        }
+        100% {
+          transform: scale(1);
+          background-color: var(--target-bg);
+          color: var(--target-text);
+          border-color: var(--target-border);
+        }
+      }
+      .t-animating {
+        animation: t-transform 0.8s ease-in-out forwards;
+      }
+
+      /* パケット（Props）の飛行アニメーション */
+      @keyframes fly-packet {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(
+              calc(var(--tx) * 0.4),
+              calc(var(--ty) * 0.4 - 30px)
+            )
+            scale(1.1);
+          opacity: 1;
+        }
+        80% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0.9);
+          opacity: 0;
+        }
+      }
+
+      @keyframes reject-packet {
+        0% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        20% {
+          transform: translate(calc(var(--tx) - 15px), var(--ty));
+          opacity: 1;
+        }
+        40% {
+          transform: translate(calc(var(--tx) + 15px), var(--ty));
+          opacity: 1;
+        }
+        60% {
+          transform: translate(calc(var(--tx) - 15px), var(--ty));
+          opacity: 1;
+        }
+        100% {
+          transform: translate(0, 0) scale(0.5) rotate(20deg);
+          opacity: 0;
+        }
+      }
+
+      .data-packet {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+        border-width: 2px;
+      }
+
+      .flying {
+        animation: fly-packet 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+      .rejecting {
+        animation: reject-packet 0.6s ease-in forwards;
+      }
+
+      /* idチェックゲート */
+      @keyframes gate-success {
+        0% {
+          border-color: #475569;
+          box-shadow: none;
+        }
+        50% {
+          border-color: #10b981;
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+          background-color: #ecfdf5;
+          color: #059669;
+        }
+        100% {
+          border-color: #475569;
+          box-shadow: none;
+        }
+      }
+      @keyframes gate-error {
+        0% {
+          border-color: #475569;
+          box-shadow: none;
+          transform: translateX(0);
+        }
+        25% {
+          border-color: #ef4444;
+          box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+          background-color: #fef2f2;
+          color: #dc2626;
+          transform: translateX(-5px);
+        }
+        50% {
+          transform: translateX(5px);
+        }
+        75% {
+          transform: translateX(-5px);
+        }
+        100% {
+          border-color: #475569;
+          box-shadow: none;
+          transform: translateX(0);
+        }
+      }
+
+      .gate-ok {
+        animation: gate-success 0.8s ease-out;
+      }
+      .gate-ng {
+        animation: gate-error 0.5s ease-in-out;
+        border-color: #ef4444 !important;
+        color: #dc2626 !important;
+        background-color: #fef2f2 !important;
+      }
+
+      /* リスト生成アニメーション */
+      @keyframes slideInUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .list-item-anim {
+        animation: slideInUp 0.4s ease-out forwards;
+        opacity: 0;
+      }
+
+      /* リンクライン */
+      @keyframes flow-line-anim {
+        0% {
+          background-position: 0 0;
+        }
+        100% {
+          background-position: 20px 0;
+        }
+      }
+      .inference-line {
+        position: absolute;
+        border-top: 2px dashed #94a3b8;
+        z-index: 0;
+      }
+      .inference-line.active {
+        border-color: #3b82f6;
+        background-image: linear-gradient(90deg, #3b82f6 50%, transparent 50%);
+        background-size: 20px 2px;
+        border-top: none;
+        height: 2px;
+        animation: flow-line-anim 1s linear infinite;
+      }
+    </style>
+  </head>
+  <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
+    <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
+      <header class="text-center mb-10">
+        <div
+          class="inline-block bg-sky-100 text-sky-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-sky-200"
+        >
+          React × TypeScript 実践
+        </div>
+        <h1
+          class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
+        >
+          どんな配列でも受け入れる：<br class="md:hidden" /><span
+            class="react-blue"
+            >汎用 (Generic) コンポーネント</span
+          >
+        </h1>
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          リスト表示など「データの形が違っても使い回したいUI」を作る時、<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >function List&lt;T&gt;</code
+          >
+          のようにジェネリクスを使います。<br class="hidden md:block" />
+          親から
+          <code class="bg-slate-200 px-1 rounded code-font">User[]</code>
+          を渡せば、描画関数
+          <code class="bg-slate-200 px-1 rounded code-font">renderItem</code>
+          には自動的に
+          <code class="bg-slate-200 px-1 rounded code-font">User</code>
+          型が伝播し、安全にプロパティを取り出せます。
+        </p>
+      </header>
+
+      <!-- メイン・シミュレーション -->
+      <section
+        class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8 relative z-20"
+        id="sim-container"
+      >
+        <div
+          class="flex flex-col xl:flex-row gap-8 items-stretch relative min-h-[450px]"
+        >
+          <!-- 飛行パケット -->
+          <div
+            id="prop-packet"
+            class="data-packet code-font text-[13px] flex flex-col gap-1 items-center"
+          ></div>
+
+          <!-- 1. 呼び出し側 (親コンポーネント) -->
+          <div class="w-full xl:w-[30%] flex flex-col gap-4 relative z-20">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2"
+            >
+              <i class="fa-brands fa-react react-blue"></i> 親コンポーネント
+              (Propsを渡す)
+            </div>
+
+            <button
+              onclick="runSimulation('user', this)"
+              class="bg-white hover:bg-blue-50 border-2 border-slate-200 hover:border-blue-400 rounded-xl p-4 text-left shadow-sm transition-all group relative"
+            >
+              <div class="text-[10px] font-bold text-blue-500 mb-1">
+                User 型の配列を渡す
+              </div>
+              <div
+                class="code-font font-bold text-slate-700 text-xs leading-relaxed"
+              >
+                &lt;<span class="react-blue">List</span><br />
+                &nbsp;&nbsp;items={<span class="text-blue-500">users</span
+                >}<br />
+                &nbsp;&nbsp;renderItem={(<span class="text-blue-400">u</span>)
+                => &lt;span&gt;{<span class="text-blue-400">u</span
+                >.name}&lt;/span&gt;}<br />
+                /&gt;
+              </div>
+              <i
+                class="fa-solid fa-play absolute right-4 top-1/2 transform -translate-y-1/2 text-blue-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <button
+              onclick="runSimulation('product', this)"
+              class="bg-white hover:bg-emerald-50 border-2 border-slate-200 hover:border-emerald-400 rounded-xl p-4 text-left shadow-sm transition-all group relative mt-2"
+            >
+              <div class="text-[10px] font-bold text-emerald-600 mb-1">
+                Product 型の配列を渡す
+              </div>
+              <div
+                class="code-font font-bold text-slate-700 text-xs leading-relaxed"
+              >
+                &lt;<span class="react-blue">List</span><br />
+                &nbsp;&nbsp;items={<span class="text-emerald-500">products</span
+                >}<br />
+                &nbsp;&nbsp;renderItem={(<span class="text-emerald-500">p</span
+                >) => &lt;span&gt;{<span class="text-emerald-500">p</span
+                >.price}円&lt;/span&gt;}<br />
+                /&gt;
+              </div>
+              <i
+                class="fa-solid fa-play absolute right-4 top-1/2 transform -translate-y-1/2 text-emerald-300 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+
+            <div class="h-px bg-slate-200 my-2"></div>
+
+            <button
+              onclick="runSimulation('error', this)"
+              class="bg-red-50 hover:bg-red-100 border-2 border-red-200 hover:border-red-400 rounded-xl p-4 text-left shadow-sm transition-all group relative overflow-hidden"
+            >
+              <div
+                class="absolute top-0 right-0 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-bl font-bold"
+              >
+                エラー
+              </div>
+              <div class="text-[10px] font-bold text-red-600 mb-1">
+                idを持たない配列を渡す
+              </div>
+              <div
+                class="code-font font-bold text-slate-700 text-xs leading-relaxed"
+              >
+                &lt;<span class="react-blue">List</span><br />
+                &nbsp;&nbsp;items={<span class="text-rose-500"
+                  >["Apple", "Banana"]</span
+                >}<br />
+                &nbsp;&nbsp;... /&gt;
+              </div>
+              <i
+                class="fa-solid fa-bolt absolute right-4 top-1/2 transform -translate-y-1/2 text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+              ></i>
+            </button>
+          </div>
+
+          <!-- 2. 子コンポーネント (汎用List) の内部 -->
+          <div class="w-full xl:w-[45%] flex flex-col relative z-10">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4 flex items-center justify-between"
+            >
+              <span
+                ><i class="fa-solid fa-code text-slate-600"></i> function
+                List&lt;T&gt;</span
+              >
+            </div>
+
+            <div
+              class="bg-slate-800 text-white rounded-xl p-5 shadow-inner code-font text-[12px] leading-relaxed border-2 border-slate-700 relative flex-1"
+            >
+              <!-- コンポーネント宣言と型推論 -->
+              <div class="mb-4">
+                <span class="text-purple-400">function</span> List
+                <!-- ジェネリクス宣言と制約ゲート -->
+                <span
+                  id="t-decl"
+                  class="bg-slate-700 text-slate-400 border border-slate-600 px-1 rounded transition-colors inline-block"
+                  >&lt;T&gt;</span
+                >
+
+                <span
+                  id="gate-id"
+                  class="border-2 border-slate-500 bg-slate-900 rounded px-2 py-0.5 text-[10px] font-bold ml-1 transition-colors text-slate-400 inline-flex items-center gap-1"
+                >
+                  extends { id: string | number }
+                  <i
+                    id="gate-icon"
+                    class="fa-solid fa-shield-halved"
+                  ></i> </span
+                ><br />
+
+                ({ items, renderItem }: {<br />
+                &nbsp;&nbsp;<span id="anchor-props">items: </span
+                ><span
+                  id="t-items"
+                  class="bg-slate-700 text-slate-400 border border-slate-600 px-1 rounded transition-colors"
+                  >T</span
+                >[],<br />
+
+                <!-- 推論の伝播ライン用アンカー -->
+                &nbsp;&nbsp;renderItem: (item:
+                <span
+                  id="t-render"
+                  class="bg-slate-700 text-slate-400 border border-slate-600 px-1 rounded transition-colors relative"
+                  >T
+                  <div
+                    id="inference-anchor"
+                    class="absolute -right-4 top-1/2 w-2 h-2"
+                  ></div></span
+                >) => ReactNode<br />
+                }) {
+              </div>
+
+              <!-- エラーメッセージ -->
+              <div
+                id="err-popup"
+                class="absolute top-[30%] left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-[10px] p-2 rounded shadow-2xl hidden z-30 code-font whitespace-nowrap border-2 border-red-300"
+              >
+                Type 'string' does not satisfy the constraint '{ id: string |
+                number; }'.
+              </div>
+
+              <!-- 描画ロジック -->
+              <div class="pl-4 border-l-2 border-slate-600 relative">
+                <span class="text-purple-400">return</span> (<br />
+                &nbsp;&nbsp;&lt;<span class="text-rose-400">ul</span>&gt;<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;{items.<span class="text-blue-300"
+                  >map</span
+                >((item) => (<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;<span
+                  class="text-rose-400"
+                  >li</span
+                >
+                <span id="key-hl" class="transition-colors rounded px-1"
+                  >key={<span class="text-amber-300 font-bold">item.id</span
+                  >}</span
+                >&gt;<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{<span
+                  id="render-hl"
+                  class="transition-colors rounded px-1"
+                  >renderItem(<span class="text-amber-300 font-bold">item</span
+                  >)</span
+                >}<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;/<span
+                  class="text-rose-400"
+                  >li</span
+                >&gt;<br />
+                &nbsp;&nbsp;&nbsp;&nbsp;))}<br />
+                &nbsp;&nbsp;&lt;/<span class="text-rose-400">ul</span>&gt;<br />
+                );
+              </div>
+              <div>}</div>
+            </div>
+          </div>
+
+          <!-- 3. レンダリング結果 (DOM) -->
+          <div class="w-full xl:w-[25%] flex flex-col relative z-10">
+            <div
+              class="text-sm font-bold text-slate-500 border-b border-slate-200 pb-2 mb-4 flex items-center gap-2"
+            >
+              <i class="fa-regular fa-window-maximize"></i> ブラウザ画面
+            </div>
+
+            <!-- 推論の伝播ライン -->
+            <div
+              id="line-infer"
+              class="inference-line hidden xl:block"
+              style="top: 130px; left: -30px; width: 60px"
+            ></div>
+
+            <div
+              id="dom-output"
+              class="bg-slate-50 border-2 border-slate-200 rounded-xl p-4 shadow-sm flex-1 flex flex-col gap-2 relative transition-colors duration-300"
+            >
+              <div
+                id="dom-placeholder"
+                class="absolute inset-0 flex items-center justify-center text-slate-300 font-bold text-sm pointer-events-none"
+              >
+                結果がレンダリングされます
+              </div>
+              <!-- リストアイテムがここに追加される -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 解説セクション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8"
+      >
+        <h2
+          class="text-xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-graduation-cap text-ts-blue"></i>
+          2つの重要ポイント
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- extends の理由 -->
+          <div class="bg-amber-50 border border-amber-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-amber-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-key text-amber-600"></i> なぜ extends
+              {id...} が必要なの？
+            </h3>
+            <p class="text-xs text-amber-900 leading-relaxed">
+              Reactでリスト（<code class="bg-white px-1 rounded code-font"
+                >li</code
+              >）を描画する際、要素を一意に識別するための
+              <strong
+                ><code class="bg-white px-1 rounded code-font">key</code>
+                プロパティが必須</strong
+              >になります。<br />
+              もし
+              <code class="bg-white px-1 rounded code-font">&lt;T&gt;</code>
+              のまま（どんな型でもOK）にしてしまうと、TypeScriptは「渡された型が本当に
+              <code class="bg-white px-1 rounded code-font">id</code>
+              を持っているか分からないよ！」とエラーを出します。<code
+                class="bg-white px-1 rounded code-font font-bold"
+                >extends</code
+              >
+              で制約をかけることで、コンポーネント内で安全に
+              <code class="bg-white px-1 rounded code-font">item.id</code>
+              にアクセスできるようになります。
+            </p>
+          </div>
+
+          <!-- 型推論の連鎖 -->
+          <div class="bg-blue-50 border border-blue-200 p-5 rounded-xl">
+            <h3
+              class="font-bold text-blue-800 mb-2 text-sm flex items-center gap-2"
+            >
+              <i class="fa-solid fa-wand-magic-sparkles text-blue-600"></i>
+              「型推論の連鎖」が起こる
+            </h3>
+            <p class="text-xs text-blue-900 leading-relaxed">
+              親コンポーネントで
+              <code class="bg-white px-1 rounded code-font">items={users}</code>
+              と配列を渡した瞬間に、<code
+                class="bg-white px-1 rounded code-font"
+                >&lt;T&gt;</code
+              >
+              は
+              <code
+                class="bg-white px-1 rounded code-font text-blue-600 font-bold"
+                >User</code
+              >
+              型に決定されます。<br />
+              すると、同じ
+              <code class="bg-white px-1 rounded code-font">T</code>
+              を使っている
+              <code class="bg-white px-1 rounded code-font"
+                >renderItem: (item: T) => ...</code
+              >
+              の引数
+              <code class="bg-white px-1 rounded code-font">item</code>
+              も自動的に
+              <code
+                class="bg-white px-1 rounded code-font text-blue-600 font-bold"
+                >User</code
+              >
+              型だと認識されるため、呼び出し側でわざわざ型を書かなくても、エディタの補完（<code
+                class="bg-white px-1 rounded code-font"
+                >u.name</code
+              >など）がバッチリ効くようになります。
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      let isAnimating = false;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // パケットの絶対座標計算ヘルパー
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        containerEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        if (!packet || !targetEl || !containerEl) return;
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = containerEl.getBoundingClientRect();
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+        return { x, y };
+      }
+
+      // T要素のアニメーション
+      async function animateT(elementId, targetType, config) {
+        const el = document.getElementById(elementId);
+        el.style.setProperty("--target-bg", config.bg);
+        el.style.setProperty("--target-text", config.text);
+        el.style.setProperty("--target-border", config.border);
+        el.style.setProperty("--target-shadow", config.shadow);
+
+        el.classList.add("t-animating");
+
+        setTimeout(() => {
+          el.innerText = elementId.includes("decl")
+            ? `<${targetType}>`
+            : targetType;
+        }, 400);
+
+        await sleep(800);
+        el.classList.remove("t-animating");
+        el.style.backgroundColor = config.bg;
+        el.style.color = config.text;
+        el.style.borderColor = config.border;
+      }
+
+      function resetUI() {
+        // Tのリセット
+        ["t-decl", "t-items", "t-render"].forEach((id) => {
+          const el = document.getElementById(id);
+          el.innerText = id.includes("decl") ? "<T>" : "T";
+          el.style.backgroundColor = "";
+          el.style.color = "";
+          el.style.borderColor = "";
+          el.classList.remove("t-animating");
+        });
+
+        // ゲート・エラーリセット
+        const gateId = document.getElementById("gate-id");
+        const gateIcon = document.getElementById("gate-icon");
+        gateId.className =
+          "border-2 border-slate-500 bg-slate-900 rounded px-2 py-0.5 text-[10px] font-bold ml-1 transition-colors text-slate-400 inline-flex items-center gap-1";
+        gateIcon.className = "fa-solid fa-shield-halved";
+        document.getElementById("err-popup").classList.add("hidden");
+
+        // ハイライト・ラインリセット
+        document
+          .getElementById("key-hl")
+          .classList.remove("bg-amber-900/50", "border", "border-amber-500");
+        document
+          .getElementById("render-hl")
+          .classList.remove("bg-indigo-900/50", "border", "border-indigo-500");
+        document.getElementById("line-infer").classList.remove("active");
+
+        // DOMリセット
+        const domOut = document.getElementById("dom-output");
+        domOut.innerHTML =
+          '<div id="dom-placeholder" class="absolute inset-0 flex items-center justify-center text-slate-300 font-bold text-sm pointer-events-none">結果がレンダリングされます</div>';
+        domOut.classList.remove(
+          "border-blue-400",
+          "bg-blue-50",
+          "border-emerald-400",
+          "bg-emerald-50",
+        );
+
+        // パケットリセット
+        const packet = document.getElementById("prop-packet");
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+      }
+
+      async function runSimulation(type, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+        resetUI();
+
+        const packet = document.getElementById("prop-packet");
+        const container = document.getElementById("sim-container");
+        const anchorProps = document.getElementById("anchor-props");
+        const gateId = document.getElementById("gate-id");
+        const gateIcon = document.getElementById("gate-icon");
+        const errPopup = document.getElementById("err-popup");
+
+        let config = {};
+        let typeName = "";
+        let domItems = [];
+
+        // 1. パケットの設定
+        if (type === "user") {
+          typeName = "User";
+          config = {
+            bg: "#eff6ff",
+            text: "#2563eb",
+            border: "#3b82f6",
+            shadow: "rgba(59, 130, 246, 0.5)",
+            colorClass: "text-blue-600 border-blue-400 bg-blue-50",
+          };
+          packet.innerHTML = `<div class="text-[10px] text-blue-500 mb-1">items={users}</div><div>[{id: 1, name: "Alice"}, ...]</div>`;
+          domItems = [
+            `<div class="bg-white border-l-4 border-blue-500 p-2 shadow-sm rounded flex items-center justify-between list-item-anim"><span class="font-bold text-slate-700">Alice</span><span class="text-[10px] text-slate-400 code-font">key: 1</span></div>`,
+            `<div class="bg-white border-l-4 border-blue-500 p-2 shadow-sm rounded flex items-center justify-between list-item-anim" style="animation-delay: 0.1s"><span class="font-bold text-slate-700">Bob</span><span class="text-[10px] text-slate-400 code-font">key: 2</span></div>`,
+          ];
+        } else if (type === "product") {
+          typeName = "Product";
+          config = {
+            bg: "#ecfdf5",
+            text: "#059669",
+            border: "#10b981",
+            shadow: "rgba(16, 185, 129, 0.5)",
+            colorClass: "text-emerald-600 border-emerald-400 bg-emerald-50",
+          };
+          packet.innerHTML = `<div class="text-[10px] text-emerald-600 mb-1">items={products}</div><div>[{id: "p1", price: 100}, ...]</div>`;
+          domItems = [
+            `<div class="bg-white border-l-4 border-emerald-500 p-2 shadow-sm rounded flex items-center justify-between list-item-anim"><span class="font-bold text-slate-700">Pen: 100円</span><span class="text-[10px] text-slate-400 code-font">key: "p1"</span></div>`,
+          ];
+        } else {
+          typeName = "string";
+          config = {
+            bg: "#fef2f2",
+            text: "#dc2626",
+            border: "#ef4444",
+            shadow: "rgba(239, 68, 68, 0.5)",
+            colorClass: "text-red-600 border-red-400 bg-red-50",
+          };
+          packet.innerHTML = `<div class="text-[10px] text-red-500 mb-1">items={["Apple", ...]}</div><div>["Apple", "Banana"]</div>`;
+        }
+
+        packet.className = `data-packet code-font text-[13px] flex flex-col gap-1 items-center shadow-lg ${config.colorClass}`;
+        void packet.offsetWidth;
+
+        // 2. パケットの飛行
+        setPacketPosAbsolute(packet, btnEl, container, 0, -20);
+        packet.style.opacity = "1";
+        await sleep(50);
+
+        packet.style.transition =
+          "transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-in 0.9s";
+        // 目的地をコードに被らないよう、右斜め上の余白スペースへ大きくずらす
+        setPacketPosAbsolute(packet, anchorProps, container, 180, -30);
+
+        // 3. Tの確定と伝播
+        await sleep(800);
+
+        animateT("t-items", typeName, config);
+        await sleep(300);
+        animateT("t-decl", typeName, config);
+
+        await sleep(600); // ゲートチェックのタイミングへ
+
+        // 4. id制約ゲートのチェック
+        if (type === "error") {
+          gateId.classList.add("gate-ng");
+          gateIcon.className = "fa-solid fa-xmark";
+
+          await sleep(400);
+          errPopup.classList.remove("hidden");
+
+          setTimeout(() => {
+            gateId.classList.remove("gate-ng");
+            errPopup.classList.add("hidden");
+            isAnimating = false;
+          }, 2500);
+          return; // ここで終了
+        }
+
+        // 成功ルート
+        gateId.classList.add("gate-ok");
+        gateIcon.className = "fa-solid fa-check";
+
+        await sleep(400);
+
+        // renderItem への型推論の伝播
+        document.getElementById("line-infer").classList.add("active");
+        animateT("t-render", typeName, config);
+
+        await sleep(800);
+
+        // 5. レンダリングの実行 (JSX展開)
+        document.getElementById("line-infer").classList.remove("active");
+
+        // keyのハイライト
+        document
+          .getElementById("key-hl")
+          .classList.add("bg-amber-900/50", "border", "border-amber-500");
+        await sleep(400);
+
+        // renderItemのハイライト
+        document
+          .getElementById("render-hl")
+          .classList.add("bg-indigo-900/50", "border", "border-indigo-500");
+        await sleep(400);
+
+        // 6. DOM出力
+        const domOut = document.getElementById("dom-output");
+        document.getElementById("dom-placeholder").style.display = "none";
+        domOut.classList.add(
+          `bg-${type === "user" ? "blue" : "emerald"}-50`,
+          `border-${type === "user" ? "blue" : "emerald"}-400`,
+        );
+
+        domItems.forEach((html) => {
+          domOut.innerHTML += html;
+        });
+
+        // 終了処理
+        setTimeout(() => {
+          document
+            .getElementById("key-hl")
+            .classList.remove("bg-amber-900/50", "border", "border-amber-500");
+          document
+            .getElementById("render-hl")
+            .classList.remove(
+              "bg-indigo-900/50",
+              "border",
+              "border-indigo-500",
+            );
+          gateId.classList.remove("gate-ok");
+          gateIcon.className = "fa-solid fa-shield-halved";
+          isAnimating = false;
+        }, 1500);
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TypeScript 図解: satisfies 演算子</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
+
+      body {
+        font-family: "Noto Sans JP", sans-serif;
+        background-color: #f8fafc;
+        color: #334155;
+        overflow-x: hidden;
+      }
+
+      .code-font {
+        font-family: "Fira Code", monospace;
+      }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* データの飛行アニメーションパケット */
+      .data-packet {
+        position: absolute;
+        z-index: 100;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+        transition:
+          transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1),
+          opacity 0.3s;
+        transform-origin: center;
+      }
+
+      /* ゲートのアニメーション */
+      @keyframes gate-error {
+        0%,
+        100% {
+          transform: translateX(0);
+          border-color: #cbd5e1;
+        }
+        20% {
+          transform: translateX(-8px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+          box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        }
+        40% {
+          transform: translateX(8px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+        }
+        60% {
+          transform: translateX(-8px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+        }
+        80% {
+          transform: translateX(8px);
+          border-color: #ef4444;
+          background-color: #fef2f2;
+          box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        }
+      }
+      .gate-ng {
+        animation: gate-error 0.6s ease-in-out;
+      }
+
+      @keyframes gate-mold {
+        0% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+          transform: scale(1);
+        }
+        50% {
+          border-color: #3b82f6;
+          background-color: #eff6ff;
+          box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+          transform: scale(1.05);
+        }
+        100% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+          transform: scale(1);
+        }
+      }
+      .gate-mold-active {
+        animation: gate-mold 0.8s ease-out;
+      }
+
+      @keyframes gate-pass {
+        0% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+          transform: scale(1);
+        }
+        50% {
+          border-color: #f59e0b;
+          background-color: #fffbeb;
+          box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+          transform: scale(1.05);
+        }
+        100% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+          transform: scale(1);
+        }
+      }
+      .gate-pass-active {
+        animation: gate-pass 0.8s ease-out;
+      }
+
+      /* satisfies のスキャンエフェクト */
+      @keyframes gate-scan {
+        0% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+        }
+        30% {
+          border-color: #10b981;
+          background-color: #ecfdf5;
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+        100% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+        }
+      }
+      .gate-scan-active {
+        animation: gate-scan 1s ease-out;
+      }
+
+      .scan-line {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: #10b981;
+        box-shadow: 0 0 10px #10b981;
+        top: 0;
+        opacity: 0;
+        z-index: 10;
+      }
+      @keyframes scan-down {
+        0% {
+          top: 0;
+          opacity: 1;
+        }
+        80% {
+          top: 100%;
+          opacity: 1;
+        }
+        100% {
+          top: 100%;
+          opacity: 0;
+        }
+      }
+      .gate-scan-active .scan-line {
+        animation: scan-down 1s linear;
+      }
+
+      /* エラー弾き飛ばし */
+      @keyframes bounce-back {
+        0% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        30% {
+          transform: translate(calc(var(--tx) - 20px), calc(var(--ty) - 20px))
+            scale(1.1) rotate(-10deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(calc(var(--tx) + 40px), calc(var(--ty) + 60px))
+            scale(0.5) rotate(20deg);
+          opacity: 0;
+        }
+      }
+      .bouncing-back {
+        animation: bounce-back 0.8s ease-in forwards !important;
+      }
+
+      /* ポップアップ */
+      @keyframes popIn {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .animate-pop {
+        animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+    </style>
+  </head>
+  <body class="p-4 md:p-6 lg:p-8 min-h-screen flex flex-col items-center">
+    <div class="max-w-7xl w-full">
+      <!-- ヘッダー -->
+      <header class="text-center mb-10">
+        <div
+          class="inline-block bg-emerald-100 text-emerald-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-emerald-200"
+        >
+          TypeScript 4.9 の神機能
+        </div>
+        <h1
+          class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
+        >
+          型のチェックと「リテラル推論」を両立：<br class="md:hidden" /><span
+            class="text-emerald-600"
+            >satisfies 演算子</span
+          >
+        </h1>
+        <p class="text-slate-600 text-lg max-w-4xl mx-auto leading-relaxed">
+          オブジェクトを作る時、従来の型注釈（<code
+            class="bg-slate-200 px-1 rounded code-font"
+            >:</code
+          >）を使うとせっかくの「具体的な値の情報（リテラル）」が失われてしまいます。<br
+            class="hidden md:block"
+          />
+          <code class="bg-slate-200 px-1 rounded code-font font-bold"
+            >satisfies</code
+          >
+          を使えば、<strong>「ルールを満たしているかチェックしつつ、値の元の形はそのまま残す」</strong>といういいとこ取りが可能になります。
+        </p>
+      </header>
+
+      <!-- 3パターンの比較セクション -->
+      <div
+        class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10"
+        id="simulation-container"
+      >
+        <!-- パターンA: 型注釈 (Type Annotation) -->
+        <div
+          class="bg-white border-2 border-blue-200 rounded-2xl p-5 shadow-sm flex flex-col relative overflow-hidden"
+          id="col-annotation"
+        >
+          <div class="text-center mb-4">
+            <span
+              class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold"
+              >A. 型注釈 ( : Type )</span
+            >
+          </div>
+
+          <div
+            class="code-font text-xs bg-slate-800 text-white p-3 rounded-xl mb-4 leading-relaxed shadow-inner"
+          >
+            <span class="text-blue-400">const</span> A:
+            <span class="text-teal-300">Record&lt;string, string&gt;</span> =
+            {<br />
+            &nbsp;&nbsp;home: <span class="text-amber-300">"/"</span><br />
+            };
+          </div>
+
+          <div class="flex justify-center gap-2 mb-4 relative z-20">
+            <button
+              onclick="runSim('annotation', false, this)"
+              class="bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-700 text-[10px] font-bold py-1.5 px-3 rounded shadow-sm transition-all active:scale-95"
+            >
+              <i class="fa-solid fa-play"></i> 正常な値を代入
+            </button>
+            <button
+              onclick="runSim('annotation', true, this)"
+              class="bg-red-50 hover:bg-red-100 border border-red-300 text-red-700 text-[10px] font-bold py-1.5 px-3 rounded shadow-sm transition-all active:scale-95"
+            >
+              <i class="fa-solid fa-bug"></i> 不正な値 (42)
+            </button>
+          </div>
+
+          <!-- アニメーションエリア -->
+          <div
+            class="flex-1 bg-slate-50 border border-slate-200 rounded-xl relative flex flex-col items-center py-6 min-h-[220px]"
+          >
+            <div class="text-[10px] text-slate-400 absolute top-2">
+              処理フロー
+            </div>
+
+            <!-- ゲート -->
+            <div
+              id="gate-annotation"
+              class="absolute top-[20%] w-4/5 bg-white border-2 border-slate-300 rounded-lg p-3 text-center transition-all duration-300 z-10 flex flex-col items-center"
+            >
+              <i class="fa-solid fa-cube text-blue-400 text-xl mb-1"></i>
+              <div class="text-[10px] font-bold text-slate-600">
+                型チェック ＆ 型の変換
+              </div>
+              <div class="code-font text-[9px] text-slate-400 mt-1">
+                Record&lt;string, string&gt;
+              </div>
+            </div>
+
+            <!-- エラーポップアップ -->
+            <div
+              id="err-annotation"
+              class="absolute top-[45%] bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-lg hidden z-30 font-bold w-4/5 text-center"
+            >
+              型エラーで弾かれます！
+            </div>
+
+            <!-- 結果 -->
+            <div
+              id="res-annotation"
+              class="absolute bottom-4 w-4/5 bg-white border-2 border-slate-200 rounded-lg p-3 text-center transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                A.home の型
+              </div>
+              <div
+                id="val-annotation"
+                class="code-font font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="mt-4 text-[11px] text-slate-600 leading-relaxed bg-blue-50/50 p-2 rounded"
+          >
+            <strong>安全だが情報が欠落する。</strong>
+            型チェックはしてくれますが、<code>"/"</code> という具体的な情報が
+            <code>string</code> という大雑把な型に丸め込まれてしまいます。
+          </div>
+        </div>
+
+        <!-- パターンB: as (Type Assertion) -->
+        <div
+          class="bg-white border-2 border-orange-200 rounded-2xl p-5 shadow-sm flex flex-col relative overflow-hidden"
+          id="col-assertion"
+        >
+          <div class="text-center mb-4">
+            <span
+              class="bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold"
+              >B. 型アサーション ( as )</span
+            >
+          </div>
+
+          <div
+            class="code-font text-[11px] bg-slate-800 text-white p-3 rounded-xl mb-4 leading-relaxed shadow-inner"
+          >
+            <span class="text-blue-400">const</span> B = {<br />
+            &nbsp;&nbsp;home: <span class="text-amber-300">"/"</span><br />
+            } <span class="text-orange-400 font-bold">as</span>
+            <span class="text-teal-300">Record&lt;string, string&gt;</span>;
+          </div>
+
+          <div class="flex justify-center gap-2 mb-4 relative z-20">
+            <button
+              onclick="runSim('assertion', false, this)"
+              class="bg-orange-50 hover:bg-orange-100 border border-orange-300 text-orange-800 text-[10px] font-bold py-1.5 px-3 rounded shadow-sm transition-all active:scale-95"
+            >
+              <i class="fa-solid fa-play"></i> 正常な値を代入
+            </button>
+            <button
+              onclick="runSim('assertion', true, this)"
+              class="bg-red-50 hover:bg-red-100 border border-red-300 text-red-700 text-[10px] font-bold py-1.5 px-3 rounded shadow-sm transition-all active:scale-95 relative overflow-hidden"
+            >
+              <div
+                class="absolute top-0 right-0 bg-red-500 text-white text-[8px] px-1 py-0 rounded-bl"
+              >
+                危険
+              </div>
+              <i class="fa-solid fa-bug"></i> 不正な値 (42)
+            </button>
+          </div>
+
+          <!-- アニメーションエリア -->
+          <div
+            class="flex-1 bg-slate-50 border border-slate-200 rounded-xl relative flex flex-col items-center py-6 min-h-[220px]"
+          >
+            <div class="text-[10px] text-slate-400 absolute top-2">
+              処理フロー
+            </div>
+
+            <!-- ゲート -->
+            <div
+              id="gate-assertion"
+              class="absolute top-[20%] w-4/5 bg-white border-2 border-slate-300 rounded-lg p-3 text-center transition-all duration-300 z-10 flex flex-col items-center"
+            >
+              <i class="fa-solid fa-stamp text-orange-400 text-xl mb-1"></i>
+              <div class="text-[10px] font-bold text-slate-600">
+                無検査でラベルを貼る
+              </div>
+              <div class="code-font text-[9px] text-slate-400 mt-1">
+                as Record&lt;string, string&gt;
+              </div>
+            </div>
+
+            <!-- エラーポップアップ (asはスルーする旨) -->
+            <div
+              id="err-assertion"
+              class="absolute top-[45%] bg-orange-100 border border-orange-400 text-orange-800 text-[10px] px-2 py-1 rounded shadow-lg hidden z-30 font-bold w-4/5 text-center"
+            >
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              エラーにならず素通り！
+            </div>
+
+            <!-- 結果 -->
+            <div
+              id="res-assertion"
+              class="absolute bottom-4 w-4/5 bg-white border-2 border-slate-200 rounded-lg p-3 text-center transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                B.home の型
+              </div>
+              <div
+                id="val-assertion"
+                class="code-font font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="mt-4 text-[11px] text-slate-600 leading-relaxed bg-orange-50/50 p-2 rounded"
+          >
+            <strong>非常に危険。</strong>
+            コンパイラを黙らせるため、間違った値（42など）を入れてもエラーが出ません。さらに型も
+            <code>string</code> に丸め込まれてしまいます。
+          </div>
+        </div>
+
+        <!-- パターンC: satisfies -->
+        <div
+          class="bg-white border-2 border-emerald-300 rounded-2xl p-5 shadow-md flex flex-col relative overflow-hidden"
+          id="col-satisfies"
+        >
+          <div
+            class="absolute inset-0 bg-emerald-50/20 pointer-events-none"
+          ></div>
+          <div
+            class="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-sm"
+          >
+            Best Practice ✨
+          </div>
+
+          <div class="text-center mb-4 relative z-10">
+            <span
+              class="bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold"
+              >C. satisfies 演算子</span
+            >
+          </div>
+
+          <div
+            class="code-font text-[11px] bg-slate-800 text-white p-3 rounded-xl mb-4 leading-relaxed shadow-inner relative z-10 border border-emerald-500/30"
+          >
+            <span class="text-blue-400">const</span> C = {<br />
+            &nbsp;&nbsp;home: <span class="text-amber-300">"/"</span><br />
+            } <span class="text-emerald-400 font-bold">satisfies</span>
+            <span class="text-teal-300">Record&lt;string, string&gt;</span>;
+          </div>
+
+          <div class="flex justify-center gap-2 mb-4 relative z-20">
+            <button
+              onclick="runSim('satisfies', false, this)"
+              class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-[10px] font-bold py-1.5 px-3 rounded shadow-sm transition-all active:scale-95"
+            >
+              <i class="fa-solid fa-play"></i> 正常な値を代入
+            </button>
+            <button
+              onclick="runSim('satisfies', true, this)"
+              class="bg-red-50 hover:bg-red-100 border border-red-300 text-red-700 text-[10px] font-bold py-1.5 px-3 rounded shadow-sm transition-all active:scale-95"
+            >
+              <i class="fa-solid fa-bug"></i> 不正な値 (42)
+            </button>
+          </div>
+
+          <!-- アニメーションエリア -->
+          <div
+            class="flex-1 bg-white border border-emerald-200 rounded-xl relative flex flex-col items-center py-6 min-h-[220px] shadow-inner z-10"
+          >
+            <div
+              class="text-[10px] text-emerald-600/70 absolute top-2 font-bold"
+            >
+              処理フロー
+            </div>
+
+            <!-- ゲート -->
+            <div
+              id="gate-satisfies"
+              class="absolute top-[20%] w-4/5 bg-white border-2 border-slate-300 rounded-lg p-3 text-center transition-all duration-300 z-10 flex flex-col items-center overflow-hidden"
+            >
+              <i class="fa-solid fa-barcode text-emerald-500 text-xl mb-1"></i>
+              <div class="text-[10px] font-bold text-slate-600">
+                型チェック (変換はしない)
+              </div>
+              <div class="code-font text-[9px] text-slate-400 mt-1">
+                satisfies Record&lt;...&gt;
+              </div>
+              <div class="scan-line"></div>
+            </div>
+
+            <!-- エラーポップアップ -->
+            <div
+              id="err-satisfies"
+              class="absolute top-[45%] bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-lg hidden z-30 font-bold w-4/5 text-center"
+            >
+              型エラーで弾かれます！
+            </div>
+
+            <!-- 結果 -->
+            <div
+              id="res-satisfies"
+              class="absolute bottom-4 w-4/5 bg-white border-2 border-slate-200 rounded-lg p-3 text-center transition-all opacity-50"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                C.home の型
+              </div>
+              <div
+                id="val-satisfies"
+                class="code-font font-bold text-slate-400"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="mt-4 text-[11px] text-emerald-800 leading-relaxed bg-emerald-50 p-2 rounded border border-emerald-100 z-10"
+          >
+            <strong>安全 ＋ リテラル型の維持！</strong>
+            型が間違っていればエラーを出し、正常なら値の形（<code>"/"</code>）をそのまま保持してくれるため、後の処理での型補完が最強になります。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // アニメーション状態管理
+      let animState = {
+        annotation: false,
+        assertion: false,
+        satisfies: false,
+      };
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // 絶対座標計算ヘルパー
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        containerEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const contRect = containerEl.getBoundingClientRect();
+
+        const x =
+          targetRect.left -
+          contRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          contRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+        return { x, y };
+      }
+
+      async function runSim(method, isError, btnEl) {
+        if (animState[method]) return;
+        animState[method] = true;
+
+        const col = document.getElementById(`col-${method}`);
+        const gate = document.getElementById(`gate-${method}`);
+        const resBox = document.getElementById(`res-${method}`);
+        const valBox = document.getElementById(`val-${method}`);
+        const errMsg = document.getElementById(`err-${method}`);
+
+        // 既存のパケットがあれば削除
+        const oldPacket = col.querySelector(".data-packet");
+        if (oldPacket) oldPacket.remove();
+
+        // UIリセット
+        gate.className = `absolute top-[20%] w-4/5 bg-white border-2 border-slate-300 rounded-lg p-3 text-center transition-all duration-300 z-10 flex flex-col items-center ${method === "satisfies" ? "overflow-hidden" : ""}`;
+        resBox.classList.add("opacity-50");
+        resBox.classList.remove(
+          "border-blue-400",
+          "bg-blue-50",
+          "border-orange-400",
+          "bg-orange-50",
+          "border-emerald-400",
+          "bg-emerald-50",
+        );
+        valBox.innerText = "---";
+        valBox.className = "code-font font-bold text-slate-400";
+        errMsg.classList.add("hidden");
+
+        // パケットの生成
+        const packet = document.createElement("div");
+
+        if (isError) {
+          packet.innerHTML = `{ home: "/", count: <span class="text-red-500">42</span> }`;
+          packet.className =
+            "data-packet bg-white border-2 border-slate-400 text-slate-700 text-[11px]";
+        } else {
+          packet.innerHTML = `{ home: <span class="text-emerald-500">"/"</span> }`;
+          packet.className =
+            "data-packet bg-white border-2 border-slate-400 text-slate-700 text-[11px]";
+        }
+
+        col.appendChild(packet);
+        void packet.offsetWidth; // reflow
+
+        // 初期位置 (ボタンの下あたり)
+        setPacketPosAbsolute(packet, btnEl, col, 0, 30);
+        packet.style.opacity = "1";
+
+        await sleep(50);
+
+        // ゲートへ移動
+        packet.style.transition =
+          "transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        setPacketPosAbsolute(packet, gate, col, 0, -40); // ゲートの少し上
+
+        await sleep(800);
+
+        // ゲートでの処理
+        if (method === "annotation") {
+          if (isError) {
+            gate.classList.add("gate-ng");
+            packet.style.transition = "none";
+            const currentPos = setPacketPosAbsolute(packet, gate, col, 0, -40);
+            packet.style.setProperty("--tx", `${currentPos.x}px`);
+            packet.style.setProperty("--ty", `${currentPos.y}px`);
+            packet.classList.add("bouncing-back");
+            errMsg.classList.remove("hidden");
+
+            await sleep(1500);
+            errMsg.classList.add("hidden");
+            packet.remove();
+            animState[method] = false;
+            return;
+          } else {
+            gate.classList.add("gate-mold-active");
+            await sleep(400); // ゲートが光る中間
+
+            // 型が string に丸め込まれる表現
+            packet.style.transition =
+              "transform 0.3s, background-color 0.3s, border-color 0.3s";
+            packet.style.transform = packet.style.transform.replace(
+              "scale(1)",
+              "scale(1.2)",
+            );
+            packet.innerHTML = "string";
+            packet.className =
+              "data-packet bg-slate-200 border-2 border-slate-400 text-slate-600 text-[12px]";
+
+            await sleep(200);
+            packet.style.transform = packet.style.transform.replace(
+              "scale(1.2)",
+              "scale(1)",
+            );
+            await sleep(400);
+          }
+        } else if (method === "assertion") {
+          if (isError) {
+            gate.classList.add("gate-pass-active");
+            errMsg.classList.remove("hidden"); // 警告を出すがスルー
+          } else {
+            gate.classList.add("gate-pass-active");
+          }
+
+          await sleep(400);
+
+          // 無検査でも型は string に強制変換される
+          packet.style.transition =
+            "transform 0.3s, background-color 0.3s, border-color 0.3s";
+          packet.style.transform = packet.style.transform.replace(
+            "scale(1)",
+            "scale(1.2)",
+          );
+          packet.innerHTML = "string";
+          packet.className =
+            "data-packet bg-slate-200 border-2 border-slate-400 text-slate-600 text-[12px]";
+
+          await sleep(200);
+          packet.style.transform = packet.style.transform.replace(
+            "scale(1.2)",
+            "scale(1)",
+          );
+          await sleep(400);
+          errMsg.classList.add("hidden");
+        } else if (method === "satisfies") {
+          if (isError) {
+            gate.classList.add("gate-ng");
+            packet.style.transition = "none";
+            const currentPos = setPacketPosAbsolute(packet, gate, col, 0, -40);
+            packet.style.setProperty("--tx", `${currentPos.x}px`);
+            packet.style.setProperty("--ty", `${currentPos.y}px`);
+            packet.classList.add("bouncing-back");
+            errMsg.classList.remove("hidden");
+
+            await sleep(1500);
+            errMsg.classList.add("hidden");
+            packet.remove();
+            animState[method] = false;
+            return;
+          } else {
+            gate.classList.add("gate-scan-active");
+            await sleep(1000); // スキャンを待つ
+            // パケットは変化しない！（元のリテラルを保持）
+          }
+        }
+
+        // 出力エリアへ移動
+        packet.style.transition =
+          "transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)";
+        setPacketPosAbsolute(packet, resBox, col);
+
+        await sleep(600); // 到着直前
+        packet.style.opacity = "0";
+
+        // 結果の反映
+        resBox.classList.remove("opacity-50");
+
+        if (method === "annotation") {
+          resBox.classList.add("border-blue-400", "bg-blue-50");
+          valBox.innerText = "string";
+          valBox.className =
+            "code-font font-bold text-blue-600 text-lg animate-pop";
+        } else if (method === "assertion") {
+          resBox.classList.add("border-orange-400", "bg-orange-50");
+          valBox.innerText = "string";
+          valBox.className =
+            "code-font font-bold text-orange-600 text-lg animate-pop";
+        } else if (method === "satisfies") {
+          resBox.classList.add("border-emerald-400", "bg-emerald-50");
+          valBox.innerText = '"/"';
+          valBox.className =
+            "code-font font-black text-emerald-600 text-2xl animate-pop";
+        }
+
+        // リセット
+        setTimeout(() => {
+          packet.remove();
+          animState[method] = false;
+        }, 500);
+      }
+    </script>
+  </body>
+</html>

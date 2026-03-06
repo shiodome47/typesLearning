@@ -29,4 +29,8 @@ export const LESSON_DIAGRAM_LINKS: Record<string, string> = {
   "ts-26-usecontext": "/diagrams/lessons/ts-26-usecontext.html",
   "ts-27-usereducer": "/diagrams/lessons/ts-27-usereducer.html",
   "ts-28-custom-hook-pattern": "/diagrams/lessons/ts-28-custom-hook-pattern.html",
+  "ts-29-generics-constraints": "/diagrams/lessons/ts-29-generics-constraints.html",
+  "ts-30-utility-returntype": "/diagrams/lessons/ts-30-utility-returntype.html",
+  "ts-31-satisfies": "/diagrams/lessons/ts-31-satisfies.html",
+  "ts-32-generic-react-component": "/diagrams/lessons/ts-32-generic-react-component.html",
 };

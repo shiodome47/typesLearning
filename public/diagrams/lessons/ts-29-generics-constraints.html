@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TypeScript 図解: ジェネリクスの制約 (extends)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Fira+Code:wght@400;500;700&display=swap");
+
+      body {
+        font-family: "Noto Sans JP", sans-serif;
+        background-color: #f8fafc;
+        color: #334155;
+        overflow-x: hidden;
+      }
+
+      .code-font {
+        font-family: "Fira Code", monospace;
+      }
+
+      .transition-all-custom {
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* パケット（引数）の飛行アニメーション */
+      @keyframes fly-packet {
+        0% {
+          transform: translate(0, 0) scale(1);
+          opacity: 1;
+        }
+        40% {
+          transform: translate(
+              calc(var(--tx) * 0.4),
+              calc(var(--ty) * 0.4 - 20px)
+            )
+            scale(1.1);
+          opacity: 1;
+        }
+        80% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--tx), var(--ty)) scale(0.9);
+          opacity: 0;
+        }
+      }
+
+      @keyframes reject-packet {
+        0% {
+          transform: translate(var(--tx), var(--ty)) scale(1);
+          opacity: 1;
+        }
+        20% {
+          transform: translate(calc(var(--tx) - 15px), var(--ty));
+          opacity: 1;
+        }
+        40% {
+          transform: translate(calc(var(--tx) + 15px), var(--ty));
+          opacity: 1;
+        }
+        60% {
+          transform: translate(calc(var(--tx) - 15px), var(--ty));
+          opacity: 1;
+        }
+        100% {
+          transform: translate(0, 0) scale(0.5) rotate(20deg);
+          opacity: 0;
+        }
+      }
+
+      .data-packet {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 50;
+        pointer-events: none;
+        opacity: 0;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        width: fit-content;
+        height: fit-content;
+        white-space: nowrap;
+      }
+
+      .flying {
+        animation: fly-packet 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+      .rejecting {
+        animation: reject-packet 0.6s ease-in forwards;
+      }
+
+      /* ゲート（門番）のアニメーション */
+      @keyframes gate-success {
+        0% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+        }
+        50% {
+          border-color: #10b981;
+          box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+          background-color: #ecfdf5;
+        }
+        100% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+        }
+      }
+      @keyframes gate-error {
+        0% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+          transform: translateX(0);
+        }
+        25% {
+          border-color: #ef4444;
+          box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+          background-color: #fef2f2;
+          transform: translateX(-5px);
+        }
+        50% {
+          transform: translateX(5px);
+        }
+        75% {
+          transform: translateX(-5px);
+        }
+        100% {
+          border-color: #cbd5e1;
+          box-shadow: none;
+          transform: translateX(0);
+        }
+      }
+
+      .gate-ok {
+        animation: gate-success 0.8s ease-out;
+        border-color: #10b981 !important;
+        color: #059669;
+      }
+      .gate-ng {
+        animation: gate-error 0.5s ease-in-out;
+        border-color: #ef4444 !important;
+        color: #dc2626;
+      }
+
+      /* pick関数の抽出アニメーション */
+      @keyframes pick-extract {
+        0% {
+          transform: scale(1);
+          background-color: transparent;
+        }
+        50% {
+          transform: scale(1.1);
+          background-color: #fdf2f8;
+          border-color: #ec4899;
+          box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+          z-index: 10;
+        }
+        100% {
+          transform: scale(1);
+          background-color: transparent;
+        }
+      }
+      .picking {
+        animation: pick-extract 0.8s ease-out;
+      }
+
+      /* ポップイン */
+      @keyframes popIn {
+        0% {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .animate-pop {
+        animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+    </style>
+  </head>
+  <body class="p-4 md:p-8 min-h-screen flex flex-col items-center">
+    <div class="max-w-6xl w-full">
+      <!-- ヘッダー -->
+      <header class="text-center mb-10">
+        <div
+          class="inline-block bg-orange-100 text-orange-800 px-4 py-1 rounded-full text-sm font-bold mb-3 shadow-sm border border-orange-200"
+        >
+          TypeScript 型の門番
+        </div>
+        <h1
+          class="text-3xl md:text-4xl font-black text-slate-800 mb-4 tracking-tight"
+        >
+          型の条件を縛る：<br class="md:hidden" /><span class="text-orange-500"
+            >T extends ... (型の制約)</span
+          >
+        </h1>
+        <p class="text-slate-600 text-lg max-w-3xl mx-auto leading-relaxed">
+          ジェネリクスの
+          <code class="bg-slate-200 px-1 rounded code-font">&lt;T&gt;</code>
+          は何でも入る万能の箱ですが、<code
+            class="bg-slate-200 px-1 rounded code-font font-bold text-orange-600"
+            >extends</code
+          >
+          を付けることで「ただし〇〇の条件を満たすものに限る！」という関所（門番）を作ることができます。これにより、関数の中で安全にプロパティへアクセスできるようになります。
+        </p>
+      </header>
+
+      <!-- 1. T extends object のシミュレーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8 relative"
+        id="sec-part1"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-shield-halved text-blue-500"></i> Part 1: T
+          extends object（オブジェクトに限定する）
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-6 items-stretch justify-center relative min-h-[250px]"
+        >
+          <!-- 飛行パケット -->
+          <div
+            id="packet-1"
+            class="data-packet border-2 code-font text-sm"
+          ></div>
+
+          <!-- 呼び出し側 -->
+          <div class="w-full lg:w-[30%] flex flex-col gap-3 relative z-20">
+            <div class="text-sm font-bold text-slate-500 text-center mb-1">
+              関数に引数を渡す
+            </div>
+
+            <button
+              onclick="runPart1(42, this)"
+              class="bg-red-50 hover:bg-red-100 border border-red-200 text-left p-3 rounded-xl shadow-sm transition-all group relative overflow-hidden"
+            >
+              <div
+                class="absolute top-0 right-0 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-bl font-bold"
+              >
+                罠
+              </div>
+              <div class="text-[10px] font-bold text-red-600 mb-1">
+                数値 (number) を渡す
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                getKeys( <span class="text-pink-500">42</span> )
+              </div>
+            </button>
+
+            <button
+              onclick="runPart1('user', this)"
+              class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-left p-3 rounded-xl shadow-sm transition-all group relative"
+            >
+              <div class="text-[10px] font-bold text-blue-600 mb-1">
+                オブジェクト (User) を渡す
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                getKeys( <span class="text-blue-600">user</span> )
+              </div>
+            </button>
+          </div>
+
+          <!-- 門番（関数定義） -->
+          <div
+            class="w-full lg:w-[45%] flex flex-col items-center justify-center"
+          >
+            <div
+              class="bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 shadow-xl relative w-full text-white"
+            >
+              <div
+                class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-slate-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow"
+              >
+                function getKeys
+              </div>
+
+              <div class="code-font text-sm leading-relaxed">
+                <span class="text-purple-400">function</span> getKeys&lt;<br />
+                &nbsp;&nbsp;<span
+                  id="gate-1"
+                  class="transition-colors border-2 border-slate-500 bg-slate-700 px-2 py-0.5 rounded inline-flex items-center gap-2"
+                >
+                  <span class="text-teal-300 font-bold">T</span>
+                  <span class="text-orange-400 font-bold">extends</span>
+                  <span class="text-amber-300">object</span>
+                  <i
+                    class="fa-solid fa-lock text-slate-400 text-[10px]"
+                    id="gate-1-icon"
+                  ></i>
+                  <div id="anchor-1" class="w-1 h-1"></div> </span
+                ><br />
+                &gt;(obj: <span class="text-teal-300">T</span>) {<br />
+                &nbsp;&nbsp;<span class="text-purple-400">return</span>
+                Object.<span class="text-blue-300">keys</span>(obj);<br />
+                }
+              </div>
+
+              <!-- エラーツールチップ -->
+              <div
+                id="err-1"
+                class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1.5 rounded shadow-lg hidden z-30 code-font whitespace-nowrap"
+              >
+                Type 'number' does not satisfy the constraint 'object'.
+              </div>
+            </div>
+          </div>
+
+          <!-- 出力 -->
+          <div class="w-full lg:w-[25%] flex flex-col justify-center">
+            <div
+              id="out-1"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm opacity-50 transition-all flex flex-col justify-center min-h-[100px]"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                戻り値 (キーの配列)
+              </div>
+              <div
+                id="val-1"
+                class="code-font font-bold text-slate-400 text-sm"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-4 bg-slate-50 border-l-4 border-slate-400 p-3 text-xs text-slate-600 rounded-r"
+        >
+          もし
+          <code class="code-font font-bold">extends object</code>
+          が無かったら、<code class="code-font text-pink-500">42</code>
+          を渡してもコンパイルエラーにならず、実行時に予期せぬ挙動（空配列が返る等）を引き起こす危険があります。
+        </div>
+      </section>
+
+      <!-- 2. K extends keyof T のシミュレーション -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 mb-8 relative"
+        id="sec-part2"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-link text-orange-500"></i> Part 2: K extends
+          keyof T（キーの存在保証）
+        </h2>
+
+        <div
+          class="flex flex-col lg:flex-row gap-6 items-stretch justify-center relative min-h-[250px]"
+        >
+          <div
+            id="packet-2"
+            class="data-packet border-2 code-font text-sm"
+          ></div>
+
+          <!-- 呼び出し側 -->
+          <div class="w-full lg:w-[30%] flex flex-col gap-3 relative z-20">
+            <div
+              class="bg-slate-800 text-white text-[10px] code-font p-2 rounded mb-2 shadow-inner"
+            >
+              const user = {<br />
+              &nbsp;&nbsp;<span class="text-teal-300">id</span>: 1,<br />
+              &nbsp;&nbsp;<span class="text-teal-300">name</span>: "Alice",<br />
+              &nbsp;&nbsp;<span class="text-teal-300">email</span>: "a@b.com"<br />
+              };
+            </div>
+
+            <button
+              onclick="runPart2('name', this)"
+              class="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-left p-3 rounded-xl shadow-sm transition-all group"
+            >
+              <div class="text-[10px] font-bold text-blue-600 mb-1">
+                存在するキー
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                getProp(user, <span class="text-blue-500">"name"</span>)
+              </div>
+            </button>
+
+            <button
+              onclick="runPart2('missing', this)"
+              class="bg-red-50 hover:bg-red-100 border border-red-200 text-left p-3 rounded-xl shadow-sm transition-all group overflow-hidden relative"
+            >
+              <div
+                class="absolute top-0 right-0 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-bl font-bold"
+              >
+                タイポ・存在しない
+              </div>
+              <div class="text-[10px] font-bold text-red-600 mb-1">
+                存在しないキー
+              </div>
+              <div class="code-font font-bold text-slate-700 text-sm">
+                getProp(user, <span class="text-red-500">"missing"</span>)
+              </div>
+            </button>
+          </div>
+
+          <!-- 門番（関数定義） -->
+          <div
+            class="w-full lg:w-[45%] flex flex-col items-center justify-center"
+          >
+            <div
+              class="bg-slate-800 border-4 border-slate-700 rounded-2xl p-5 shadow-xl relative w-full text-white"
+            >
+              <div
+                class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-slate-600 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow"
+              >
+                function getProp
+              </div>
+
+              <div class="code-font text-xs leading-relaxed">
+                <span class="text-purple-400">function</span> getProp&lt;<br />
+                &nbsp;&nbsp;<span class="text-teal-300">T</span>
+                <span class="text-orange-400">extends</span>
+                <span class="text-amber-300">object</span>,<br />
+                &nbsp;&nbsp;<span
+                  id="gate-2"
+                  class="transition-colors border-2 border-slate-500 bg-slate-700 px-2 py-0.5 rounded inline-flex items-center gap-1 mt-1"
+                >
+                  <span class="text-pink-400 font-bold">K</span>
+                  <span class="text-orange-400 font-bold">extends</span>
+                  <span class="text-blue-300">keyof</span>
+                  <span class="text-teal-300">T</span>
+                  <i
+                    class="fa-solid fa-lock text-slate-400 text-[10px]"
+                    id="gate-2-icon"
+                  ></i>
+                  <div id="anchor-2" class="w-1 h-1"></div> </span
+                ><br />
+                &gt;(obj: <span class="text-teal-300">T</span>, key:
+                <span class="text-pink-400">K</span>):
+                <span class="text-teal-300">T</span>[<span class="text-pink-400"
+                  >K</span
+                >] {<br />
+                &nbsp;&nbsp;<span class="text-purple-400">return</span>
+                obj[key];<br />
+                }
+              </div>
+
+              <!-- 許可リストの可視化 -->
+              <div
+                class="absolute right-4 top-1/2 transform -translate-y-1/2 text-right"
+              >
+                <div class="text-[9px] text-slate-400 mb-1">
+                  現在の許可リスト (keyof T)
+                </div>
+                <div
+                  class="code-font text-[10px] text-amber-300 bg-slate-900 border border-slate-600 p-1.5 rounded text-left"
+                >
+                  "id" |<br />"name" |<br />"email"
+                </div>
+              </div>
+
+              <!-- エラーツールチップ -->
+              <div
+                id="err-2"
+                class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1.5 rounded shadow-lg hidden z-30 code-font whitespace-nowrap"
+              >
+                Type '"missing"' is not assignable to type '"id" | "name" |
+                "email"'.
+              </div>
+            </div>
+          </div>
+
+          <!-- 出力 -->
+          <div class="w-full lg:w-[25%] flex flex-col justify-center">
+            <div
+              id="out-2"
+              class="bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm opacity-50 transition-all flex flex-col justify-center min-h-[100px]"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-1">
+                戻り値 ( T[K] )
+              </div>
+              <div
+                id="val-2"
+                class="code-font font-bold text-slate-400 text-sm"
+              >
+                ---
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="mt-4 bg-orange-50 border-l-4 border-orange-400 p-3 text-xs text-orange-900 rounded-r shadow-sm"
+        >
+          「<code class="code-font font-bold">K</code> は
+          <code class="code-font font-bold">T</code>
+          が持つキーのどれかである」という制約です。この2つの型引数を連携させることで、<strong
+            >「存在しないプロパティにアクセスして undefined
+            になるエラー」</strong
+          >をタイポした瞬間に防いでくれます。
+        </div>
+      </section>
+
+      <!-- 3. pick 関数の応用 -->
+      <section
+        class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 relative"
+        id="sec-part3"
+      >
+        <h2
+          class="text-2xl font-bold border-b-2 border-slate-100 pb-3 mb-6 flex items-center gap-2 text-slate-700"
+        >
+          <i class="fa-solid fa-wand-magic-sparkles text-pink-500"></i> Part 3:
+          応用・pick関数
+        </h2>
+
+        <div
+          class="flex flex-col md:flex-row gap-8 items-center justify-center"
+        >
+          <div class="w-full md:w-[30%] flex flex-col gap-4">
+            <button
+              onclick="runPart3()"
+              class="bg-pink-50 hover:bg-pink-100 border-2 border-pink-200 text-left p-4 rounded-xl shadow-sm transition-all group flex flex-col items-center"
+            >
+              <div class="text-[10px] font-bold text-pink-600 mb-2">
+                指定したキーだけを抽出
+              </div>
+              <div
+                class="code-font font-bold text-slate-700 text-sm text-center"
+              >
+                pick(user, [<span class="text-pink-500">"id"</span>,
+                <span class="text-pink-500">"name"</span>])
+              </div>
+              <div
+                class="mt-2 text-[10px] bg-white px-2 py-1 rounded text-slate-500 border border-slate-200"
+              >
+                ※ K の配列を渡す
+              </div>
+            </button>
+          </div>
+
+          <div
+            class="w-full md:w-[70%] flex gap-4 items-stretch justify-center relative"
+          >
+            <!-- 元のオブジェクト -->
+            <div
+              class="bg-slate-50 border-2 border-slate-200 rounded-xl p-4 w-[160px] relative"
+            >
+              <div class="text-[10px] font-bold text-slate-500 mb-2">
+                元の user ( T )
+              </div>
+              <div class="flex flex-col gap-2 code-font text-xs">
+                <div
+                  id="pick-src-id"
+                  class="border border-slate-200 bg-white p-1.5 rounded transition-all"
+                >
+                  id: 1
+                </div>
+                <div
+                  id="pick-src-name"
+                  class="border border-slate-200 bg-white p-1.5 rounded transition-all"
+                >
+                  name: "Alice"
+                </div>
+                <div
+                  id="pick-src-email"
+                  class="border border-slate-200 bg-white p-1.5 rounded transition-all text-slate-400"
+                >
+                  email: "a@b.com"
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-col justify-center text-slate-300">
+              <i class="fa-solid fa-arrow-right-long text-2xl"></i>
+            </div>
+
+            <!-- 抽出後のオブジェクト -->
+            <div
+              class="bg-pink-50 border-2 border-pink-200 rounded-xl p-4 w-[160px] relative"
+            >
+              <div class="text-[10px] font-bold text-pink-600 mb-2">
+                抽出後 ( Pick&lt;T, K&gt; )
+              </div>
+              <div class="flex flex-col gap-2 code-font text-xs" id="pick-dest">
+                <!-- JSで追加 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      let isAnimating = false;
+
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      // 絶対座標計算ヘルパー
+      function setPacketPosAbsolute(
+        packet,
+        targetEl,
+        offsetX = 0,
+        offsetY = 0,
+      ) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const containerRect = packet.parentElement.getBoundingClientRect();
+        const x =
+          targetRect.left -
+          containerRect.left +
+          targetRect.width / 2 -
+          packet.offsetWidth / 2 +
+          offsetX;
+        const y =
+          targetRect.top -
+          containerRect.top +
+          targetRect.height / 2 -
+          packet.offsetHeight / 2 +
+          offsetY;
+        packet.style.transform = `translate(${x}px, ${y}px) scale(1)`;
+        return { x, y };
+      }
+
+      // --- Part 1 ---
+      async function runPart1(val, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const packet = document.getElementById("packet-1");
+        const gate = document.getElementById("gate-1");
+        const icon = document.getElementById("gate-1-icon");
+        const outBox = document.getElementById("out-1");
+        const outVal = document.getElementById("val-1");
+        const errMsg = document.getElementById("err-1");
+        const anchor = document.getElementById("anchor-1");
+
+        // UI Reset
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        packet.className = "data-packet border-2 code-font text-sm";
+        gate.className =
+          "transition-colors border-2 border-slate-500 bg-slate-700 px-2 py-0.5 rounded inline-flex items-center gap-2";
+        icon.className = "fa-solid fa-lock text-slate-400 text-[10px]";
+        outBox.className =
+          "bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm opacity-50 transition-all flex flex-col justify-center min-h-[100px]";
+        outVal.innerText = "---";
+        outVal.className = "code-font font-bold text-slate-400 text-sm";
+        errMsg.classList.add("hidden");
+
+        const isSuccess = val === "user";
+
+        // Packet Setup
+        packet.innerText = isSuccess ? "{ id: 1, ... }" : "42";
+        packet.classList.add(isSuccess ? "border-blue-400" : "border-red-400");
+        packet.classList.add(isSuccess ? "text-blue-600" : "text-red-500");
+
+        packet.style.opacity = "0";
+        setPacketPosAbsolute(packet, btnEl, 0, -20);
+
+        await sleep(50);
+        packet.style.opacity = "1";
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s";
+
+        // Fly to Gate
+        setPacketPosAbsolute(packet, anchor);
+
+        await sleep(1000);
+
+        if (isSuccess) {
+          gate.classList.add("gate-ok");
+          icon.className = "fa-solid fa-unlock text-emerald-500 text-[10px]";
+          packet.style.opacity = "0";
+
+          await sleep(500);
+
+          outBox.classList.remove("opacity-50");
+          outBox.classList.add("border-emerald-300", "bg-emerald-50");
+          outVal.innerText = '["id", "name", "email"]';
+          outVal.className =
+            "code-font font-bold text-emerald-600 text-sm animate-pop";
+        } else {
+          gate.classList.add("gate-ng");
+          icon.className = "fa-solid fa-lock text-red-500 text-[10px]";
+
+          packet.style.transition = "none";
+          const currentPos = setPacketPosAbsolute(packet, anchor);
+          packet.style.setProperty("--tx", `${currentPos.x}px`);
+          packet.style.setProperty("--ty", `${currentPos.y}px`);
+          packet.classList.add("rejecting");
+
+          errMsg.classList.remove("hidden");
+        }
+
+        setTimeout(() => {
+          packet.classList.remove("rejecting");
+          packet.style.opacity = "0";
+          gate.classList.remove("gate-ok", "gate-ng");
+          icon.className = "fa-solid fa-lock text-slate-400 text-[10px]";
+          errMsg.classList.add("hidden");
+
+          setTimeout(() => {
+            outBox.classList.add("opacity-50");
+            outBox.classList.remove("border-emerald-300", "bg-emerald-50");
+            outVal.innerText = "---";
+            outVal.className = "code-font font-bold text-slate-400 text-sm";
+            isAnimating = false;
+          }, 1000);
+        }, 2000);
+      }
+
+      // --- Part 2 ---
+      async function runPart2(keyName, btnEl) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const packet = document.getElementById("packet-2");
+        const gate = document.getElementById("gate-2");
+        const icon = document.getElementById("gate-2-icon");
+        const outBox = document.getElementById("out-2");
+        const outVal = document.getElementById("val-2");
+        const errMsg = document.getElementById("err-2");
+        const anchor = document.getElementById("anchor-2");
+
+        // UI Reset
+        packet.style.opacity = "0";
+        packet.style.transform = "none";
+        packet.className = "data-packet border-2 code-font text-sm";
+        gate.className =
+          "transition-colors border-2 border-slate-500 bg-slate-700 px-2 py-0.5 rounded inline-flex items-center gap-1 mt-1";
+        icon.className = "fa-solid fa-lock text-slate-400 text-[10px]";
+        outBox.className =
+          "bg-slate-100 border-2 border-slate-200 rounded-xl p-4 text-center shadow-sm opacity-50 transition-all flex flex-col justify-center min-h-[100px]";
+        outVal.innerText = "---";
+        outVal.className = "code-font font-bold text-slate-400 text-sm";
+        errMsg.classList.add("hidden");
+
+        const isSuccess = keyName === "name";
+
+        // Packet Setup
+        packet.innerText = `"${keyName}"`;
+        packet.classList.add(isSuccess ? "border-blue-400" : "border-red-400");
+        packet.classList.add(isSuccess ? "text-blue-600" : "text-red-500");
+
+        packet.style.opacity = "0";
+        setPacketPosAbsolute(packet, btnEl, 0, -20);
+
+        await sleep(50);
+        packet.style.opacity = "1";
+        packet.style.transition =
+          "transform 1s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s";
+
+        // Fly to Gate
+        setPacketPosAbsolute(packet, anchor);
+
+        await sleep(1000);
+
+        if (isSuccess) {
+          gate.classList.add("gate-ok");
+          icon.className = "fa-solid fa-unlock text-emerald-500 text-[10px]";
+          packet.style.opacity = "0";
+
+          await sleep(500);
+
+          outBox.classList.remove("opacity-50");
+          outBox.classList.add("border-blue-300", "bg-blue-50");
+          outVal.innerText = '"Alice"';
+          outVal.className =
+            "code-font font-bold text-blue-600 text-2xl animate-pop";
+        } else {
+          gate.classList.add("gate-ng");
+          icon.className = "fa-solid fa-lock text-red-500 text-[10px]";
+
+          packet.style.transition = "none";
+          const currentPos = setPacketPosAbsolute(packet, anchor);
+          packet.style.setProperty("--tx", `${currentPos.x}px`);
+          packet.style.setProperty("--ty", `${currentPos.y}px`);
+          packet.classList.add("rejecting");
+
+          errMsg.classList.remove("hidden");
+        }
+
+        setTimeout(() => {
+          packet.classList.remove("rejecting");
+          packet.style.opacity = "0";
+          gate.classList.remove("gate-ok", "gate-ng");
+          icon.className = "fa-solid fa-lock text-slate-400 text-[10px]";
+          errMsg.classList.add("hidden");
+
+          setTimeout(() => {
+            outBox.classList.add("opacity-50");
+            outBox.classList.remove("border-blue-300", "bg-blue-50");
+            outVal.innerText = "---";
+            outVal.className = "code-font font-bold text-slate-400 text-sm";
+            isAnimating = false;
+          }, 1000);
+        }, 2000);
+      }
+
+      // --- Part 3 ---
+      async function runPart3() {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        const srcId = document.getElementById("pick-src-id");
+        const srcName = document.getElementById("pick-src-name");
+        const dest = document.getElementById("pick-dest");
+
+        // Reset
+        dest.innerHTML = "";
+        srcId.classList.remove("picking");
+        srcName.classList.remove("picking");
+
+        // Animate id
+        srcId.classList.add("picking");
+        await sleep(400);
+        dest.innerHTML += `<div class="border border-pink-300 bg-white p-1.5 rounded text-pink-700 font-bold shadow-sm animate-pop">id: 1</div>`;
+
+        await sleep(400);
+
+        // Animate name
+        srcName.classList.add("picking");
+        await sleep(400);
+        dest.innerHTML += `<div class="border border-pink-300 bg-white p-1.5 rounded text-pink-700 font-bold shadow-sm animate-pop">name: "Alice"</div>`;
+
+        setTimeout(() => {
+          srcId.classList.remove("picking");
+          srcName.classList.remove("picking");
+
+          setTimeout(() => {
+            dest.innerHTML = "";
+            isAnimating = false;
+          }, 2000);
+        }, 1000);
+      }
+    </script>
+  </body>
+</html>
