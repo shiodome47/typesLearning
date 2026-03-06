@@ -455,7 +455,9 @@
         const inferenceBox = document.getElementById("ts-inference-box");
         inferenceBox.className =
           "mt-4 bg-slate-900 border border-slate-600 rounded-lg p-3 text-center transition-colors duration-500";
-        document.getElementById("ts-inference-text").innerHTML =
+        const inferenceTextEl = document.getElementById("ts-inference-text");
+        inferenceTextEl.className = "code-font text-xs text-white font-bold";
+        inferenceTextEl.innerHTML =
           `shape は <span class="text-slate-400 font-normal">Circle | Rect | Triangle</span> のどれか`;
 
         // ケースのリセット
@@ -463,6 +465,8 @@
           const el = document.getElementById(`case-${type}`);
           el.className =
             "bg-slate-900/80 border-2 border-transparent rounded-lg p-3 transition-all duration-300 flex items-center justify-between opacity-60";
+          const codeEl = el.querySelector(".code-font");
+          if (codeEl) codeEl.classList.replace("text-slate-700", "text-white");
         });
 
         // 出力のリセット
@@ -593,9 +597,12 @@
         // 3. ケースブロックでの型の確定 (Type Narrowing)
         targetCase.classList.remove("opacity-60", "border-transparent");
         targetCase.classList.add("exec-active", config.border, config.bg);
+        const codeDiv = targetCase.querySelector(".code-font");
+        if (codeDiv) codeDiv.classList.replace("text-white", "text-slate-700");
 
         // TypeScriptの認識が更新される表現
         inferenceBox.className = `mt-4 border-2 rounded-lg p-3 text-center transition-colors duration-500 ${config.bg} ${config.border}`;
+        inferenceText.className = "code-font text-xs text-slate-700 font-bold";
         inferenceText.innerHTML = `shape は <span class="${config.color} font-black text-sm uppercase tracking-widest">絶対に ${type} 型！</span>`;
 
         // プロパティアクセスが安全にできることを示すため、パケットが計算式に吸収される表現
