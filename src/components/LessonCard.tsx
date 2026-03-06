@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Lesson } from "@curriculum/types";
+import { InlineCodeText } from "./InlineCodeText";
 
 const CATEGORY_LABELS: Record<string, string> = {
   "type-basics": "型の基礎",
@@ -77,7 +78,7 @@ export function LessonCard({
 
             {/* ゴール */}
             <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-              {lesson.goal}
+              <InlineCodeText text={lesson.goal} />
             </p>
           </div>
 
