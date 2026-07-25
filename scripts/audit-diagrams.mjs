@@ -15,14 +15,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 
 // ── 1. 全 lesson.id を curriculum TS ファイルから取得 ──────────────────────
-const CURRICULUM_DIRS = [
-  "curriculum/phase1-type-basics",
-  "curriculum/phase2-type-safety",
-  "curriculum/phase3-real-app",
-  "curriculum/phase4-react",
-  "curriculum/phase5-advanced-patterns",
-  "curriculum/phase6-modern-ts",
-];
+// フェーズをハードコードすると、フェーズを追加したとき監査が
+// その分を見ないまま「整合しています」と報告してしまう。
+// curriculum/ 配下の phase* を自動検出する。
+const CURRICULUM_ROOT = path.join(ROOT, "curriculum");
+const CURRICULUM_DIRS = fs
+  .readdirSync(CURRICULUM_ROOT, { withFileTypes: true })
+  .filter((d) => d.isDirectory() && d.name.startsWith("phase"))
+  .map((d) => path.join("curriculum", d.name))
+  .sort();
 
 const lessonIds = [];
 for (const dir of CURRICULUM_DIRS) {
@@ -79,6 +80,7 @@ const urlViolations = Object.entries(mapEntries).filter(([id, url]) => {
 console.log("=".repeat(56));
 console.log("  図解リンク監査レポート");
 console.log("=".repeat(56));
+console.log(`  検出フェーズ          : ${CURRICULUM_DIRS.length} 個`);
 console.log(`  総レッスン数          : ${lessonIds.length} 件`);
 console.log(`  マップ登録数          : ${mapIds.size} 件`);
 console.log(`  図解HTMLファイル数    : ${htmlFiles.length} 件`);
@@ -96,8 +98,17 @@ function report(label, items) {
   }
 }
 
-report("マップ未登録レッスン（lesson あり・map なし）", mapMissing);
-report("図解HTML未作成レッスン（lesson あり・HTML なし）", fileMissing);
+// 図解が無いこと自体は「不整合」ではなく未整備。ブロックせず必ず可視化する。
+function warn(label, items) {
+  if (items.length === 0) {
+    console.log(`✅ ${label}: 0件`);
+  } else {
+    console.log(`⚠️  ${label}: ${items.length}件`);
+    items.forEach((item) => console.log(`   - ${item}`));
+  }
+}
+
+warn("図解が未作成のレッスン", [...new Set([...mapMissing, ...fileMissing])]);
 report("マップ余剰（map にあるが lesson が存在しない）", mapExtra);
 report("ファイル余剰（HTML はあるが lesson が存在しない）", fileExtra);
 
@@ -116,6 +127,6 @@ if (hasError) {
   console.log("❌ 図解監査: 不整合あり → 修正してください");
   process.exit(1);
 } else {
-  console.log("✅ 図解監査: すべて整合しています");
+  console.log("✅ 図解監査: 不整合なし（未作成の図解がある場合は上の警告を参照）");
   process.exit(0);
 }

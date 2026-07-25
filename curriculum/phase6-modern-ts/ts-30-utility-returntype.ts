@@ -9,6 +9,35 @@ export const lesson30: Lesson = {
   difficulty: 3,
 
   goal: "`ReturnType` / `Parameters` / `Awaited` で既存の関数から型情報を取り出し、型の二重定義をなくせるようになる",
+
+  why: {
+    problem:
+      "商品情報を取ってくる `fetchProduct` という関数があります。返すのは `{ id, name, price }` です。\n\n" +
+      "この結果を表示するコンポーネントを作ることになりました。props の型が必要です。" +
+      "そこで `type ProductView = { id: number; name: string; price: number }` と、関数の戻り値を見ながら手で書き写します。" +
+      "同じ形の型が、いま2ヶ所に存在することになりました。\n\n" +
+      "数週間後、仕様が変わります。海外対応で `price: number` が `price: { amount: number; currency: string }` になりました。" +
+      "`fetchProduct` を直します。動作確認もします。完了です。\n\n" +
+      "`ProductView` は古いままです。" +
+      "そして TypeScript は何も言いません。この2つは「たまたま形が似ていた別々の型」なので、" +
+      "片方が変わったからといって、もう片方に文句を言う理由がないのです。\n\n" +
+      "気づくのは、画面に `[object Object] 円` と表示されたときです。" +
+      "書き写した型は、書き写した瞬間から本物と切り離されます。そして切り離されたことは誰にも通知されません。",
+    insight:
+      "この教材で覚えるのは、型を「書き写す」代わりに「指差す」書き方です。\n\n" +
+      "`ReturnType<typeof fetchProduct>` は、「`fetchProduct` が返すもの、と同じ型」という意味です。" +
+      "中身が何かはここには書きません。あちらを見てくれ、と指差すだけです。" +
+      "だから `fetchProduct` を直せば、指差した先も自動で新しい形になります。ズレようがありません。\n\n" +
+      "`typeof fetchProduct` は「その関数そのものの型」を取り出す書き方です。" +
+      "値の世界にある関数を、型の世界に持ち込むための入り口だと思ってください。\n\n" +
+      "同じ発想の道具が3つあります。\n\n" +
+      "・`ReturnType<...>` … 返すものは何か\n" +
+      "・`Parameters<...>` … 受け取るものは何か（順番付きのリストで出てきます）\n" +
+      "・`Awaited<...>` … `Promise` の包みを剥がして、中身だけ取り出す\n\n" +
+      "非同期関数は `Promise<{...}>` を返すので、`Awaited<ReturnType<typeof fetchProduct>>` と重ねると" +
+      "「待ったあとに手に入るもの」だけが残ります。" +
+      "外部ライブラリの関数のように、型がexportされていなくて書き写すしかなかったものにも同じ手が使えます。",
+  },
   explanation:
     "TypeScript には既存の関数から型情報を取り出す組み込みユーティリティ型があります。" +
     "`ReturnType<typeof fn>` は関数 `fn` の戻り値型を、`Parameters<typeof fn>` は引数型のタプルをそれぞれ取得します。" +
