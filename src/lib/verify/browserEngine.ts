@@ -2,97 +2,35 @@
 
 // ─────────────────────────────────────────────────────────────
 // 採点エンジン（ブラウザ側）
-// Monaco に同梱された TypeScript ワーカーを使い、学習者コードに
-// 「隠しアサーション」を連結して型診断を取得し、機械的に合否判定する。
 //
-// 判定方式:
-//   kind "type"         : アサーションを連結し、診断が出なければ合格
-//   kind "expect-error" : プローブを連結し、診断が「出れば」合格
+// Monaco に同梱された TypeScript ワーカーへ、学習者コード + 隠しアサーション
+// を渡して型診断を取得し、チェックポイントを機械的に判定する。
+// サーバーも外部APIも使わず、ブラウザ内で完結する。
 // ─────────────────────────────────────────────────────────────
 
-import { loader } from "@monaco-editor/react";
 import type { Monaco } from "@monaco-editor/react";
-
-export interface CheckSpec {
-  id: string;
-  description: string;
-  kind: "type" | "expect-error";
-  assert: string;
-}
+import type { CheckSpec, Checkpoint } from "@curriculum/types";
+import { PRELUDE, configureTypeScript } from "@/lib/monaco/setup";
 
 export interface CheckResult {
   id: string;
   description: string;
+  /** 自動採点されたか（verify が無いチェックポイントは false） */
+  graded: boolean;
   pass: boolean;
-  firstMessage?: string;
-}
-
-// 型同一性・any 検出のためのヘルパー（全チェックの先頭に連結する）
-export const PRELUDE = `
-type Equal<X, Y> =
-  (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false;
-type Expect<T extends true> = T;
-type NotAny<T> = 0 extends (1 & T) ? false : true;
-`;
-
-// 最小 React シム（@types/react をブラウザに持ち込まずに JSX を検証するため）
-const REACT_SHIM = `
-declare namespace JSX {
-  interface Element { readonly __jsx: unique symbol }
-  interface ElementAttributesProperty { props: {} }
-  interface ElementChildrenAttribute { children: {} }
-  interface IntrinsicElements { [elem: string]: any }
-}
-declare module "react" {
-  export type ReactNode =
-    | string | number | boolean | null | undefined
-    | JSX.Element | Iterable<ReactNode>;
-  export type Key = string | number;
-}
-declare module "react/jsx-runtime" {
-  export const jsx: any;
-  export const jsxs: any;
-  export const Fragment: any;
-}
-`;
-
-let monacoPromise: Promise<Monaco> | null = null;
-
-export function initMonaco(): Promise<Monaco> {
-  if (!monacoPromise) {
-    // CDN ではなく自己ホストした monaco を使う（オフライン動作・版固定）
-    loader.config({ paths: { vs: "/monaco/vs" } });
-    monacoPromise = loader.init().then((monaco) => {
-      const ts = monaco.languages.typescript;
-      ts.typescriptDefaults.setCompilerOptions({
-        target: ts.ScriptTarget.ES2020,
-        jsx: ts.JsxEmit.ReactJSX,
-        strict: true,
-        noEmit: true,
-        allowNonTsExtensions: true,
-        moduleResolution: ts.ModuleResolutionKind.NodeJs,
-        skipLibCheck: true,
-      });
-      ts.typescriptDefaults.setEagerModelSync(true);
-      ts.typescriptDefaults.addExtraLib(
-        REACT_SHIM,
-        "file:///node_modules/@types/react/index.d.ts"
-      );
-      return monaco as Monaco;
-    });
-  }
-  return monacoPromise;
+  message?: string;
 }
 
 let seq = 0;
 
-/** 学習者コード + 1件のチェックを型診断にかけ、メッセージ一覧を返す */
+/** 学習者コード + アサーションを型診断にかけ、診断メッセージを返す */
 async function diagnose(
   monaco: Monaco,
   learnerCode: string,
   assertCode: string
 ): Promise<string[]> {
-  const uri = monaco.Uri.parse(`file:///__check_${seq++}.tsx`);
+  // 一時モデルは毎回ユニークな URI で作る（.tsx で JSX を解析させる）
+  const uri = monaco.Uri.parse(`file:///__grade_${seq++}.tsx`);
   const source = `${PRELUDE}\n${learnerCode}\n${assertCode}`;
   const model = monaco.editor.createModel(source, "typescript", uri);
   try {
@@ -105,29 +43,65 @@ async function diagnose(
     return [...syn, ...sem].map((d) =>
       typeof d.messageText === "string"
         ? d.messageText
-        : (d.messageText?.messageText ?? "diagnostic")
+        : (d.messageText?.messageText ?? "型エラー")
     );
   } finally {
     model.dispose();
   }
 }
 
-/** 学習者コードをチェック仕様で採点する */
-export async function grade(
+/** 1件のチェック仕様を判定する */
+export async function runCheck(
+  monaco: Monaco,
   learnerCode: string,
-  checks: CheckSpec[]
+  spec: CheckSpec
+): Promise<{ pass: boolean; message?: string }> {
+  const messages = await diagnose(monaco, learnerCode, spec.assert);
+  const hasError = messages.length > 0;
+  // expect-error は「エラーが出れば合格」（不正な使い方を型で弾けている）
+  const pass = spec.kind === "expect-error" ? hasError : !hasError;
+  return { pass, message: messages[0] };
+}
+
+/**
+ * チェックポイント群を採点する。
+ * verify を持たないものは graded: false で返し、UI 側で自己申告に落とす。
+ */
+export async function gradeCheckpoints(
+  monaco: Monaco,
+  learnerCode: string,
+  checkpoints: Checkpoint[]
 ): Promise<CheckResult[]> {
-  const monaco = await initMonaco();
+  configureTypeScript(monaco);
   const results: CheckResult[] = [];
-  for (const c of checks) {
-    const messages = await diagnose(monaco, learnerCode, c.assert);
-    const hasError = messages.length > 0;
+  for (const cp of checkpoints) {
+    if (!cp.verify) {
+      results.push({
+        id: cp.id,
+        description: cp.description,
+        graded: false,
+        pass: false,
+      });
+      continue;
+    }
+    const { pass, message } = await runCheck(monaco, learnerCode, cp.verify);
     results.push({
-      id: c.id,
-      description: c.description,
-      pass: c.kind === "expect-error" ? hasError : !hasError,
-      firstMessage: messages[0],
+      id: cp.id,
+      description: cp.description,
+      graded: true,
+      pass,
+      message,
     });
   }
   return results;
+}
+
+/** 学習者コード自体に型エラーが無いかを確認する */
+export async function checkCompiles(
+  monaco: Monaco,
+  learnerCode: string
+): Promise<{ ok: boolean; messages: string[] }> {
+  configureTypeScript(monaco);
+  const messages = await diagnose(monaco, learnerCode, "");
+  return { ok: messages.length === 0, messages };
 }

@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson15: Lesson = {
+  kind: "write",
   id: "ts-15-api-fetch",
   order: 15,
   title: "型を使ったAPIレスポンス処理",

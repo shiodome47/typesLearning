@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson27: Lesson = {
+  kind: "write",
   id: "ts-27-usereducer",
   order: 27,
   title: "useReducer + Discriminated Union",
@@ -32,6 +33,7 @@ export const lesson27: Lesson = {
 //    引数: state: State, action: Action
 //    戻り値: State
 //    switch(action.type) で分岐し、各 case を実装してください
+//    default 節で assertNever(action) を呼び、#20 の網羅性チェックを効かせること
 
 // 4. Counter コンポーネントを実装してください
 //    - useReducer(reducer, { count: 0 }) で初期化
@@ -50,6 +52,12 @@ type Action =
   | { type: "decrement" }
   | { type: "reset"; payload: number };
 
+// #20 で学んだ網羅性チェック。Action を増やして case を書き忘れると、
+// default 節の action が never でなくなりコンパイルエラーで気づける。
+function assertNever(x: never): never {
+  throw new Error("Unhandled action: " + JSON.stringify(x));
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "increment":
@@ -58,6 +66,8 @@ function reducer(state: State, action: Action): State {
       return { count: state.count - 1 };
     case "reset":
       return { count: action.payload };
+    default:
+      return assertNever(action);
   }
 }
 
@@ -95,6 +105,7 @@ function Counter() {
     { id: "cp-27-3", description: "`switch(action.type)` の各 case で TypeScript が型を絞り込んでいるか（`case \"reset\"` 内で `action.payload` が使えるか）？" },
     { id: "cp-27-4", description: "`useReducer(reducer, { count: 0 })` で `state` と `dispatch` が取得できているか？" },
     { id: "cp-27-5", description: "`dispatch` の呼び出しが型安全か（間違った type や payload 漏れが型エラーになるか）？" },
+    { id: "cp-27-6", description: "`default` 節で `assertNever(action)` を呼び、Action を増やしたときに分岐漏れがコンパイルエラーになるか？" },
   ],
 
   tags: ["useReducer", "Discriminated Union", "reducer", "dispatch", "状態管理", "switch"],

@@ -19,6 +19,8 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   "error-handling": "エラー処理",
   crud: "CRUD",
   "react-basics": "React",
+  "runtime-safety": "実行時安全",
+  "code-review": "コード診断",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

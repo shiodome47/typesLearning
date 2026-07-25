@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson26: Lesson = {
+  kind: "write",
   id: "ts-26-usecontext",
   order: 26,
   title: "useContext + 型定義",

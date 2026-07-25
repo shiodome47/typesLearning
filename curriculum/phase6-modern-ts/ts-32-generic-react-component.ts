@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson32: Lesson = {
+  kind: "write",
   id: "ts-32-generic-react-component",
   order: 32,
   title: "ジェネリクス React コンポーネント",
@@ -112,5 +113,5 @@ const products: Product[] = [{ id: "p1", label: "Pen", price: 100 }];
   ],
 
   tags: ["Generics", "React", "汎用コンポーネント", "ReactNode", "extends制約", "コンポーネントライブラリ"],
-  relatedIds: ["ts-11-generics", "ts-29-generics-constraints", "ts-16-component-props", "ts-17-usestate"],
+  relatedIds: ["ts-11-generics-basics", "ts-29-generics-constraints", "ts-16-component-props", "ts-17-usestate"],
 };

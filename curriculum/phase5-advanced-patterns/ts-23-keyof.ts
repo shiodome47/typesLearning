@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson23: Lesson = {
+  kind: "write",
   id: "ts-23-keyof",
   order: 23,
   title: "keyof / Indexed Access型",
@@ -88,5 +89,5 @@ console.log(getProp(p, "price"));   // 3000`,
   ],
 
   tags: ["keyof", "Indexed Access型", "Generics", "型安全", "ゲッター"],
-  relatedIds: ["ts-11-generics", "ts-21-utility-types", "ts-22-record-type"],
+  relatedIds: ["ts-11-generics-basics", "ts-21-utility-types", "ts-22-record-type"],
 };

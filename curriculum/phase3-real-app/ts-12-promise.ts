@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson12: Lesson = {
+  kind: "write",
   id: "ts-12-promise",
   order: 12,
   title: "Promise基礎",

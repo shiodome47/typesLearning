@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson24: Lesson = {
+  kind: "write",
   id: "ts-24-mapped-types",
   order: 24,
   title: "Mapped Types基礎",
@@ -83,5 +84,5 @@ const p: MyPartial<User> = { id: 1 }; // name/email を省略できる`,
   ],
 
   tags: ["Mapped Types", "keyof", "Readonly", "Partial", "型変形", "Utility Types の内部"],
-  relatedIds: ["ts-23-keyof", "ts-21-utility-types", "ts-11-generics"],
+  relatedIds: ["ts-23-keyof", "ts-21-utility-types", "ts-11-generics-basics"],
 };

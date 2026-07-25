@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson20: Lesson = {
+  kind: "write",
   id: "ts-20-exhaustive-check",
   order: 20,
   title: "網羅性チェック（never と assertNever）",
@@ -76,5 +77,5 @@ function getArea(shape: Shape): number {
   ],
 
   tags: ["never", "assertNever", "Exhaustive Check", "網羅性", "Discriminated Union", "型安全"],
-  relatedIds: ["ts-19-discriminated-union", "ts-09-type-guards"],
+  relatedIds: ["ts-19-discriminated-union", "ts-07-type-guards"],
 };

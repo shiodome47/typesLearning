@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson30: Lesson = {
+  kind: "write",
   id: "ts-30-utility-returntype",
   order: 30,
   title: "ReturnType / Parameters / Awaited",
@@ -41,7 +42,7 @@ async function fetchProduct(
 //    → Promise が剥がれて { id: number; name: string; price: number } になるはずです
 
 // ── Part 3: ラッパー関数 ──────────────────────────────────
-// 4. withLogging<T extends (...args: unknown[]) => unknown>(fn: T) を実装してください
+// 4. withLogging<T extends (...args: any[]) => any>(fn: T) を実装してください
 //    - fn と同じ引数・戻り値を持つ関数を返す
 //    - 呼び出し前に console.log("calling:", fn.name) を出力する
 //    - 引数型に Parameters<T>、戻り値型に ReturnType<T> を使うこと
@@ -73,7 +74,9 @@ type FetchProductResult = Awaited<ReturnType<typeof fetchProduct>>;
 // → { id: number; name: string; price: number }
 
 // Part 3
-function withLogging<T extends (...args: unknown[]) => unknown>(fn: T) {
+// 制約は (...args: any[]) => any にする。unknown[] にすると引数の反変性により
+// (id: number, name: string) => ... のような具体的な関数を受け取れなくなる。
+function withLogging<T extends (...args: any[]) => any>(fn: T) {
   return (...args: Parameters<T>): ReturnType<T> => {
     console.log("calling:", fn.name);
     return fn(...args) as ReturnType<T>;
@@ -95,7 +98,7 @@ loggedFormat(1, "Alice"); // "calling: formatUser" → { id: 1, label: "[1] Alic
     },
     {
       level: 3,
-      text: "`withLogging` のシグネチャは `<T extends (...args: unknown[]) => unknown>(fn: T)` です。返す関数の引数は `(...args: Parameters<T>)` 、戻り値型は `ReturnType<T>` とし、`fn(...args) as ReturnType<T>` でキャストして返します。",
+      text: "`withLogging` のシグネチャは `<T extends (...args: any[]) => any>(fn: T)` です。ここを `unknown[]` にすると引数の反変性で具体的な関数を渡せなくなります。返す関数の引数は `(...args: Parameters<T>)` 、戻り値型は `ReturnType<T>` とし、`fn(...args) as ReturnType<T>` でキャストして返します。",
     },
   ],
 
@@ -107,5 +110,5 @@ loggedFormat(1, "Alice"); // "calling: formatUser" → { id: 1, label: "[1] Alic
   ],
 
   tags: ["ReturnType", "Parameters", "Awaited", "typeof", "Generics", "ラッパー関数", "型推論"],
-  relatedIds: ["ts-11-generics", "ts-12-promise", "ts-13-async-await", "ts-15-api-fetch", "ts-21-utility-types"],
+  relatedIds: ["ts-11-generics-basics", "ts-12-promise", "ts-13-async-await", "ts-15-api-fetch", "ts-21-utility-types"],
 };

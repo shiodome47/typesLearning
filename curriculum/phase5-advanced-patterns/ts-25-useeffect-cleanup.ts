@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson25: Lesson = {
+  kind: "write",
   id: "ts-25-useeffect-cleanup",
   order: 25,
   title: "useEffect + cleanup関数",
@@ -28,10 +29,12 @@ export const lesson25: Lesson = {
 
 // 2. 以下のウィンドウサイズ監視 hook を完成させてください
 function useWindowWidth(): number {
-  const [width, setWidth] = useState(window.innerWidth);
+  // 注意: 初期値に window を直接読まない（SSR では window が存在しない）
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
     // ここに書く
+    // - マウント後に一度 setWidth(window.innerWidth) で初期化
     // - "resize" イベントリスナーを追加（window.innerWidth を setWidth に渡す）
     // - cleanup で removeEventListener を呼ぶ
     // - 依存配列は []
@@ -60,10 +63,14 @@ function Timer() {
 
 // 2. ウィンドウ幅監視 hook
 function useWindowWidth(): number {
-  const [width, setWidth] = useState(window.innerWidth);
+  // SSR（Next.js など）では window が存在しないため、初期値では触らない。
+  // useEffect はブラウザでのみ実行されるので、そこで実測値に更新する。
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
     const handler = () => setWidth(window.innerWidth);
+    handler(); // マウント後に一度だけ実測値へ初期化
+
     window.addEventListener("resize", handler);
 
     return () => window.removeEventListener("resize", handler);

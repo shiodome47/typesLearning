@@ -22,5 +22,10 @@ jobs:
       - name: Type check
         run: npm run type-check
 
+      # 教材コードはテンプレート文字列で tsc の対象外のため、
+      # 専用ハーネスで型チェックと採点仕様の正しさを検証する
+      - name: Verify curriculum
+        run: npm run verify:curriculum
+
       - name: Build
         run: npm run build

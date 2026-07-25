@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson13: Lesson = {
+  kind: "write",
   id: "ts-13-async-await",
   order: 13,
   title: "async / await",

@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson28: Lesson = {
+  kind: "write",
   id: "ts-28-custom-hook-pattern",
   order: 28,
   title: "型安全なカスタムhookパターン",
@@ -103,5 +104,5 @@ function App() {
   ],
 
   tags: ["カスタムhook", "Generics", "useLocalStorage", "localStorage", "JSON.parse", "SSR安全"],
-  relatedIds: ["ts-11-generics", "ts-14-error-handling", "ts-17-usestate", "ts-25-useeffect-cleanup"],
+  relatedIds: ["ts-11-generics-basics", "ts-14-error-handling", "ts-17-usestate", "ts-25-useeffect-cleanup"],
 };

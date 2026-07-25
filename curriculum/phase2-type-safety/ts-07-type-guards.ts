@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson07: Lesson = {
+  kind: "write",
   id: "ts-07-type-guards",
   order: 7,
   title: "型ガード",

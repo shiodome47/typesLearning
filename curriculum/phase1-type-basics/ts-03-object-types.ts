@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson03: Lesson = {
+  kind: "write",
   id: "ts-03-object-types",
   order: 3,
   title: "オブジェクトの型注釈",

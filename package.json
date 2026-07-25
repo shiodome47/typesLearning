@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "audit:diagrams": "node scripts/audit-diagrams.mjs"
+    "audit:diagrams": "node scripts/audit-diagrams.mjs",
+    "verify:curriculum": "node scripts/verify-curriculum.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

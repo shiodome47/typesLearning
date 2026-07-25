@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson29: Lesson = {
+  kind: "write",
   id: "ts-29-generics-constraints",
   order: 29,
   title: "Generics制約（extends / keyof）",
@@ -93,5 +94,5 @@ console.log(pick(user, ["id", "name"])); // { id: 1, name: "Alice" }`,
   ],
 
   tags: ["Generics制約", "extends", "keyof", "Indexed Access型", "Pick", "型安全"],
-  relatedIds: ["ts-11-generics", "ts-23-keyof", "ts-24-mapped-types", "ts-21-utility-types"],
+  relatedIds: ["ts-11-generics-basics", "ts-23-keyof", "ts-24-mapped-types", "ts-21-utility-types"],
 };

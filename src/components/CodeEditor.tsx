@@ -12,6 +12,11 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import {
+  configureTypeScript,
+  applyDiagnostics,
+  registerMonaco,
+} from "@/lib/monaco/setup";
 
 // SSR を無効にして Monaco をロード（Next.js 必須）
 const MonacoEditor = dynamic(
@@ -23,16 +28,6 @@ const MonacoEditor = dynamic(
     ),
   }
 );
-
-// Monaco の TypeScript 診断（赤波線）をグローバルに設定する
-function applyDiagnostics(monaco: Monaco, enabled: boolean) {
-  const opts = {
-    noSemanticValidation: !enabled,
-    noSyntaxValidation: !enabled,
-  };
-  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(opts);
-  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(opts);
-}
 
 const STORAGE_KEY_HEIGHT = "ts-practice-editor-height";
 const STORAGE_KEY_HINT = "ts-practice-editor-resize-hint-dismissed";
@@ -48,6 +43,7 @@ export interface CodeEditorProps {
   minHeight?: string;      // 後方互換のため残す（Monaco では使用しない）
   diagnosticsEnabled?: boolean; // TypeScript 診断（赤波線）の ON/OFF
   theme?: string;               // Monaco テーマ（"vs-dark" / "vs"）
+  path?: string;                // モデルのパス。.tsx にすると JSX が解析される
 }
 
 export function CodeEditor({
@@ -56,6 +52,7 @@ export function CodeEditor({
   readOnly = false,
   diagnosticsEnabled = false,
   theme = "vs-dark",
+  path = "file:///practice.tsx",
 }: CodeEditorProps) {
   const [containerHeight, setContainerHeight] = useState(DEFAULT_HEIGHT);
   const [showHint, setShowHint] = useState(false); // SSR後にのみ表示
@@ -84,6 +81,8 @@ export function CodeEditor({
   const handleMount = useCallback(
     (_editor: editor.IStandaloneCodeEditor, monaco: Monaco) => {
       monacoRef.current = monaco;
+      configureTypeScript(monaco);
+      registerMonaco(monaco);
       applyDiagnostics(monaco, diagnosticsEnabled);
     },
     [diagnosticsEnabled]
@@ -119,6 +118,7 @@ export function CodeEditor({
       <MonacoEditor
         height="100%"
         language="typescript"
+        path={path}
         theme={theme}
         value={value}
         onChange={(v) => onChange(v ?? "")}

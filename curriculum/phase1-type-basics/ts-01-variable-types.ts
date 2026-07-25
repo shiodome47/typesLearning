@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson01: Lesson = {
+  kind: "write",
   id: "ts-01-variable-types",
   order: 1,
   title: "変数への型注釈",

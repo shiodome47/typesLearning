@@ -42,3 +42,4 @@ yarn-error.log*
 
 # 自己ホストする monaco（node_modules からコピーするため追跡しない）
 /public/monaco
+/.verify-tmp
