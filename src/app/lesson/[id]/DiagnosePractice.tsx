@@ -97,11 +97,15 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
       <main className="max-w-7xl mx-auto px-4 py-6">
         <LessonTitle lesson={lesson} isCompleted={isCompleted} />
 
+        {/* なぜ必要か: 全幅。左カラムだけに置くと縦に伸びて
+            手本コードと練習エリアの高さがずれ、見比べられなくなる */}
+        <div className="mb-5">
+          <WhyCard why={lesson.why} />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* ── 左カラム: 診断対象 ── */}
           <div className="space-y-4">
-            <WhyCard why={lesson.why} />
-
             <ExplanationCard text={lesson.explanation} />
 
             {/* 症状 */}

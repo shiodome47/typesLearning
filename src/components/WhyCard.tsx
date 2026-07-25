@@ -25,12 +25,14 @@ export function WhyCard({ why }: { why: Why }) {
         </h2>
       </div>
 
-      <div className="p-4 space-y-4">
+      {/* 全幅で置くため、内部で2カラムに分ける。
+          1行が長くなりすぎるのを防ぎ、縦の高さも抑えられる。 */}
+      <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         <div className="text-sm text-gray-700 leading-relaxed">
           <Paragraphs text={why.problem} />
         </div>
 
-        <div className="border-t border-gray-100 pt-3.5 text-sm text-gray-700 leading-relaxed">
+        <div className="text-sm text-gray-700 leading-relaxed border-t border-gray-100 pt-4 lg:border-t-0 lg:pt-0 lg:border-l lg:pl-6">
           <Paragraphs text={why.insight} />
         </div>
       </div>

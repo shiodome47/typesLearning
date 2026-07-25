@@ -95,11 +95,15 @@ export function WritePractice({ lesson, allLessons }: WritePracticeProps) {
         <LessonTitle lesson={lesson} isCompleted={isCompleted} />
 
         {/* 2カラムレイアウト（PC向け） */}
+        {/* なぜ必要か: 全幅。左カラムだけに置くと縦に伸びて
+            手本コードと練習エリアの高さがずれ、見比べられなくなる */}
+        <div className="mb-5">
+          <WhyCard why={lesson.why} />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* ── 左カラム: 参照エリア ── */}
           <div className="space-y-4">
-            <WhyCard why={lesson.why} />
-
             <ExplanationCard text={lesson.explanation} />
 
             <div className="bg-white rounded-xl border border-gray-200 p-4">
