@@ -63,10 +63,48 @@ console.log(describeAnimal(dog)); // "Pochi says Woof"
   ],
 
   checkpoints: [
-    { id: "cp-05-1", description: "`interface` キーワードで型が定義できているか？（`=` なし）" },
-    { id: "cp-05-2", description: "`extends` で Animal の全プロパティを引き継げているか？" },
-    { id: "cp-05-3", description: "関数の引数に `Animal` 型が使えているか？" },
-    { id: "cp-05-4", description: "`Dog` 型の値を `Animal` を受け取る関数に渡せることを確認できたか？" },
+    {
+      id: "cp-05-1",
+      description: "`interface` キーワードで型が定義できているか？（`=` なし）",
+      verify: {
+        kind: "type",
+        assert: `
+const _c1: Animal = { name: "Mike", sound: "Nyan" };
+type _c1a = Expect<Equal<Animal["name"], string>>;
+type _c1b = Expect<Equal<Animal["sound"], string>>;`,
+      },
+    },
+    {
+      id: "cp-05-2",
+      description: "`extends` で Animal の全プロパティを引き継げているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _c2: Dog = { name: "Pochi", sound: "Woof", breed: "Shiba" };
+type _c2a = Expect<Equal<Dog["breed"], string>>;
+const _c2b: Animal = _c2;`,
+      },
+    },
+    {
+      id: "cp-05-3",
+      description: "関数の引数に `Animal` 型が使えているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3a = Expect<Equal<Parameters<typeof describeAnimal>[0], Animal>>;
+type _c3b = Expect<Equal<ReturnType<typeof describeAnimal>, string>>;`,
+      },
+    },
+    {
+      id: "cp-05-4",
+      description: "`Dog` 型の値を `Animal` を受け取る関数に渡せることを確認できたか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _c4: Dog = { name: "Pochi", sound: "Woof", breed: "Shiba" };
+const _c4msg: string = describeAnimal(_c4);`,
+      },
+    },
   ],
 
   tags: ["interface", "extends", "継承", "オブジェクト型", "type比較"],

@@ -58,10 +58,40 @@ console.log(greetUser(alice)); // "Hello, Alice! Age: 25"`,
   ],
 
   checkpoints: [
-    { id: "cp-04-1", description: "`type` キーワードで型を定義できているか？" },
-    { id: "cp-04-2", description: "プロパティが3つすべて正しい型で書けているか？" },
-    { id: "cp-04-3", description: "定義した型を関数の引数で使えているか？" },
-    { id: "cp-04-4", description: "変数宣言で `: User` と型注釈として使えているか？" },
+    {
+      id: "cp-04-1",
+      description: "`type` キーワードで型を定義できているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c1 = Expect<NotAny<User>>;`,
+      },
+    },
+    {
+      id: "cp-04-2",
+      description: "プロパティが3つすべて正しい型で書けているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c2 = Expect<Equal<User, { name: string; age: number; isAdmin: boolean }>>;`,
+      },
+    },
+    {
+      id: "cp-04-3",
+      description: "定義した型を関数の引数で使えているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3a = Expect<Equal<Parameters<typeof greetUser>[0], User>>;
+type _c3b = Expect<Equal<ReturnType<typeof greetUser>, string>>;`,
+      },
+    },
+    {
+      id: "cp-04-4",
+      description: "変数宣言で `: User` と型注釈として使えているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c4 = Expect<Equal<typeof alice, User>>;`,
+      },
+    },
   ],
 
   tags: ["type", "型エイリアス", "オブジェクト型", "再利用"],

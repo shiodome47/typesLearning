@@ -103,10 +103,53 @@ loggedFormat(1, "Alice"); // "calling: formatUser" → { id: 1, label: "[1] Alic
   ],
 
   checkpoints: [
-    { id: "cp-30-1", description: "`ReturnType<typeof formatUser>` で戻り値型が取り出せているか？" },
-    { id: "cp-30-2", description: "`Parameters<typeof formatUser>` で引数型のタプルが取り出せているか？" },
-    { id: "cp-30-3", description: "`Awaited<ReturnType<typeof fetchProduct>>` で `Promise` が剥がれた型が得られるか？" },
-    { id: "cp-30-4", description: "`withLogging` の返す関数の引数に `Parameters<T>`、戻り値に `ReturnType<T>` が使われているか？" },
+    {
+      id: "cp-30-1",
+      description: "`ReturnType<typeof formatUser>` で戻り値型が取り出せているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1 = Expect<Equal<FormatUserReturn, { id: number; label: string }>>;`,
+      },
+    },
+    {
+      id: "cp-30-2",
+      description: "`Parameters<typeof formatUser>` で引数型のタプルが取り出せているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c2a = Expect<Equal<FormatUserParams["length"], 2>>;
+type _c2b = Expect<Equal<FormatUserParams[0], number>>;
+type _c2c = Expect<Equal<FormatUserParams[1], string>>;`,
+      },
+    },
+    {
+      id: "cp-30-3",
+      description: "`Awaited<ReturnType<typeof fetchProduct>>` で `Promise` が剥がれた型が得られるか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3 = Expect<
+  Equal<FetchProductResult, { id: number; name: string; price: number }>
+>;`,
+      },
+    },
+    {
+      id: "cp-30-4",
+      description: "`withLogging` の返す関数の引数に `Parameters<T>`、戻り値に `ReturnType<T>` が使われているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _logged4 = withLogging(formatUser);
+type _P4 = Parameters<typeof _logged4>;
+type _c4a = Expect<Equal<_P4["length"], 2>>;
+type _c4b = Expect<Equal<_P4[0], number>>;
+type _c4c = Expect<Equal<_P4[1], string>>;
+type _c4d = Expect<
+  Equal<ReturnType<typeof _logged4>, { id: number; label: string }>
+>;`,
+      },
+    },
   ],
 
   tags: ["ReturnType", "Parameters", "Awaited", "typeof", "Generics", "ラッパー関数", "型推論"],

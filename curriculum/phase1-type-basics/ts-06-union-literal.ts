@@ -59,10 +59,42 @@ console.log(showMessage("success")); // "完了しました"
   ],
 
   checkpoints: [
-    { id: "cp-06-1", description: "Literal Union型が `|` で正しく定義できているか？" },
-    { id: "cp-06-2", description: "関数の引数に定義した型が使えているか？" },
-    { id: "cp-06-3", description: "`switch`で3ケースすべて網羅できているか？" },
-    { id: "cp-06-4", description: "型に含まれない値を渡すとエラーになることを確認できたか？" },
+    {
+      id: "cp-06-1",
+      description: "Literal Union型が `|` で正しく定義できているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c1 = Expect<Equal<Status, "loading" | "success" | "error">>;`,
+      },
+    },
+    {
+      id: "cp-06-2",
+      description: "関数の引数に定義した型が使えているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c2 = Expect<Equal<Parameters<typeof showMessage>[0], Status>>;`,
+      },
+    },
+    {
+      id: "cp-06-3",
+      description: "`switch`で3ケースすべて網羅できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3 = Expect<Equal<ReturnType<typeof showMessage>, string>>;
+const _c3a: string = showMessage("loading");
+const _c3b: string = showMessage("success");
+const _c3c: string = showMessage("error");`,
+      },
+    },
+    {
+      id: "cp-06-4",
+      description: "型に含まれない値を渡すとエラーになることを確認できたか？",
+      verify: {
+        kind: "expect-error",
+        assert: `const _c4: Status = "sleeping";`,
+      },
+    },
   ],
 
   tags: ["Union型", "Literal型", "switch", "型安全", "ステータス管理"],

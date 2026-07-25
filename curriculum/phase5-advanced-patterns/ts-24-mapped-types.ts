@@ -77,10 +77,49 @@ const p: MyPartial<User> = { id: 1 }; // name/email を省略できる`,
   ],
 
   checkpoints: [
-    { id: "cp-24-1", description: "`[K in keyof T]` の構文で型パラメータを巡回できているか？" },
-    { id: "cp-24-2", description: "`T[K]`（Indexed Access）で各プロパティの値型を参照できているか？" },
-    { id: "cp-24-3", description: "`MyReadonly<User>` に代入後、プロパティへの再代入が型エラーになるか確認できたか？" },
-    { id: "cp-24-4", description: "`MyPartial<User>` で一部プロパティのみを持つオブジェクトが型エラーにならないか確認できたか？" },
+    {
+      id: "cp-24-1",
+      description: "`[K in keyof T]` の構文で型パラメータを巡回できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _Src1 = { a: number; b: string };
+type _c1a = Expect<Equal<keyof MyReadonly<_Src1>, "a" | "b">>;
+type _c1b = Expect<Equal<keyof MyPartial<_Src1>, "a" | "b">>;`,
+      },
+    },
+    {
+      id: "cp-24-2",
+      description: "`T[K]`（Indexed Access）で各プロパティの値型を参照できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _Src2 = { a: number; b: string };
+type _c2a = Expect<Equal<MyReadonly<_Src2>["a"], number>>;
+type _c2b = Expect<Equal<MyReadonly<_Src2>["b"], string>>;
+type _c2c = Expect<Equal<MyPartial<_Src2>["a"], number | undefined>>;`,
+      },
+    },
+    {
+      id: "cp-24-3",
+      description: "`MyReadonly<User>` に代入後、プロパティへの再代入が型エラーになるか確認できたか？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+const _ro3: MyReadonly<{ id: number; name: string }> = { id: 1, name: "Alice" };
+_ro3.name = "Bob";`,
+      },
+    },
+    {
+      id: "cp-24-4",
+      description: "`MyPartial<User>` で一部プロパティのみを持つオブジェクトが型エラーにならないか確認できたか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _p4: MyPartial<{ id: number; name: string; email: string }> = { id: 1 };
+const _empty4: MyPartial<{ id: number; name: string }> = {};`,
+      },
+    },
   ],
 
   tags: ["Mapped Types", "keyof", "Readonly", "Partial", "型変形", "Utility Types の内部"],

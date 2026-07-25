@@ -31,7 +31,10 @@ async function diagnose(
 ): Promise<string[]> {
   // 一時モデルは毎回ユニークな URI で作る（.tsx で JSX を解析させる）
   const uri = monaco.Uri.parse(`file:///__grade_${seq++}.tsx`);
-  const source = `${PRELUDE}\n${learnerCode}\n${assertCode}`;
+  // 末尾の export {} で「モジュール」にする。
+  // これが無いとスクリプト扱いになり、練習エディタ側のモデルと
+  // グローバル宣言が衝突して Duplicate identifier になる。
+  const source = `${PRELUDE}\n${learnerCode}\n${assertCode}\nexport {};`;
   const model = monaco.editor.createModel(source, "typescript", uri);
   try {
     const getWorker = await monaco.languages.typescript.getTypeScriptWorker();

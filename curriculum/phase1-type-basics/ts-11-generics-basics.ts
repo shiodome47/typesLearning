@@ -67,10 +67,48 @@ const result = wrap<string[]>(["Alice", "Bob"]);
   ],
 
   checkpoints: [
-    { id: "cp-11-1", description: "`<T>` を関数名の後に書けているか？" },
-    { id: "cp-11-2", description: "引数と戻り値で同じ型パラメータ `T` を使えているか？" },
-    { id: "cp-11-3", description: "`type ApiResponse<T>` のようにtype定義にも `<T>` がつけられているか？" },
-    { id: "cp-11-4", description: "`wrap<string[]>(...)` のように型引数を明示して呼び出せるか？" },
+    {
+      id: "cp-11-1",
+      description: "`<T>` を関数名の後に書けているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _c1 = identity<number>(42);
+type _c1a = Expect<Equal<typeof _c1, number>>;`,
+      },
+    },
+    {
+      id: "cp-11-2",
+      description: "引数と戻り値で同じ型パラメータ `T` を使えているか？",
+      verify: {
+        kind: "type",
+        assert: `
+let _c2v = "hello";
+const _c2 = identity(_c2v);
+type _c2a = Expect<Equal<typeof _c2, string>>;
+const _c2b = identity({ id: 1 });
+type _c2c = Expect<Equal<typeof _c2b, { id: number }>>;`,
+      },
+    },
+    {
+      id: "cp-11-3",
+      description: "`type ApiResponse<T>` のようにtype定義にも `<T>` がつけられているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c3 = Expect<Equal<ApiResponse<number>, { success: boolean; data: number; error?: string }>>;`,
+      },
+    },
+    {
+      id: "cp-11-4",
+      description: "`wrap<string[]>(...)` のように型引数を明示して呼び出せるか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _c4 = wrap<string[]>(["Alice", "Bob"]);
+type _c4a = Expect<Equal<typeof _c4, ApiResponse<string[]>>>;
+type _c4b = Expect<Equal<(typeof _c4)["data"], string[]>>;`,
+      },
+    },
   ],
 
   tags: ["Generics", "型パラメータ", "汎用関数", "ApiResponse", "再利用"],

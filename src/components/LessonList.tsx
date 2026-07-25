@@ -8,6 +8,7 @@ import type { Lesson } from "@curriculum/types";
 import { categoryLabel } from "@/lib/labels";
 
 type StatusFilter = "all" | "incomplete" | "completed";
+type KindFilter = "all" | "write" | "diagnose";
 
 interface LessonListProps {
   lessons: Lesson[];
@@ -43,6 +44,7 @@ export function LessonList({ lessons }: LessonListProps) {
 
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [kindFilter, setKindFilter] = useState<KindFilter>("all");
 
   // lessons 内に存在するカテゴリを出現順で抽出
   const categories = [...new Set(lessons.map((l) => l.category))];
@@ -50,6 +52,7 @@ export function LessonList({ lessons }: LessonListProps) {
   // フィルタ適用
   const filtered = lessons.filter((lesson) => {
     if (categoryFilter !== "all" && lesson.category !== categoryFilter) return false;
+    if (kindFilter !== "all" && lesson.kind !== kindFilter) return false;
     if (isLoaded && statusFilter !== "all") {
       const completed = progress.lessons[lesson.id]?.completed ?? false;
       if (statusFilter === "completed" && !completed) return false;
@@ -111,6 +114,23 @@ export function LessonList({ lessons }: LessonListProps) {
               {categoryLabel(cat)}
             </FilterButton>
           ))}
+        </div>
+
+        {/* 練習の種類 */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-gray-400 mr-0.5">種類:</span>
+          <FilterButton active={kindFilter === "all"} onClick={() => setKindFilter("all")}>
+            すべて
+          </FilterButton>
+          <FilterButton active={kindFilter === "write"} onClick={() => setKindFilter("write")}>
+            白紙練習
+          </FilterButton>
+          <FilterButton
+            active={kindFilter === "diagnose"}
+            onClick={() => setKindFilter("diagnose")}
+          >
+            診断
+          </FilterButton>
         </div>
 
         {/* 状態 + ランダム1問 */}

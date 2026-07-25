@@ -70,10 +70,56 @@ console.log(getArea({ kind: "triangle", base: 6, height: 4 }));  // 12`,
   ],
 
   checkpoints: [
-    { id: "cp-19-1", description: "3つの型それぞれに `kind` プロパティ（リテラル型）が付いているか？" },
-    { id: "cp-19-2", description: "`Shape` が Union 型として3つを合わせているか？" },
-    { id: "cp-19-3", description: "`switch(shape.kind)` で分岐し、各 case で正しい面積計算をしているか？" },
-    { id: "cp-19-4", description: "case 内で `shape.radius` や `shape.width` が型エラーなく使えているか？" },
+    {
+      id: "cp-19-1",
+      description: "3つの型それぞれに `kind` プロパティ（リテラル型）が付いているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1a = Expect<Equal<Circle["kind"], "circle">>;
+type _c1b = Expect<Equal<Rect["kind"], "rect">>;
+type _c1c = Expect<Equal<Triangle["kind"], "triangle">>;`,
+      },
+    },
+    {
+      id: "cp-19-2",
+      description: "`Shape` が Union 型として3つを合わせているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c2a = Expect<Equal<Shape, Circle | Rect | Triangle>>;
+type _c2b = Expect<Equal<Shape["kind"], "circle" | "rect" | "triangle">>;`,
+      },
+    },
+    {
+      id: "cp-19-3",
+      description: "`switch(shape.kind)` で分岐し、各 case で正しい面積計算をしているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3a = Expect<Equal<Parameters<typeof getArea>[0], Shape>>;
+type _c3b = Expect<Equal<ReturnType<typeof getArea>, number>>;
+const _c3c: number = getArea({ kind: "rect", width: 4, height: 3 });`,
+      },
+    },
+    {
+      id: "cp-19-4",
+      description: "case 内で `shape.radius` や `shape.width` が型エラーなく使えているか？",
+      verify: {
+        kind: "type",
+        assert: `
+// 判別子で絞り込めていれば、各分岐で固有のプロパティに触れる
+function _narrow(shape: Shape): number {
+  if (shape.kind === "circle") return shape.radius;
+  if (shape.kind === "rect") return shape.width * shape.height;
+  return shape.base * shape.height;
+}
+type _c4a = Expect<Equal<ReturnType<typeof _narrow>, number>>;
+type _c4b = Expect<Equal<Extract<Shape, { kind: "circle" }>["radius"], number>>;
+type _c4c = Expect<Equal<Extract<Shape, { kind: "rect" }>["width"], number>>;
+type _c4d = Expect<Equal<Extract<Shape, { kind: "triangle" }>["base"], number>>;`,
+      },
+    },
   ],
 
   tags: ["Discriminated Union", "switch", "型の絞り込み", "リテラル型", "Union型"],

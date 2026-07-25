@@ -96,11 +96,33 @@ function App() {
   ],
 
   checkpoints: [
-    { id: "cp-28-1", description: "関数に `<T>` の型パラメータが付いているか？" },
+    {
+      id: "cp-28-1",
+      description: "関数に `<T>` の型パラメータが付いているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const [_str1] = useLocalStorage<string>("k1", "a");
+const [_obj1] = useLocalStorage<{ n: number }>("k2", { n: 1 });
+type _c1a = Expect<Equal<typeof _str1, string>>;
+type _c1b = Expect<Equal<typeof _obj1, { n: number }>>;`,
+      },
+    },
     { id: "cp-28-2", description: "`useState<T>` の初期値でlocalStorageを読み込み、`try/catch` でフォールバックしているか？" },
     { id: "cp-28-3", description: "`useEffect` で `JSON.stringify(value)` を保存し、依存配列が `[key, value]` になっているか？" },
     { id: "cp-28-4", description: "`typeof window === \"undefined\"` のSSRガードが入っているか？" },
-    { id: "cp-28-5", description: "戻り値が `[value, setValue]` のタプル形式で返せているか？" },
+    {
+      id: "cp-28-5",
+      description: "戻り値が `[value, setValue]` のタプル形式で返せているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _pair5 = useLocalStorage<number>("k5", 0);
+type _c5a = Expect<Equal<(typeof _pair5)["length"], 2>>;
+type _c5b = Expect<Equal<(typeof _pair5)[0], number>>;
+const _setter5: (next: number) => void = _pair5[1];`,
+      },
+    },
   ],
 
   tags: ["カスタムhook", "Generics", "useLocalStorage", "localStorage", "JSON.parse", "SSR安全"],

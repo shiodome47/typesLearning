@@ -86,11 +86,60 @@ console.log(pick(user, ["id", "name"])); // { id: 1, name: "Alice" }`,
   ],
 
   checkpoints: [
-    { id: "cp-29-1", description: "`<T extends object>` の制約で、プリミティブ型の引数が型エラーになるか確認できたか？" },
-    { id: "cp-29-2", description: "`<K extends keyof T>` で、存在しないキーを渡したときに型エラーが出るか確認できたか？" },
-    { id: "cp-29-3", description: "`getProp` の戻り値型が `T[K]`（Indexed Access型）になっているか？" },
-    { id: "cp-29-4", description: "`pick` の戻り値型が `Pick<T, K>` になっているか？" },
-    { id: "cp-29-5", description: "`pick` の `reduce` で指定キーだけを持つオブジェクトが作れているか？" },
+    {
+      id: "cp-29-1",
+      description: "`<T extends object>` の制約で、プリミティブ型の引数が型エラーになるか確認できたか？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+const _bad1 = getKeys(42);`,
+      },
+    },
+    {
+      id: "cp-29-2",
+      description: "`<K extends keyof T>` で、存在しないキーを渡したときに型エラーが出るか確認できたか？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+const _u2 = { id: 1, name: "Alice", email: "a@b.com" };
+const _bad2 = getProp(_u2, "missing");`,
+      },
+    },
+    {
+      id: "cp-29-3",
+      description: "`getProp` の戻り値型が `T[K]`（Indexed Access型）になっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _u3 = { id: 1, name: "Alice", email: "a@b.com" };
+const _id3 = getProp(_u3, "id");
+const _name3 = getProp(_u3, "name");
+type _c3a = Expect<Equal<typeof _id3, number>>;
+type _c3b = Expect<Equal<typeof _name3, string>>;`,
+      },
+    },
+    {
+      id: "cp-29-4",
+      description: "`pick` の戻り値型が `Pick<T, K>` になっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _u4 = { id: 1, name: "Alice", email: "a@b.com" };
+const _picked4 = pick(_u4, ["id", "name"]);
+type _c4 = Expect<Equal<typeof _picked4, Pick<typeof _u4, "id" | "name">>>;`,
+      },
+    },
+    {
+      id: "cp-29-5",
+      description: "`pick` の `reduce` で指定キーだけを持つオブジェクトが作れているか？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+const _u5 = { id: 1, name: "Alice", email: "a@b.com" };
+const _picked5 = pick(_u5, ["id"]);
+const _bad5 = _picked5.email;`,
+      },
+    },
   ],
 
   tags: ["Generics制約", "extends", "keyof", "Indexed Access型", "Pick", "型安全"],

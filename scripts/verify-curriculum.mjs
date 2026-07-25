@@ -23,7 +23,8 @@ const ROOT = path.resolve(
   path.dirname(url.fileURLToPath(import.meta.url)),
   ".."
 );
-const TMP = path.join(ROOT, ".verify-tmp");
+// 並列実行しても衝突しないようプロセスごとに分ける
+const TMP = path.join(ROOT, `.verify-tmp-${process.pid}`);
 const require = createRequire(import.meta.url);
 const ts = require(path.join(ROOT, "node_modules/typescript/lib/typescript.js"));
 
@@ -66,7 +67,8 @@ const OPTIONS = {
 
 /** コードを型チェックし、診断メッセージ一覧を返す */
 function diagnose(code) {
-  const source = `${PRELUDE}\n${code}`;
+  // 末尾の export {} でモジュール扱いにする（ブラウザ側の採点と条件を揃える）
+  const source = `${PRELUDE}\n${code}\nexport {};`;
   const virtual = new Map([
     [CHECK_PATH, source],
     [SHIM_PATH, REACT_SHIM],

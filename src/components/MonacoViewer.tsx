@@ -12,7 +12,12 @@ import dynamic from "next/dynamic";
 import { configureTypeScript } from "@/lib/monaco/setup";
 
 const MonacoEditor = dynamic(
-  () => import("@monaco-editor/react").then((m) => m.default),
+  () =>
+    import("@monaco-editor/react").then((m) => {
+      // CDN ではなく自己ホストした monaco を使う（public/monaco、prebuild で配置）
+      m.loader.config({ paths: { vs: "/monaco/vs" } });
+      return m.default;
+    }),
   {
     ssr: false,
     loading: () => (

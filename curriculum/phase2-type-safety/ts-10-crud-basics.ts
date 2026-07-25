@@ -86,7 +86,14 @@ console.log(list.length);              // 0`,
     { id: "cp-10-2", description: "更新を `map + スプレッド` でイミュータブルに書けているか？" },
     { id: "cp-10-3", description: "削除を `filter` で書けているか？" },
     { id: "cp-10-4", description: "いずれの関数も元の `todos` 配列を変更していないか？" },
-    { id: "cp-10-5", description: "`getTodo` の戻り値型が `Todo | undefined` になっているか？" },
+    {
+      id: "cp-10-5",
+      description: "`getTodo` の戻り値型が `Todo | undefined` になっているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c5 = Expect<Equal<ReturnType<typeof getTodo>, Todo | undefined>>;`,
+      },
+    },
   ],
 
   tags: ["CRUD", "配列", "map", "filter", "スプレッド", "イミュータブル", "Todo", "useState準備"],

@@ -67,7 +67,14 @@ fetchUser(1)
   ],
 
   checkpoints: [
-    { id: "cp-12-1", description: "戻り値型が `Promise<User>` と明示されているか？" },
+    {
+      id: "cp-12-1",
+      description: "戻り値型が `Promise<User>` と明示されているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c1 = Expect<Equal<ReturnType<typeof fetchUser>, Promise<User>>>;`,
+      },
+    },
     { id: "cp-12-2", description: "`new Promise<User>((resolve, reject) => {...})` の形で書けているか？" },
     { id: "cp-12-3", description: "失敗条件で `reject(new Error(...))` を呼べているか？" },
     { id: "cp-12-4", description: "`.then()` と `.catch()` で結果をハンドリングできているか？" },
