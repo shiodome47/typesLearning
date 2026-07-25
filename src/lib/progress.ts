@@ -29,6 +29,20 @@ export function createEmptyProgress(): AppProgress {
   };
 }
 
+// localStorage から読み込んだ値が AppProgress の最低限の形をしているか検証する。
+// version が一致していても lessons が欠損した壊れたデータを弾き、
+// Object.values(progress.lessons) 等で落ちるのを防ぐ。
+function isValidProgress(value: unknown): value is AppProgress {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.version === "string" &&
+    typeof v.lessons === "object" &&
+    v.lessons !== null &&
+    (v.lastOpenedLessonId === null || typeof v.lastOpenedLessonId === "string")
+  );
+}
+
 export function loadProgress(): AppProgress {
   if (typeof window === "undefined") {
     return createEmptyProgress();
@@ -36,7 +50,8 @@ export function loadProgress(): AppProgress {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return createEmptyProgress();
-    const parsed = JSON.parse(raw) as AppProgress;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isValidProgress(parsed)) return createEmptyProgress();
     // バージョン違いはリセット（将来マイグレーション対応可能）
     if (parsed.version !== PROGRESS_VERSION) return createEmptyProgress();
     return parsed;

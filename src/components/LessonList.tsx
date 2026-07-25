@@ -5,19 +5,7 @@ import { useRouter } from "next/navigation";
 import { useProgress } from "@/hooks/useProgress";
 import { LessonCard } from "./LessonCard";
 import type { Lesson } from "@curriculum/types";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  "type-basics": "型の基礎",
-  functions: "関数",
-  objects: "オブジェクト",
-  "union-literal": "Union/Literal",
-  "type-guards": "型ガード",
-  generics: "Generics",
-  async: "非同期",
-  "error-handling": "エラー処理",
-  crud: "CRUD",
-  "react-basics": "React",
-};
+import { categoryLabel } from "@/lib/labels";
 
 type StatusFilter = "all" | "incomplete" | "completed";
 
@@ -120,7 +108,7 @@ export function LessonList({ lessons }: LessonListProps) {
               active={categoryFilter === cat}
               onClick={() => setCategoryFilter(cat)}
             >
-              {CATEGORY_LABELS[cat] ?? cat}
+              {categoryLabel(cat)}
             </FilterButton>
           ))}
         </div>
