@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson09: Lesson = {
+  kind: "write",
   id: "ts-09-optional",
   order: 9,
   title: "Optional / ? / undefined / ?? / ?.",
@@ -72,10 +73,39 @@ console.log(getUserName(null));  // "ゲスト"`,
   ],
 
   checkpoints: [
-    { id: "cp-09-1", description: "`?.` でnull/undefinedを安全にチェーンできているか？" },
-    { id: "cp-09-2", description: "`??` で `null/undefined` の場合のデフォルト値を設定できているか？" },
+    {
+      id: "cp-09-1",
+      description: "`?.` でnull/undefinedを安全にチェーンできているか？",
+      verify: {
+        kind: "type",
+        assert: `
+// address を持たない User を渡せる（= address が optional）ことを確認
+const _noAddress: User = { id: 1, name: "Bob" };
+const _city = getCity(_noAddress);
+type _c1a = Expect<Equal<Parameters<typeof getCity>[0], User>>;
+type _c1b = Expect<Equal<typeof _city, string>>;`,
+      },
+    },
+    {
+      id: "cp-09-2",
+      description: "`??` で `null/undefined` の場合のデフォルト値を設定できているか？",
+      verify: {
+        kind: "type",
+        // ?? を書き忘れると string | undefined になるので Equal が落ちる
+        assert: `type _c2 = Expect<Equal<ReturnType<typeof getCity>, string>>;`,
+      },
+    },
     { id: "cp-09-3", description: "`||` ではなく `??` を使っている（0や''を誤って置き換えない）か？" },
-    { id: "cp-09-4", description: "`user: User | null | undefined` のような型で `?.` を使えているか？" },
+    {
+      id: "cp-09-4",
+      description: "`user: User | null | undefined` のような型で `?.` を使えているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c4a = Expect<Equal<Parameters<typeof getUserName>[0], User | null | undefined>>;
+type _c4b = Expect<Equal<ReturnType<typeof getUserName>, string>>;`,
+      },
+    },
   ],
 
   tags: ["Optional", "?.", "??", "optional chaining", "nullish coalescing", "null", "undefined"],

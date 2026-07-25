@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson16: Lesson = {
+  kind: "write",
   id: "ts-16-component-props",
   order: 16,
   title: "Reactコンポーネントの型（props）",
@@ -59,9 +60,40 @@ function Greeting({ name, age, isAdmin }: GreetingProps) {
   ],
 
   checkpoints: [
-    { id: "cp-16-1", description: "`type` でprops型が定義できているか？" },
-    { id: "cp-16-2", description: "`isAdmin` が `?:` でoptionalになっているか？" },
-    { id: "cp-16-3", description: "引数で `{ name, age, isAdmin }: GreetingProps` の分割代入ができているか？" },
+    {
+      id: "cp-16-1",
+      description: "`type` でprops型が定義できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1a = Expect<Equal<GreetingProps["name"], string>>;
+type _c1b = Expect<Equal<GreetingProps["age"], number>>;`,
+      },
+    },
+    {
+      id: "cp-16-2",
+      description: "`isAdmin` が `?:` でoptionalになっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _OptionalKeys = {
+  [K in keyof GreetingProps]-?: {} extends Pick<GreetingProps, K> ? K : never;
+}[keyof GreetingProps];
+type _c2a = Expect<Equal<_OptionalKeys, "isAdmin">>;
+type _c2b = Expect<Equal<Required<GreetingProps>["isAdmin"], boolean>>;`,
+      },
+    },
+    {
+      id: "cp-16-3",
+      description: "引数で `{ name, age, isAdmin }: GreetingProps` の分割代入ができているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3 = Expect<Equal<Parameters<typeof Greeting>[0], GreetingProps>>;
+const _c3el = <Greeting name="Alice" age={25} />;
+const _c3el2 = <Greeting name="Bob" age={30} isAdmin />;`,
+      },
+    },
     { id: "cp-16-4", description: "`isAdmin` の有無で表示を切り替えられているか？" },
   ],
 

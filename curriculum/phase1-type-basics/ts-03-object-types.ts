@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson03: Lesson = {
+  kind: "write",
   id: "ts-03-object-types",
   order: 3,
   title: "オブジェクトの型注釈",
@@ -51,10 +52,33 @@ console.log(getLabel({ id: 1, label: "完了" })); // "id:1 label:完了"`,
   ],
 
   checkpoints: [
-    { id: "cp-03-1", description: "変数にインライン型注釈 `{ プロパティ: 型; ... }` が書けているか？" },
+    {
+      id: "cp-03-1",
+      description: "変数にインライン型注釈 `{ プロパティ: 型; ... }` が書けているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c1 = Expect<Equal<typeof user, { name: string; age: number; isAdmin: boolean }>>;`,
+      },
+    },
     { id: "cp-03-2", description: "プロパティを `;` で区切っているか？" },
-    { id: "cp-03-3", description: "関数の引数にオブジェクト型を直接書けているか？" },
-    { id: "cp-03-4", description: "省略可能プロパティに `?:` が使えているか？" },
+    {
+      id: "cp-03-3",
+      description: "関数の引数にオブジェクト型を直接書けているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3a = Expect<Equal<Parameters<typeof getLabel>[0], { id: number; label: string; count?: number }>>;
+type _c3b = Expect<Equal<ReturnType<typeof getLabel>, string>>;`,
+      },
+    },
+    {
+      id: "cp-03-4",
+      description: "省略可能プロパティに `?:` が使えているか？",
+      verify: {
+        kind: "type",
+        assert: `const _c4: Parameters<typeof getLabel>[0] = { id: 1, label: "完了" };`,
+      },
+    },
   ],
 
   tags: ["オブジェクト", "インライン型", "プロパティ", "optional", "型注釈"],

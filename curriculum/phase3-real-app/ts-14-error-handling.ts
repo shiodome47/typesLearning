@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson14: Lesson = {
+  kind: "write",
   id: "ts-14-error-handling",
   order: 14,
   title: "try/catch とエラー型",
@@ -64,7 +65,18 @@ parseJSON("invalid json");     // パースエラー: Unexpected token...`,
     { id: "cp-14-1", description: "`catch (error: unknown)` と型注釈を明示できているか？" },
     { id: "cp-14-2", description: "`instanceof Error` で絞り込んでから `.message` にアクセスしているか？" },
     { id: "cp-14-3", description: "`instanceof Error` でない場合のフォールバック処理を書いているか？" },
-    { id: "cp-14-4", description: "`any` を使わずに書けているか？" },
+    {
+      id: "cp-14-4",
+      description: "`any` を使わずに書けているか？",
+      verify: {
+        kind: "type",
+        // any は値の使用可否では見抜けないので、型の同一性そのものを問う
+        assert: `
+type _c4a = Expect<Equal<Parameters<typeof parseJSON>[0], string>>;
+type _c4b = Expect<NotAny<ReturnType<typeof parseJSON>>>;
+type _c4c = Expect<Equal<ReturnType<typeof parseJSON>, unknown>>;`,
+      },
+    },
   ],
 
   tags: ["try", "catch", "unknown", "instanceof", "Error", "エラーハンドリング"],

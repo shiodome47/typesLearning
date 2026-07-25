@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson21: Lesson = {
+  kind: "write",
   id: "ts-21-utility-types",
   order: 21,
   title: "Utility Types基礎（Partial / Pick / Omit）",
@@ -83,10 +84,53 @@ console.log(update, pub, creds);`,
   ],
 
   checkpoints: [
-    { id: "cp-21-1", description: "`Partial<T>` を使って省略可能な型が作れているか？" },
-    { id: "cp-21-2", description: "`Omit<T, K>` で特定プロパティを除外できているか？" },
-    { id: "cp-21-3", description: "`Pick<T, K>` で必要なプロパティだけを抽出できているか？" },
-    { id: "cp-21-4", description: "`UpdateUserInput` の `id` が必須で、他が省略可能になっているか？" },
+    {
+      id: "cp-21-1",
+      description: "`Partial<T>` を使って省略可能な型が作れているか？",
+      verify: {
+        kind: "type",
+        assert: `
+// name / email などを省略しても代入できる＝ Partial 相当になっている
+const _c1a: UpdateUserInput = { id: 1 };
+const _c1b: UpdateUserInput = { id: 1, name: "Alice" };
+type _c1c = Expect<Equal<Required<UpdateUserInput>["email"], string>>;
+type _c1d = Expect<Equal<Required<UpdateUserInput>["createdAt"], Date>>;`,
+      },
+    },
+    {
+      id: "cp-21-2",
+      description: "`Omit<T, K>` で特定プロパティを除外できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c2a = Expect<Equal<keyof PublicUser, "id" | "name" | "email" | "createdAt">>;
+type _c2b = Expect<Equal<PublicUser["email"], string>>;`,
+      },
+    },
+    {
+      id: "cp-21-3",
+      description: "`Pick<T, K>` で必要なプロパティだけを抽出できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3a = Expect<Equal<keyof LoginCredentials, "email" | "password">>;
+type _c3b = Expect<Equal<LoginCredentials["email"], string>>;
+type _c3c = Expect<Equal<LoginCredentials["password"], string>>;`,
+      },
+    },
+    {
+      id: "cp-21-4",
+      description: "`UpdateUserInput` の `id` が必須で、他が省略可能になっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _RequiredKeys = {
+  [K in keyof UpdateUserInput]-?: {} extends Pick<UpdateUserInput, K> ? never : K;
+}[keyof UpdateUserInput];
+type _c4a = Expect<Equal<_RequiredKeys, "id">>;
+type _c4b = Expect<Equal<UpdateUserInput["id"], number>>;`,
+      },
+    },
   ],
 
   tags: ["Utility Types", "Partial", "Pick", "Omit", "型変形", "インターセクション型"],

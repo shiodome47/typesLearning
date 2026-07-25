@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson08: Lesson = {
+  kind: "write",
   id: "ts-08-array-types",
   order: 8,
   title: "配列の型と操作",
@@ -77,10 +78,40 @@ console.log(findById(todos, 99));     // undefined`,
   ],
 
   checkpoints: [
-    { id: "cp-08-1", description: "`Todo[]` のように要素型を明示した配列型が書けているか？" },
-    { id: "cp-08-2", description: "`map` で各要素を変換した新しい配列を返せているか？" },
-    { id: "cp-08-3", description: "`filter` で条件に合う要素だけの配列を返せているか？" },
-    { id: "cp-08-4", description: "`find` の戻り値型が `Todo | undefined` と書けているか？" },
+    {
+      id: "cp-08-1",
+      description: "`Todo[]` のように要素型を明示した配列型が書けているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c1 = Expect<Equal<typeof todos, Todo[]>>;`,
+      },
+    },
+    {
+      id: "cp-08-2",
+      description: "`map` で各要素を変換した新しい配列を返せているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c2a = Expect<Equal<Parameters<typeof getTitles>[0], Todo[]>>;
+type _c2b = Expect<Equal<ReturnType<typeof getTitles>, string[]>>;`,
+      },
+    },
+    {
+      id: "cp-08-3",
+      description: "`filter` で条件に合う要素だけの配列を返せているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c3 = Expect<Equal<ReturnType<typeof getActive>, Todo[]>>;`,
+      },
+    },
+    {
+      id: "cp-08-4",
+      description: "`find` の戻り値型が `Todo | undefined` と書けているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c4 = Expect<Equal<ReturnType<typeof findById>, Todo | undefined>>;`,
+      },
+    },
   ],
 
   tags: ["配列", "T[]", "map", "filter", "find", "undefined", "Todo"],

@@ -7,10 +7,17 @@
 
 import { useState, useCallback } from "react";
 import type { editor as MonacoEditorType } from "monaco-editor";
+import type { Monaco } from "@monaco-editor/react";
 import dynamic from "next/dynamic";
+import { configureTypeScript } from "@/lib/monaco/setup";
 
 const MonacoEditor = dynamic(
-  () => import("@monaco-editor/react").then((m) => m.default),
+  () =>
+    import("@monaco-editor/react").then((m) => {
+      // CDN ではなく自己ホストした monaco を使う（public/monaco、prebuild で配置）
+      m.loader.config({ paths: { vs: "/monaco/vs" } });
+      return m.default;
+    }),
   {
     ssr: false,
     loading: () => (
@@ -22,18 +29,24 @@ const MonacoEditor = dynamic(
 interface MonacoViewerProps {
   code: string;
   theme?: string;
+  path?: string; // モデルのパス。.tsx にすると JSX が解析される
 }
 
 const MAX_HEIGHT = 510;
 
-export function MonacoViewer({ code, theme = "vs-dark" }: MonacoViewerProps) {
+export function MonacoViewer({
+  code,
+  theme = "vs-dark",
+  path = "file:///model-answer.tsx",
+}: MonacoViewerProps) {
   // 初期値: 行数ベースの推定（実測前のレイアウトシフトを最小化）
   const [height, setHeight] = useState(
     Math.min(Math.max(code.split("\n").length * 21 + 24, 80), MAX_HEIGHT)
   );
 
   const handleMount = useCallback(
-    (editor: MonacoEditorType.IStandaloneCodeEditor) => {
+    (editor: MonacoEditorType.IStandaloneCodeEditor, monaco: Monaco) => {
+      configureTypeScript(monaco);
       const updateHeight = () => {
         const actual = editor.getContentHeight();
         setHeight(Math.min(Math.max(actual, 80), MAX_HEIGHT));
@@ -52,6 +65,7 @@ export function MonacoViewer({ code, theme = "vs-dark" }: MonacoViewerProps) {
       <MonacoEditor
         height="100%"
         language="typescript"
+        path={path}
         theme={theme}
         value={code}
         onMount={handleMount}

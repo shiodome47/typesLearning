@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson31: Lesson = {
+  kind: "write",
   id: "ts-31-satisfies",
   order: 31,
   title: "satisfies 演算子（TS4.9+）",
@@ -101,10 +102,36 @@ const C = { home: "/" } satisfies Record<string, string>;
   ],
 
   checkpoints: [
-    { id: "cp-31-1", description: "`const x = { ... } satisfies Record<string, string>` の構文でオブジェクトリテラルの後ろに置けているか？" },
+    {
+      id: "cp-31-1",
+      description: "`const x = { ... } satisfies Record<string, string>` の構文でオブジェクトリテラルの後ろに置けているか？",
+      verify: {
+        kind: "type",
+        assert: `
+// satisfies なら「Record<string, string> を満たす」かつ「キーが具体的なまま」
+// 型注釈（: Record<string, string>）だと keyof が string に広がりここで落ちる
+type _c1 = Expect<Equal<keyof typeof ROUTES, "home" | "about" | "dashboard">>;
+const _sat1: Record<string, string> = ROUTES;`,
+      },
+    },
+    // 注: satisfies Record<string, string> では値側の contextual type が string の
+    // ため各値は string に広がる（リテラル型は残らない）。自動採点できないので
+    // ここは自己申告のままにする。
     { id: "cp-31-2", description: "`ROUTES.home` が `string` ではなく `\"/\"` のリテラル型として推論されるか？" },
     { id: "cp-31-3", description: "値型違反（`number` など）のプロパティで型エラーが発生するか確認できたか？" },
-    { id: "cp-31-4", description: "型注釈・`as`・`satisfies` の推論型の違いをコメントで説明できているか？" },
+    {
+      id: "cp-31-4",
+      description: "型注釈・`as`・`satisfies` の推論型の違いをコメントで説明できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+// A（型注釈）と B（as）は Record<string, string> そのものに潰れ、キーの情報が消える。
+// C（satisfies）だけが「型の検証」と「具体的なキーの保持」を両立する。
+type _c4a = Expect<Equal<keyof typeof A, string>>;
+type _c4b = Expect<Equal<keyof typeof B, string>>;
+type _c4c = Expect<Equal<keyof typeof C, "home">>;`,
+      },
+    },
   ],
 
   tags: ["satisfies", "リテラル型", "型推論", "型注釈", "as", "TS4.9"],

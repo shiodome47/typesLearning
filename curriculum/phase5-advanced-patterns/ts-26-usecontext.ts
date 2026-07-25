@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson26: Lesson = {
+  kind: "write",
   id: "ts-26-usecontext",
   order: 26,
   title: "useContext + 型定義",
@@ -93,10 +94,47 @@ function ThemeToggleButton() {
   ],
 
   checkpoints: [
-    { id: "cp-26-1", description: "`createContext<ThemeContextType | null>(null)` の形でコンテキストが作れているか？" },
-    { id: "cp-26-2", description: "Provider の `value` prop に型通りの値 `{ theme, toggleTheme }` が渡せているか？" },
-    { id: "cp-26-3", description: "`useTheme` 内で null チェックが行われ、Provider 外で使ったときにエラーになるか？" },
-    { id: "cp-26-4", description: "null チェック後の `ctx` が `ThemeContextType` として扱えているか（型エラーなくプロパティにアクセスできるか）？" },
+    {
+      id: "cp-26-1",
+      description: "`createContext<ThemeContextType | null>(null)` の形でコンテキストが作れているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1 = Expect<
+  Equal<typeof ThemeContext, import("react").Context<ThemeContextType | null>>
+>;`,
+      },
+    },
+    {
+      id: "cp-26-2",
+      description: "Provider の `value` prop に型通りの値 `{ theme, toggleTheme }` が渡せているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _value2: ThemeContextType = { theme: "light", toggleTheme: () => {} };
+const _el2 = <ThemeContext.Provider value={_value2}>子要素</ThemeContext.Provider>;`,
+      },
+    },
+    {
+      id: "cp-26-3",
+      description: "`useTheme` 内で null チェックが行われ、Provider 外で使ったときにエラーになるか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3 = Expect<Equal<ReturnType<typeof useTheme>, ThemeContextType>>;`,
+      },
+    },
+    {
+      id: "cp-26-4",
+      description: "null チェック後の `ctx` が `ThemeContextType` として扱えているか（型エラーなくプロパティにアクセスできるか）？",
+      verify: {
+        kind: "type",
+        assert: `
+const _ctx4 = useTheme();
+type _c4a = Expect<Equal<typeof _ctx4.theme, "light" | "dark">>;
+type _c4b = Expect<Equal<typeof _ctx4.toggleTheme, () => void>>;`,
+      },
+    },
   ],
 
   tags: ["useContext", "createContext", "Provider", "カスタムhook", "null チェック", "コンテキスト"],

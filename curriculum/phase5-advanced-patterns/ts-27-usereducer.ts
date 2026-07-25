@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson27: Lesson = {
+  kind: "write",
   id: "ts-27-usereducer",
   order: 27,
   title: "useReducer + Discriminated Union",
@@ -32,6 +33,7 @@ export const lesson27: Lesson = {
 //    引数: state: State, action: Action
 //    戻り値: State
 //    switch(action.type) で分岐し、各 case を実装してください
+//    default 節で assertNever(action) を呼び、#20 の網羅性チェックを効かせること
 
 // 4. Counter コンポーネントを実装してください
 //    - useReducer(reducer, { count: 0 }) で初期化
@@ -50,6 +52,12 @@ type Action =
   | { type: "decrement" }
   | { type: "reset"; payload: number };
 
+// #20 で学んだ網羅性チェック。Action を増やして case を書き忘れると、
+// default 節の action が never でなくなりコンパイルエラーで気づける。
+function assertNever(x: never): never {
+  throw new Error("Unhandled action: " + JSON.stringify(x));
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "increment":
@@ -58,6 +66,8 @@ function reducer(state: State, action: Action): State {
       return { count: state.count - 1 };
     case "reset":
       return { count: action.payload };
+    default:
+      return assertNever(action);
   }
 }
 
@@ -90,11 +100,72 @@ function Counter() {
   ],
 
   checkpoints: [
-    { id: "cp-27-1", description: "`Action` が Discriminated Union で定義され、`reset` のみ `payload` を持つ形になっているか？" },
-    { id: "cp-27-2", description: "`reducer` の戻り値型が `State` になっているか？" },
-    { id: "cp-27-3", description: "`switch(action.type)` の各 case で TypeScript が型を絞り込んでいるか（`case \"reset\"` 内で `action.payload` が使えるか）？" },
-    { id: "cp-27-4", description: "`useReducer(reducer, { count: 0 })` で `state` と `dispatch` が取得できているか？" },
-    { id: "cp-27-5", description: "`dispatch` の呼び出しが型安全か（間違った type や payload 漏れが型エラーになるか）？" },
+    {
+      id: "cp-27-1",
+      description: "`Action` が Discriminated Union で定義され、`reset` のみ `payload` を持つ形になっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1a = Expect<Equal<Action["type"], "increment" | "decrement" | "reset">>;
+type _Reset1 = Extract<Action, { type: "reset" }>;
+type _c1b = Expect<Equal<_Reset1["payload"], number>>;
+type _Inc1 = Extract<Action, { type: "increment" }>;
+type _c1c = Expect<Equal<keyof _Inc1, "type">>;`,
+      },
+    },
+    {
+      id: "cp-27-2",
+      description: "`reducer` の戻り値型が `State` になっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c2a = Expect<Equal<ReturnType<typeof reducer>, State>>;
+type _c2b = Expect<Equal<State["count"], number>>;`,
+      },
+    },
+    {
+      id: "cp-27-3",
+      description: "`switch(action.type)` の各 case で TypeScript が型を絞り込んでいるか（`case \"reset\"` 内で `action.payload` が使えるか）？",
+      verify: {
+        kind: "type",
+        assert: `
+function _narrow3(a: Action): number {
+  if (a.type === "reset") return a.payload;
+  return 0;
+}
+type _c3 = Expect<Equal<ReturnType<typeof _narrow3>, number>>;`,
+      },
+    },
+    {
+      id: "cp-27-4",
+      description: "`useReducer(reducer, { count: 0 })` で `state` と `dispatch` が取得できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const [_state4, _dispatch4] = useReducer(reducer, { count: 0 });
+type _c4a = Expect<Equal<typeof _state4, State>>;
+type _c4b = Expect<Equal<typeof _dispatch4, import("react").Dispatch<Action>>>;`,
+      },
+    },
+    {
+      id: "cp-27-5",
+      description: "`dispatch` の呼び出しが型安全か（間違った type や payload 漏れが型エラーになるか）？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+const [, _dispatch5] = useReducer(reducer, { count: 0 });
+_dispatch5({ type: "reset" });`,
+      },
+    },
+    {
+      id: "cp-27-6",
+      description: "`default` 節で `assertNever(action)` を呼び、Action を増やしたときに分岐漏れがコンパイルエラーになるか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c6 = Expect<Equal<Parameters<typeof assertNever>[0], never>>;`,
+      },
+    },
   ],
 
   tags: ["useReducer", "Discriminated Union", "reducer", "dispatch", "状態管理", "switch"],

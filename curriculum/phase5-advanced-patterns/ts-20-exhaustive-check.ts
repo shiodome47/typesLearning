@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson20: Lesson = {
+  kind: "write",
   id: "ts-20-exhaustive-check",
   order: 20,
   title: "網羅性チェック（never と assertNever）",
@@ -69,12 +70,42 @@ function getArea(shape: Shape): number {
   ],
 
   checkpoints: [
-    { id: "cp-20-1", description: "`assertNever` の引数と戻り値の型が両方 `never` になっているか？" },
+    {
+      id: "cp-20-1",
+      description: "`assertNever` の引数と戻り値の型が両方 `never` になっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1a = Expect<Equal<Parameters<typeof assertNever>[0], never>>;
+type _c1b = Expect<Equal<typeof assertNever, (x: never) => never>>;`,
+      },
+    },
     { id: "cp-20-2", description: "`switch` の `default` で `assertNever(shape)` が呼ばれているか？" },
-    { id: "cp-20-3", description: "新しい Union メンバーを追加したとき、case を書くまでコンパイルエラーが出ることを確認できたか？" },
-    { id: "cp-20-4", description: "全 case を追加すれば型エラーが消えることを確認できたか？" },
+    {
+      id: "cp-20-3",
+      description: "新しい Union メンバーを追加したとき、case を書くまでコンパイルエラーが出ることを確認できたか？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+// case を書き漏らすと default に届く値は never にならない。
+// それを assertNever に渡すとエラーになる、という仕組みそのものの確認。
+const _c3: Shape = { kind: "circle", radius: 1 };
+assertNever(_c3);`,
+      },
+    },
+    {
+      id: "cp-20-4",
+      description: "全 case を追加すれば型エラーが消えることを確認できたか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c4a = Expect<Equal<Shape["kind"], "circle" | "rect" | "triangle" | "ellipse">>;
+type _c4b = Expect<Equal<ReturnType<typeof getArea>, number>>;
+const _c4c: number = getArea({ kind: "ellipse", rx: 1, ry: 2 });`,
+      },
+    },
   ],
 
   tags: ["never", "assertNever", "Exhaustive Check", "網羅性", "Discriminated Union", "型安全"],
-  relatedIds: ["ts-19-discriminated-union", "ts-09-type-guards"],
+  relatedIds: ["ts-19-discriminated-union", "ts-07-type-guards"],
 };

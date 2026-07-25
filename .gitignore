@@ -39,3 +39,7 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+# 自己ホストする monaco（node_modules からコピーするため追跡しない）
+/public/monaco
+/.verify-tmp*

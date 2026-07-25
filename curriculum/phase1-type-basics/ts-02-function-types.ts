@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson02: Lesson = {
+  kind: "write",
   id: "ts-02-function-types",
   order: 2,
   title: "関数の型注釈",
@@ -62,10 +63,43 @@ logMessage("done");`,
   ],
 
   checkpoints: [
-    { id: "cp-02-1", description: "引数2つに正しい型注釈が書けているか？" },
-    { id: "cp-02-2", description: "戻り値の型が `)` の後に書けているか？" },
-    { id: "cp-02-3", description: "`age?: number` で省略可能引数が書けているか？" },
-    { id: "cp-02-4", description: "戻り値なし関数に `: void` がつけられているか？" },
+    {
+      id: "cp-02-1",
+      description: "引数2つに正しい型注釈が書けているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1a = Expect<Equal<Parameters<typeof add>[0], number>>;
+type _c1b = Expect<Equal<Parameters<typeof add>[1], number>>;`,
+      },
+    },
+    {
+      id: "cp-02-2",
+      description: "戻り値の型が `)` の後に書けているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c2 = Expect<Equal<ReturnType<typeof add>, number>>;`,
+      },
+    },
+    {
+      id: "cp-02-3",
+      description: "`age?: number` で省略可能引数が書けているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3a = Expect<Equal<Parameters<typeof greet>["length"], 1 | 2>>;
+type _c3b = Expect<Equal<Parameters<typeof greet>[1], number | undefined>>;
+const _c3c: string = greet("Bob");`,
+      },
+    },
+    {
+      id: "cp-02-4",
+      description: "戻り値なし関数に `: void` がつけられているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c4 = Expect<Equal<ReturnType<typeof logMessage>, void>>;`,
+      },
+    },
   ],
 
   tags: ["関数", "引数", "戻り値", "void", "optional", "型注釈"],

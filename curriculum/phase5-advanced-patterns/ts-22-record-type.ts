@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson22: Lesson = {
+  kind: "write",
   id: "ts-22-record-type",
   order: 22,
   title: "Record型",
@@ -63,10 +64,45 @@ console.log(getLabel("error"));   // "エラー"`,
   ],
 
   checkpoints: [
-    { id: "cp-22-1", description: "`Status` が Union リテラル型で定義されているか？" },
-    { id: "cp-22-2", description: "`statusLabels` の型が `Record<Status, string>` になっているか？" },
-    { id: "cp-22-3", description: "Status の4つのキーがすべて揃っているか（漏れがないか）？" },
-    { id: "cp-22-4", description: "`getLabel` が `statusLabels[status]` でラベルを返せているか？" },
+    {
+      id: "cp-22-1",
+      description: "`Status` が Union リテラル型で定義されているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1 = Expect<Equal<Status, "idle" | "loading" | "success" | "error">>;`,
+      },
+    },
+    {
+      id: "cp-22-2",
+      description: "`statusLabels` の型が `Record<Status, string>` になっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c2a = Expect<Equal<typeof statusLabels, Record<Status, string>>>;
+type _c2b = Expect<Equal<(typeof statusLabels)["loading"], string>>;`,
+      },
+    },
+    {
+      id: "cp-22-3",
+      description: "Status の4つのキーがすべて揃っているか（漏れがないか）？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c3 = Expect<Equal<keyof typeof statusLabels, "idle" | "loading" | "success" | "error">>;`,
+      },
+    },
+    {
+      id: "cp-22-4",
+      description: "`getLabel` が `statusLabels[status]` でラベルを返せているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c4a = Expect<Equal<Parameters<typeof getLabel>[0], Status>>;
+type _c4b = Expect<Equal<ReturnType<typeof getLabel>, string>>;
+const _c4c: string = getLabel("success");`,
+      },
+    },
   ],
 
   tags: ["Record", "Utility Types", "Union リテラル", "辞書型", "インデックスアクセス"],

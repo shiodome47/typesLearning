@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson07: Lesson = {
+  kind: "write",
   id: "ts-07-type-guards",
   order: 7,
   title: "型ガード",
@@ -78,8 +79,32 @@ console.log(isCat(cat)); // true`,
   checkpoints: [
     { id: "cp-07-1", description: "`typeof` で string/number を絞り込めているか？" },
     { id: "cp-07-2", description: "`in` 演算子でプロパティ有無による分岐ができているか？" },
-    { id: "cp-07-3", description: "カスタム型ガードの戻り値型が `pet is Cat` の形で書けているか？" },
-    { id: "cp-07-4", description: "型ガード後のブロックで型補完が効く（絞り込みが成立している）か？" },
+    {
+      id: "cp-07-3",
+      description: "カスタム型ガードの戻り値型が `pet is Cat` の形で書けているか？",
+      verify: {
+        kind: "type",
+        assert: `
+function _narrowCat(_p: Pet): Cat | null {
+  if (isCat(_p)) return _p;
+  return null;
+}
+type _c3 = Expect<Equal<ReturnType<typeof _narrowCat>, Cat | null>>;`,
+      },
+    },
+    {
+      id: "cp-07-4",
+      description: "型ガード後のブロックで型補完が効く（絞り込みが成立している）か？",
+      verify: {
+        kind: "type",
+        assert: `
+function _useCat(_p: Pet): (() => void) | null {
+  if (isCat(_p)) return _p.meow;
+  return null;
+}
+type _c4 = Expect<Equal<ReturnType<typeof _useCat>, (() => void) | null>>;`,
+      },
+    },
   ],
 
   tags: ["型ガード", "typeof", "in", "カスタム型ガード", "is", "Union型", "絞り込み"],

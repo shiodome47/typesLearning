@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson01: Lesson = {
+  kind: "write",
   id: "ts-01-variable-types",
   order: 1,
   title: "変数への型注釈",
@@ -48,9 +49,37 @@ function greet(name: string): string {
   ],
 
   checkpoints: [
-    { id: "cp-01-1", description: "変数3つすべてに型注釈が書けているか？" },
-    { id: "cp-01-2", description: "関数の引数に型注釈が書けているか？" },
-    { id: "cp-01-3", description: "関数の戻り値の型が `)` の後に書けているか？" },
+    {
+      id: "cp-01-1",
+      description: "変数3つすべてに型注釈が書けているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1a = Expect<Equal<typeof username, string>>;
+type _c1b = Expect<Equal<typeof age, number>>;
+function _c1c() {
+  // boolean は代入で true/false に絞り込まれるため、関数内で宣言時の型を問う
+  type _c1cType = Expect<Equal<typeof isLoggedIn, boolean>>;
+  return null as unknown as _c1cType;
+}`,
+      },
+    },
+    {
+      id: "cp-01-2",
+      description: "関数の引数に型注釈が書けているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c2 = Expect<Equal<Parameters<typeof greet>[0], string>>;`,
+      },
+    },
+    {
+      id: "cp-01-3",
+      description: "関数の戻り値の型が `)` の後に書けているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c3 = Expect<Equal<ReturnType<typeof greet>, string>>;`,
+      },
+    },
   ],
 
   tags: ["変数", "型注釈", "string", "number", "boolean", "基本"],

@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson13: Lesson = {
+  kind: "write",
   id: "ts-13-async-await",
   order: 13,
   title: "async / await",
@@ -72,8 +73,24 @@ main();`,
   ],
 
   checkpoints: [
-    { id: "cp-13-1", description: "`async` キーワードが関数につけられているか？" },
-    { id: "cp-13-2", description: "戻り値型が `Promise<User>` と明示されているか？" },
+    {
+      id: "cp-13-1",
+      description: "`async` キーワードが関数につけられているか？",
+      verify: {
+        kind: "type",
+        assert: `type _c1 = Expect<ReturnType<typeof fetchUser> extends Promise<unknown> ? true : false>;`,
+      },
+    },
+    {
+      id: "cp-13-2",
+      description: "戻り値型が `Promise<User>` と明示されているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c2 = Expect<Equal<ReturnType<typeof fetchUser>, Promise<User>>>;
+type _c2a = Expect<Equal<Parameters<typeof fetchUser>[0], number>>;`,
+      },
+    },
     { id: "cp-13-3", description: "`await` で非同期処理の完了を待てているか？" },
     { id: "cp-13-4", description: "呼び出し側で `try/catch` が書けているか？" },
     { id: "cp-13-5", description: "`error instanceof Error` で型を絞り込んでから `.message` を読んでいるか？" },

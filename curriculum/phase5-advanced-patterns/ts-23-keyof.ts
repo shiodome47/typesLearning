@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson23: Lesson = {
+  kind: "write",
   id: "ts-23-keyof",
   order: 23,
   title: "keyof / Indexed Access型",
@@ -81,12 +82,50 @@ console.log(getProp(p, "price"));   // 3000`,
   ],
 
   checkpoints: [
-    { id: "cp-23-1", description: "`keyof Product` で型を作り、`ProductKey` として定義できているか？" },
-    { id: "cp-23-2", description: "`getField` の戻り値型に Indexed Access型 `Product[ProductKey]` が使えているか？" },
-    { id: "cp-23-3", description: "`getProp` が `<T, K extends keyof T>` の型引数を持っているか？" },
-    { id: "cp-23-4", description: "`getProp` の戻り値型が `T[K]` になっているか？" },
+    {
+      id: "cp-23-1",
+      description: "`keyof Product` で型を作り、`ProductKey` として定義できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c1 = Expect<Equal<ProductKey, "name" | "price" | "inStock">>;`,
+      },
+    },
+    {
+      id: "cp-23-2",
+      description: "`getField` の戻り値型に Indexed Access型 `Product[ProductKey]` が使えているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _c2a = Expect<Equal<ReturnType<typeof getField>, string | number | boolean>>;
+type _c2b = Expect<Equal<Parameters<typeof getField>[1], ProductKey>>;`,
+      },
+    },
+    {
+      id: "cp-23-3",
+      description: "`getProp` が `<T, K extends keyof T>` の型引数を持っているか？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+const _obj3 = { name: "TS本", price: 3000, inStock: true };
+const _bad3 = getProp(_obj3, "missing");`,
+      },
+    },
+    {
+      id: "cp-23-4",
+      description: "`getProp` の戻り値型が `T[K]` になっているか？",
+      verify: {
+        kind: "type",
+        assert: `
+const _obj4 = { name: "TS本", price: 3000, inStock: true };
+const _name4 = getProp(_obj4, "name");
+const _price4 = getProp(_obj4, "price");
+type _c4a = Expect<Equal<typeof _name4, string>>;
+type _c4b = Expect<Equal<typeof _price4, number>>;`,
+      },
+    },
   ],
 
   tags: ["keyof", "Indexed Access型", "Generics", "型安全", "ゲッター"],
-  relatedIds: ["ts-11-generics", "ts-21-utility-types", "ts-22-record-type"],
+  relatedIds: ["ts-11-generics-basics", "ts-21-utility-types", "ts-22-record-type"],
 };

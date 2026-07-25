@@ -43,6 +43,14 @@ export function LessonCard({
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                 {categoryLabel(lesson.category)}
               </span>
+              {lesson.kind === "diagnose" && (
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full border text-purple-700 bg-purple-50 border-purple-200"
+                  title="欠陥コードを見抜いて直す診断問題"
+                >
+                  診断
+                </span>
+              )}
             </div>
 
             {/* タイトル */}

@@ -1,6 +1,7 @@
 import type { Lesson } from "../types";
 
 export const lesson32: Lesson = {
+  kind: "write",
   id: "ts-32-generic-react-component",
   order: 32,
   title: "ジェネリクス React コンポーネント",
@@ -104,13 +105,99 @@ const products: Product[] = [{ id: "p1", label: "Pen", price: 100 }];
   ],
 
   checkpoints: [
-    { id: "cp-32-1", description: "`function List<T extends { id: string | number }>` の制約付き型パラメータが書けているか？" },
-    { id: "cp-32-2", description: "`renderItem: (item: T) => ReactNode` の型で、T に連動したコールバック型が定義できているか？" },
-    { id: "cp-32-3", description: "`emptyMessage` が省略可能（`?`）でデフォルト値が設定されているか？" },
-    { id: "cp-32-4", description: "`<li key={item.id}>` で T の `id` プロパティが型安全に使えているか？" },
-    { id: "cp-32-5", description: "`User[]` と `Product[]` で同じ `List` を使い回せることを確認できたか？" },
+    {
+      id: "cp-32-1",
+      description: "`function List<T extends { id: string | number }>` の制約付き型パラメータが書けているか？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+// id を持たない要素は制約 T extends { id: string | number } に反する
+const _noId1 = [{ name: "Alice" }];
+const _el1 = <List items={_noId1} renderItem={(x) => <span>{x.name}</span>} />;`,
+      },
+    },
+    {
+      id: "cp-32-2",
+      description: "`renderItem: (item: T) => ReactNode` の型で、T に連動したコールバック型が定義できているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _U2 = { id: number; name: string };
+const _users2: _U2[] = [{ id: 1, name: "Alice" }];
+// item を any にしていると型の同一性が崩れてここで落ちる
+const _el2 = (
+  <List
+    items={_users2}
+    renderItem={(u) => {
+      type _c2 = Expect<Equal<typeof u, _U2>>;
+      return <span>{u.name}</span>;
+    }}
+  />
+);`,
+      },
+    },
+    {
+      id: "cp-32-3",
+      description: "`emptyMessage` が省略可能（`?`）でデフォルト値が設定されているか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _U3 = { id: number; name: string };
+const _users3: _U3[] = [{ id: 1, name: "Alice" }];
+// 省略しても、渡してもどちらも通ること
+const _omit3 = <List items={_users3} renderItem={(u) => <span>{u.name}</span>} />;
+const _pass3 = (
+  <List
+    items={_users3}
+    emptyMessage="データがありません"
+    renderItem={(u) => <span>{u.name}</span>}
+  />
+);`,
+      },
+    },
+    {
+      id: "cp-32-4",
+      description: "`<li key={item.id}>` で T の `id` プロパティが型安全に使えているか？",
+      verify: {
+        kind: "expect-error",
+        assert: `
+// id が string | number でない要素は制約で弾かれる
+const _boolId4 = [{ id: true, name: "Alice" }];
+const _el4 = <List items={_boolId4} renderItem={(x) => <span>{x.name}</span>} />;`,
+      },
+    },
+    {
+      id: "cp-32-5",
+      description: "`User[]` と `Product[]` で同じ `List` を使い回せることを確認できたか？",
+      verify: {
+        kind: "type",
+        assert: `
+type _U5 = { id: number; name: string };
+type _P5 = { id: string; label: string; price: number };
+const _users5: _U5[] = [{ id: 1, name: "Alice" }];
+const _products5: _P5[] = [{ id: "p1", label: "Pen", price: 100 }];
+const _elU5 = (
+  <List
+    items={_users5}
+    renderItem={(u) => {
+      type _c5a = Expect<Equal<typeof u, _U5>>;
+      return <span>{u.name}</span>;
+    }}
+  />
+);
+const _elP5 = (
+  <List
+    items={_products5}
+    renderItem={(p) => {
+      type _c5b = Expect<Equal<typeof p, _P5>>;
+      return <span>{p.label}</span>;
+    }}
+  />
+);`,
+      },
+    },
   ],
 
   tags: ["Generics", "React", "汎用コンポーネント", "ReactNode", "extends制約", "コンポーネントライブラリ"],
-  relatedIds: ["ts-11-generics", "ts-29-generics-constraints", "ts-16-component-props", "ts-17-usestate"],
+  relatedIds: ["ts-11-generics-basics", "ts-29-generics-constraints", "ts-16-component-props", "ts-17-usestate"],
 };
