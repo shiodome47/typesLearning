@@ -27,5 +27,9 @@ jobs:
       - name: Verify curriculum
         run: npm run verify:curriculum
 
+      # 図解リンクの整合性。未作成の図解は警告として一覧表示される
+      - name: Audit diagrams
+        run: npm run audit:diagrams
+
       - name: Build
         run: npm run build

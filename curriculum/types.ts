@@ -53,6 +53,26 @@ export interface Checkpoint {
   verify?: CheckSpec;
 }
 
+/**
+ * 「なぜこれが必要なのか」。
+ *
+ * 教材が What / How だけになると、正しいが理解できない説明になる。
+ * 仕組みを説明する前に、その仕組みが無いと何が起きるのかを先に伝える。
+ *
+ * 書き方の原則:
+ *   - 抽象語で要約しない（×「分岐漏れが生じやすい」）
+ *   - 具体的な失敗の場面で書く（○「レシートが空欄のまま客に渡る」）
+ *   - 用語は定義ではなく直感で導入する（×「到達できない値の型」
+ *     ○「もう何も残っていない、という意味の型」）
+ *   - 段落は空行（\n\n）で区切る
+ */
+export interface Why {
+  /** その道具が無いと何が起きるのか。具体的な失敗の物語 */
+  problem: string;
+  /** その道具は結局なにをしてくれるのか。定義ではなく直感で */
+  insight: string;
+}
+
 interface LessonBase {
   id: string;          // 例: "ts-01-variable-types"
   order: number;       // 表示順（ソート用）
@@ -61,7 +81,8 @@ interface LessonBase {
   difficulty: Difficulty;
 
   goal: string;        // 「〇〇できるようになる」（1文）
-  explanation: string; // 概念の短い説明（3〜5文）
+  why: Why;            // なぜ必要か（explanation より前に読ませる）
+  explanation: string; // 仕組みの説明（3〜5文）
 
   hints: Hint[];             // 段階ヒント（3段階）
   checkpoints: Checkpoint[]; // 自己採点／自動採点ポイント

@@ -16,8 +16,10 @@ import { CodeEditor } from "@/components/CodeEditor";
 import { MonacoViewer } from "@/components/MonacoViewer";
 import { ModelAnswer } from "@/components/ModelAnswer";
 import { CheckpointPanel } from "@/components/CheckpointPanel";
+import { WhyCard } from "@/components/WhyCard";
 import { InlineCodeText } from "@/components/InlineCodeText";
 import type { Lesson, DiagnoseLesson } from "@curriculum/types";
+import { LESSON_DIAGRAM_LINKS } from "@/lib/lessonDiagramLinks";
 import {
   LessonHeader,
   LessonTitle,
@@ -98,6 +100,8 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* ── 左カラム: 診断対象 ── */}
           <div className="space-y-4">
+            <WhyCard why={lesson.why} />
+
             <ExplanationCard text={lesson.explanation} />
 
             {/* 症状 */}
@@ -229,6 +233,7 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
                 </h2>
                 <ModelAnswer
                   code={lesson.fixedCode}
+                  diagramUrl={LESSON_DIAGRAM_LINKS[lesson.id]}
                   theme={prefs.editorTheme}
                   path={`file:///fixed-${lesson.id}.tsx`}
                 />

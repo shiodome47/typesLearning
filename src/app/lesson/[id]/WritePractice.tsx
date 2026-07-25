@@ -9,6 +9,7 @@ import { CodeEditor } from "@/components/CodeEditor";
 import { ModelAnswer } from "@/components/ModelAnswer";
 import { HintPanel } from "@/components/HintPanel";
 import { CheckpointPanel } from "@/components/CheckpointPanel";
+import { WhyCard } from "@/components/WhyCard";
 import type { Lesson, WriteLesson } from "@curriculum/types";
 import { LESSON_DIAGRAM_LINKS } from "@/lib/lessonDiagramLinks";
 import {
@@ -97,6 +98,8 @@ export function WritePractice({ lesson, allLessons }: WritePracticeProps) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* ── 左カラム: 参照エリア ── */}
           <div className="space-y-4">
+            <WhyCard why={lesson.why} />
+
             <ExplanationCard text={lesson.explanation} />
 
             <div className="bg-white rounded-xl border border-gray-200 p-4">
