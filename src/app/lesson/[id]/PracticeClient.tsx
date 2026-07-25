@@ -9,31 +9,11 @@ import { HintPanel } from "@/components/HintPanel";
 import type { Lesson } from "@curriculum/types";
 import { LESSON_DIAGRAM_LINKS } from "@/lib/lessonDiagramLinks";
 import { InlineCodeText } from "@/components/InlineCodeText";
+import { categoryLabel, DIFFICULTY_LABELS } from "@/lib/labels";
 
 const DIAGNOSTICS_STORAGE_KEY = "ts-practice-editor-diagnostics-enabled";
 const THEME_STORAGE_KEY = "ts-practice-editor-theme";
 type EditorTheme = "vs-dark" | "vs";
-
-
-const CATEGORY_LABELS: Record<string, string> = {
-  "type-basics": "型の基礎",
-  functions: "関数",
-  objects: "オブジェクト",
-  "union-literal": "Union/Literal",
-  "type-guards": "型ガード",
-  generics: "Generics",
-  async: "非同期",
-  "error-handling": "エラー処理",
-  crud: "CRUD",
-  "react-basics": "React",
-};
-
-const DIFFICULTY_LABELS: Record<number, string> = {
-  1: "入門",
-  2: "基礎",
-  3: "中級",
-  4: "応用",
-};
 
 interface PracticeClientProps {
   lesson: Lesson;
@@ -149,7 +129,7 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-              {CATEGORY_LABELS[lesson.category] ?? lesson.category}
+              {categoryLabel(lesson.category)}
             </span>
             <span className="text-xs text-gray-400">
               {DIFFICULTY_LABELS[lesson.difficulty]}

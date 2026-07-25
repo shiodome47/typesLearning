@@ -1,33 +1,7 @@
 import Link from "next/link";
 import type { Lesson } from "@curriculum/types";
 import { InlineCodeText } from "./InlineCodeText";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  "type-basics": "型の基礎",
-  functions: "関数",
-  objects: "オブジェクト",
-  "union-literal": "Union/Literal",
-  "type-guards": "型ガード",
-  generics: "Generics",
-  async: "非同期",
-  "error-handling": "エラー処理",
-  crud: "CRUD",
-  "react-basics": "React",
-};
-
-const DIFFICULTY_STYLES: Record<number, string> = {
-  1: "text-green-700 bg-green-50 border-green-200",
-  2: "text-blue-700 bg-blue-50 border-blue-200",
-  3: "text-purple-700 bg-purple-50 border-purple-200",
-  4: "text-red-700 bg-red-50 border-red-200",
-};
-
-const DIFFICULTY_LABELS: Record<number, string> = {
-  1: "入門",
-  2: "基礎",
-  3: "中級",
-  4: "応用",
-};
+import { categoryLabel, DIFFICULTY_LABELS, DIFFICULTY_STYLES } from "@/lib/labels";
 
 interface LessonCardProps {
   lesson: Lesson;
@@ -67,7 +41,7 @@ export function LessonCard({
                 {DIFFICULTY_LABELS[lesson.difficulty] ?? "?"}
               </span>
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                {CATEGORY_LABELS[lesson.category] ?? lesson.category}
+                {categoryLabel(lesson.category)}
               </span>
             </div>
 
