@@ -118,7 +118,7 @@ function fail(lessonId, what, detail) {
     path.join(ROOT, "src/lib/studyGuide.ts"),
     "utf8"
   );
-  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk)-[a-z0-9-]+)"/g)].map(
+  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk|gr)-[a-z0-9-]+)"/g)].map(
     (m) => m[1]
   );
   const counts = new Map();

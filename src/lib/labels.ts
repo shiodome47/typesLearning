@@ -26,6 +26,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   template: "テンプレート",
   sveltekit: "SvelteKit",
   a11y: "アクセシビリティ",
+  tooling: "ガードレール",
 };
 
 export const LANGUAGE_LABELS: Record<LessonLanguage, string> = {

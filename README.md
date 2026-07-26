@@ -1,7 +1,7 @@
 # 判断力トレーニング（TypeScript / Svelte）
 
 手本を見てゼロから書く「白紙練習」と、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
-TypeScript 37件・Svelte 25件（うち SvelteKit 編 9件）を1つのアプリで扱い、一覧で切り替えられる。
+TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）を1つのアプリで扱い、一覧で切り替えられる。
 
 ## 学習コンセプト
 
@@ -51,8 +51,8 @@ why: {
 |---|---|---|
 | 目的 | **読んで判断できる**こと | **手が覚えている**こと（AIが使えないときの保険） |
 | 構文の暗記 | 不要 | 中核だけは必要 |
-| 診断の比率 | 5/37 | 7/25（「動くが間違っている」が多いため） |
-| 件数 | 37 | 16 + SvelteKit 編 9 |
+| 診断の比率 | 5/37 | 8/31（「動くが間違っている」が多いため） |
+| 件数 | 37 | 16 + SvelteKit 編 9 + ガードレール編 6 |
 
 ### SvelteKit 編（連続チュートリアル）
 
@@ -74,6 +74,25 @@ Svelte 本体の 16 件とは性質が違い、**1つの物件サイトを ①�
 | ⑦ | 送信を滑らかに | `use:enhance` |
 | ⑧ | 管理者ログイン | `hooks.server.ts` / `locals` / `redirect` |
 | ⑨ | 診断：納品してよいか | 秘密の漏洩・XSS・キー欠落・保護漏れ |
+
+### ガードレール編（連続チュートリアル）
+
+SvelteKit 編で **目で** 見つけた地雷を、今度は **機械に** 見つけさせる章です。
+
+AIが1日に数百行書く前提に立つと「レビュー能力を上げる」戦略は量が増えた時点で破綻します。
+人間の精度はコード量に対して一定ですが、型と Lint は何行来ても同じ精度で見ます。
+
+| 回 | 作るもの | どの回の回収か |
+|---|---|---|
+| ① | `$types` で `load` に型を付ける | sk-02 / sk-03（引数を手書きしていた） |
+| ② | `app.d.ts` で `locals` に型を付ける | sk-08（`locals.usre` が素通りする） |
+| ③ | ESLint でキー忘れと `{@html}` を止める | sv-09 / sk-09（目で探していた） |
+| ④ | `svelte-check` を CI に載せる | `.svelte` が `tsc` の対象外である話 |
+| ⑤ | `formData` の値を検証してから使う | ts-15（境界の検証） |
+| ⑥ | 診断：Lintも型も通るのに残る問題 | 総合 |
+
+⑥の到達点は **「機械が止められないものが3つに絞られる」** ことです（秘密・認可・仕様）。
+「全部を注意深く読む」は不可能でも、「この3つだけを毎回見る」なら200行来ても続きます。
 
 ## 自動採点
 
@@ -138,7 +157,7 @@ npm run build              # 本番ビルド
 # 実ブラウザ確認（playwright が必要。CI には入れていない）
 npm run smoke:e2e          # TypeScript 側
 npm run smoke:svelte       # Svelte 側
-npm run smoke:sveltekit    # SvelteKit 側（複数ファイル採点）
+npm run smoke:sveltekit    # SvelteKit / ガードレール 側（複数ファイル採点）
 ```
 
 `verify:curriculum` は重要です。教材の `starterCode` / `modelAnswer` は**テンプレート文字列なので
@@ -167,7 +186,8 @@ typesLearning/
 │   ├── phase1-type-basics/ 〜 phase6-modern-ts/
 │   ├── phase7-judgment/            # 回収レッスン + 診断レッスン
 │   ├── svelte/                     # Svelte 5（runes）16件
-│   └── sveltekit/                  # SvelteKit 編 9件（連続チュートリアル）
+│   ├── sveltekit/                  # SvelteKit 編 9件（連続チュートリアル）
+│   └── guardrails/                 # ガードレール編 6件（型・Lint・CI）
 ├── scripts/
 │   └── verify-curriculum.mjs       # 教材検証ハーネス（CI で実行）
 └── src/

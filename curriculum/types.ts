@@ -27,7 +27,8 @@ export type Category =
   | "components"     // コンポーネント分割（$props / $bindable / snippet）
   | "template"       // テンプレート構文（{#each} / {#if} / bind）
   | "sveltekit"      // ルーティング・load・SSR
-  | "a11y";          // アクセシビリティとコンパイラ警告
+  | "a11y"           // アクセシビリティとコンパイラ警告
+  | "tooling";       // 型宣言・Lint・CI（機械に守らせる仕組み）
 
 export type HintLevel = 1 | 2 | 3; // 1: 方向性, 2: 構文ヒント, 3: ほぼ答え
 
@@ -121,7 +122,32 @@ export type CheckSpec =
    */
   | { kind: "kit-server-only"; source: string }
   /** 全ファイルが構文として解析できるか */
-  | { kind: "kit-parse" };
+  | { kind: "kit-parse" }
+  // ── ガードレール編（設定ファイルと型宣言） ────────────────
+  //
+  // 型宣言・Lint設定・package.json も、`<script lang="ts">` で包めば
+  // 同じ AST として読める。設定を「書いたつもり」で終わらせないために
+  // 構造として問う。
+  /** interface / type を宣言しているか（members 指定でメンバーも見る） */
+  | { kind: "kit-declares"; file: string; name: string; members?: string[] }
+  /** 指定の変数に指定の型注釈が付いているか（`const load: PageServerLoad`） */
+  | { kind: "kit-annotated"; file: string; name: string; type: string }
+  /**
+   * 文字列リテラルとして value を含むか（部分一致）。
+   * Lint のルール名や npm script の中身など、値そのものが仕様になるものに使う。
+   */
+  | { kind: "kit-contains-string"; file: string; value: string; expect?: boolean }
+  /**
+   * プロパティアクセスの有無（`params.id` / `locals.user` など）。
+   * キー名の打ち間違いは文字列ではなく識別子なので、これで問う。
+   */
+  | {
+      kind: "kit-member";
+      file: string;
+      object: string;
+      property: string;
+      expect?: boolean;
+    };
 
 export interface Checkpoint {
   id: string;

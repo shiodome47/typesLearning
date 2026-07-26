@@ -94,9 +94,9 @@ await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(800);
 await page.getByRole("button", { name: /Svelte/ }).click();
 await page.waitForTimeout(500);
-// Svelte 16 件 + SvelteKit 9 件
+// Svelte 16 件 + SvelteKit 9 件 + ガードレール 6 件
 const shown = await page.locator("text=/\\d+ 件表示/").first().textContent();
-log(Boolean(shown?.includes("25")), "一覧で Svelte に切り替わる", shown ?? "");
+log(Boolean(shown?.includes("31")), "一覧で Svelte に切り替わる", shown ?? "");
 
 // ── 5. 手引きに両言語の配分がある ──
 await page.goto(`${BASE}/guide`, { waitUntil: "domcontentloaded" });
