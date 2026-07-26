@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson29: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-29-generics-constraints",
   order: 29,
   title: "Generics制約（extends / keyof）",

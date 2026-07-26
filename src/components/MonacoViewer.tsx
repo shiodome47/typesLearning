@@ -30,6 +30,7 @@ interface MonacoViewerProps {
   code: string;
   theme?: string;
   path?: string; // モデルのパス。.tsx にすると JSX が解析される
+  editorLanguage?: string;
 }
 
 const MAX_HEIGHT = 510;
@@ -38,6 +39,7 @@ export function MonacoViewer({
   code,
   theme = "vs-dark",
   path = "file:///model-answer.tsx",
+  editorLanguage = "typescript",
 }: MonacoViewerProps) {
   // 初期値: 行数ベースの推定（実測前のレイアウトシフトを最小化）
   const [height, setHeight] = useState(
@@ -64,7 +66,7 @@ export function MonacoViewer({
     >
       <MonacoEditor
         height="100%"
-        language="typescript"
+        language={editorLanguage}
         path={path}
         theme={theme}
         value={code}

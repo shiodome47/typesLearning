@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson32: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-32-generic-react-component",
   order: 32,
   title: "ジェネリクス React コンポーネント",

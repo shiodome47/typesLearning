@@ -53,11 +53,21 @@ async function diagnose(
   }
 }
 
+/** このエンジンが扱えるのは TypeScript 用の採点仕様だけ */
+export type TypeScriptCheckSpec = Extract<
+  CheckSpec,
+  { kind: "type" } | { kind: "expect-error" }
+>;
+
+export function isTypeScriptSpec(spec: CheckSpec): spec is TypeScriptCheckSpec {
+  return spec.kind === "type" || spec.kind === "expect-error";
+}
+
 /** 1件のチェック仕様を判定する */
 export async function runCheck(
   monaco: Monaco,
   learnerCode: string,
-  spec: CheckSpec
+  spec: TypeScriptCheckSpec
 ): Promise<{ pass: boolean; message?: string }> {
   const messages = await diagnose(monaco, learnerCode, spec.assert);
   const hasError = messages.length > 0;
@@ -78,7 +88,8 @@ export async function gradeCheckpoints(
   configureTypeScript(monaco);
   const results: CheckResult[] = [];
   for (const cp of checkpoints) {
-    if (!cp.verify) {
+    // verify が無い、または Svelte 用の仕様なら、このエンジンでは採点しない
+    if (!cp.verify || !isTypeScriptSpec(cp.verify)) {
       results.push({
         id: cp.id,
         description: cp.description,

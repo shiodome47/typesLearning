@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson25: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-25-useeffect-cleanup",
   order: 25,
   title: "useEffect + cleanup関数",

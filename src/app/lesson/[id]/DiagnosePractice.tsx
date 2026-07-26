@@ -20,6 +20,7 @@ import { WhyCard } from "@/components/WhyCard";
 import { InlineCodeText } from "@/components/InlineCodeText";
 import type { Lesson, DiagnoseLesson } from "@curriculum/types";
 import { LESSON_DIAGRAM_LINKS } from "@/lib/lessonDiagramLinks";
+import { monacoLanguageFor, modelPathFor } from "@/lib/monaco/setup";
 import {
   LessonHeader,
   LessonTitle,
@@ -126,7 +127,8 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
               <MonacoViewer
                 code={lesson.brokenCode}
                 theme={prefs.editorTheme}
-                path={`file:///broken-${lesson.id}.tsx`}
+                path={modelPathFor(lesson.language, `broken-${lesson.id}`)}
+                editorLanguage={monacoLanguageFor(lesson.language)}
               />
               <p className="text-xs text-gray-400 mt-2">
                 このコードは型チェックを通ります。それでも危険な箇所があります。
@@ -198,6 +200,7 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
                       onToggleTheme={prefs.toggleTheme}
                       diagnosticsEnabled={prefs.diagnosticsEnabled}
                       onToggleDiagnostics={prefs.toggleDiagnostics}
+                      showDiagnosticsToggle={lesson.language === "typescript"}
                     />
                   )}
                   <button
@@ -215,7 +218,8 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
                   onChange={handleCodeChange}
                   diagnosticsEnabled={prefs.diagnosticsEnabled}
                   theme={prefs.editorTheme}
-                  path={`file:///fix-${lesson.id}.tsx`}
+                  path={modelPathFor(lesson.language, `fix-${lesson.id}`)}
+                  editorLanguage={monacoLanguageFor(lesson.language)}
                 />
               ) : (
                 <div className="min-h-72 bg-gray-900 rounded-lg animate-pulse" />
@@ -228,6 +232,7 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
                 key={lesson.id}
                 checkpoints={lesson.checkpoints}
                 code={code ?? ""}
+                language={lesson.language}
               />
             </div>
 
@@ -241,7 +246,8 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
                   code={lesson.fixedCode}
                   diagramUrl={LESSON_DIAGRAM_LINKS[lesson.id]}
                   theme={prefs.editorTheme}
-                  path={`file:///fixed-${lesson.id}.tsx`}
+                  path={modelPathFor(lesson.language, `fixed-${lesson.id}`)}
+                  editorLanguage={monacoLanguageFor(lesson.language)}
                 />
               </div>
             )}

@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson13: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-13-async-await",
   order: 13,
   title: "async / await",

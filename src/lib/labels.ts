@@ -6,7 +6,7 @@
 // 追記漏れを防げる。
 // ─────────────────────────────────────────────────────────────
 
-import type { Category, Difficulty } from "@curriculum/types";
+import type { Category, Difficulty, LessonLanguage } from "@curriculum/types";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   "type-basics": "型の基礎",
@@ -21,6 +21,16 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   "react-basics": "React",
   "runtime-safety": "実行時安全",
   "code-review": "コード診断",
+  runes: "リアクティビティ",
+  components: "コンポーネント",
+  template: "テンプレート",
+  sveltekit: "SvelteKit",
+  a11y: "アクセシビリティ",
+};
+
+export const LANGUAGE_LABELS: Record<LessonLanguage, string> = {
+  typescript: "TypeScript",
+  svelte: "Svelte",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

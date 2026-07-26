@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useProgress } from "@/hooks/useProgress";
 import { LessonCard } from "./LessonCard";
 import type { Lesson } from "@curriculum/types";
-import { categoryLabel } from "@/lib/labels";
+import { categoryLabel, LANGUAGE_LABELS } from "@/lib/labels";
+import type { LessonLanguage } from "@curriculum/types";
 
 type StatusFilter = "all" | "incomplete" | "completed";
 type KindFilter = "all" | "write" | "diagnose";
@@ -45,12 +46,19 @@ export function LessonList({ lessons }: LessonListProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
+  const [language, setLanguage] = useState<LessonLanguage>("typescript");
 
-  // lessons 内に存在するカテゴリを出現順で抽出
-  const categories = [...new Set(lessons.map((l) => l.category))];
+  // 言語ごとに独立した教材群として扱う
+  const languageLessons = lessons.filter((l) => l.language === language);
+  const availableLanguages = [
+    ...new Set(lessons.map((l) => l.language)),
+  ] as LessonLanguage[];
+
+  // その言語に存在するカテゴリを出現順で抽出
+  const categories = [...new Set(languageLessons.map((l) => l.category))];
 
   // フィルタ適用
-  const filtered = lessons.filter((lesson) => {
+  const filtered = languageLessons.filter((lesson) => {
     if (categoryFilter !== "all" && lesson.category !== categoryFilter) return false;
     if (kindFilter !== "all" && lesson.kind !== kindFilter) return false;
     if (isLoaded && statusFilter !== "all") {
@@ -63,7 +71,7 @@ export function LessonList({ lessons }: LessonListProps) {
 
   // 進捗カウント
   const completedCount = isLoaded
-    ? Object.values(progress.lessons).filter((l) => l.completed).length
+    ? languageLessons.filter((l) => progress.lessons[l.id]?.completed).length
     : 0;
 
   // ランダム1問: 現在の絞り込み結果からランダムに選んで遷移
@@ -81,15 +89,15 @@ export function LessonList({ lessons }: LessonListProps) {
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-700">
               <span className="font-bold text-green-700 text-base">{completedCount}</span>
-              <span className="text-gray-500"> / {lessons.length} 完了</span>
+              <span className="text-gray-500"> / {languageLessons.length} 完了</span>
               <span className="ml-2 text-xs text-gray-400">
-                ({Math.round((completedCount / lessons.length) * 100)}%)
+                ({Math.round((completedCount / Math.max(languageLessons.length, 1)) * 100)}%)
               </span>
             </p>
             <div className="w-36 h-2 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-green-500 rounded-full transition-all duration-500"
-                style={{ width: `${(completedCount / lessons.length) * 100}%` }}
+                style={{ width: `${(completedCount / Math.max(languageLessons.length, 1)) * 100}%` }}
               />
             </div>
           </div>
@@ -97,6 +105,32 @@ export function LessonList({ lessons }: LessonListProps) {
           <span className="text-sm text-gray-400">読み込み中...</span>
         )}
       </div>
+
+      {/* ── 言語切り替え ── */}
+      {availableLanguages.length > 1 && (
+        <div className="mb-4 flex gap-2">
+          {availableLanguages.map((lang) => (
+            <button
+              key={lang}
+              onClick={() => {
+                setLanguage(lang);
+                setCategoryFilter("all");
+              }}
+              className={[
+                "flex-1 px-4 py-2.5 rounded-xl border-2 text-sm font-bold transition-colors",
+                language === lang
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600",
+              ].join(" ")}
+            >
+              {LANGUAGE_LABELS[lang]}
+              <span className="ml-1.5 text-xs font-normal opacity-80">
+                {lessons.filter((l) => l.language === lang).length}件
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── フィルタ ── */}
       <div className="mb-4 space-y-2">
@@ -163,7 +197,8 @@ export function LessonList({ lessons }: LessonListProps) {
       {/* ── 件数表示 ── */}
       <p className="text-xs text-gray-400 mb-3">
         {filtered.length} 件表示
-        {filtered.length !== lessons.length && ` / 全 ${lessons.length} 件`}
+        {filtered.length !== languageLessons.length &&
+          ` / 全 ${languageLessons.length} 件`}
       </p>
 
       {/* ── 教材カード一覧 ── */}

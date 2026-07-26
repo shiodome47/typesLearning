@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson37: Lesson = {
   kind: "diagnose",
+  language: "typescript",
   id: "ts-37-diagnose-missing-exhaustive",
   order: 37,
   title: "診断: 機能追加のたびに壊れる分岐",

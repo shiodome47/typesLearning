@@ -4,6 +4,7 @@ import type { Lesson } from "../types";
 // すべて収束する回収レッスン。実務の React + TS で最も頻繁に書くコード。
 export const lesson33: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-33-async-state-union",
   order: 33,
   title: "非同期状態を判別可能Unionで描画する",

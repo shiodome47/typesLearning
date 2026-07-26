@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson16: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-16-component-props",
   order: 16,
   title: "Reactコンポーネントの型（props）",

@@ -1,6 +1,7 @@
-# TypeScript 判断力トレーニング
+# 判断力トレーニング（TypeScript / Svelte）
 
-手本を見てゼロから書く「白紙練習」に加え、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
+手本を見てゼロから書く「白紙練習」と、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
+TypeScript 37件・Svelte 16件を1つのアプリで扱い、一覧で切り替えられる。
 
 ## 学習コンセプト
 
@@ -41,12 +42,25 @@ why: {
 見本は `curriculum/phase5-advanced-patterns/ts-20-exhaustive-check.ts` と
 `curriculum/phase3-real-app/ts-15-api-fetch.ts` にあります。
 
+## 2つの言語、2つの目的
+
+同じアプリですが、力を入れる場所が違います。
+
+| | TypeScript | Svelte |
+|---|---|---|
+| 目的 | **読んで判断できる**こと | **手が覚えている**こと（AIが使えないときの保険） |
+| 構文の暗記 | 不要 | 中核だけは必要 |
+| 診断の比率 | 5/37 | 6/16（「動くが間違っている」が多いため） |
+| 件数 | 37 | 16（Svelteは語彙が小さい） |
+
 ## 自動採点
 
-確認ポイントは自己申告ではなく、**TypeScript の型診断で機械的に判定**されます。
+確認ポイントは自己申告ではなく、**機械的に判定**されます。サーバーも外部APIも使わず、ブラウザ内で完結します。
+ただし判定方法は言語で根本的に違います。
+
+### TypeScript: 型について型で問う
 
 学習者のコードに「隠しアサーション」を連結し、Monaco 同梱の TypeScript ワーカーで診断を取得します。
-サーバーも外部APIも使わず、ブラウザ内で完結します。
 
 ```ts
 // 例: getTodo の戻り値が Todo | undefined になっているか
@@ -60,6 +74,21 @@ type _c = Expect<Equal<ReturnType<typeof getTodo>, Todo | undefined>>;
 
 > **注意**: `any` の検出は「値が使えるか」では判定できません。`any` は何でも通すためです。
 > 必ず `Expect<Equal<typeof x, 具体型>>` のように**型の同一性そのもの**を問う必要があります。
+
+### Svelte: AST とコンパイラ警告で問う
+
+Svelte で確かめたいこと（`$state` を使ったか、`$derived` の代わりに `$effect` で同期していないか、
+`{#each}` に key があるか）は**型では一切問えません**。`svelte/compiler` の AST と警告で判定します。
+
+```ts
+{ kind: "svelte-ast", query: "each:keyed" }          // 全ての {#each} に key があるか
+{ kind: "svelte-ast", query: "effect:no-assignment" } // $effect の中で代入していないか
+{ kind: "svelte-no-warning", code: "a11y_missing_attribute" }
+{ kind: "svelte-compile" }                            // コンパイルが通るか
+```
+
+Svelte はコンパイラが a11y の問題を**警告として出す**ため、React には無い採点材料が最初からあります。
+これがそのまま「ガードレール」の教材になります。
 
 ## 技術スタック
 
@@ -80,8 +109,13 @@ npm run dev     # http://localhost:3000
 
 ```bash
 npm run type-check         # アプリ本体の型チェック
-npm run verify:curriculum  # 教材コードの型チェック + 採点仕様の検証
+npm run verify:curriculum  # 教材コードの検証 + 採点仕様の検証（TypeScript / Svelte 両方）
+npm run audit:diagrams     # 図解リンクの整合性
 npm run build              # 本番ビルド
+
+# 実ブラウザ確認（playwright が必要。CI には入れていない）
+npm run smoke:e2e          # TypeScript 側
+npm run smoke:svelte       # Svelte 側
 ```
 
 `verify:curriculum` は重要です。教材の `starterCode` / `modelAnswer` は**テンプレート文字列なので
@@ -101,10 +135,11 @@ npm run build              # 本番ビルド
 ```
 typesLearning/
 ├── curriculum/                     # 教材データ
-│   ├── types.ts                    # Lesson は kind による判別可能Union
+│   ├── types.ts                    # Lesson は kind / language による判別可能Union
 │   ├── verifySupport.ts            # 採点の共通前提（ブラウザ/Node で共有）
 │   ├── phase1-type-basics/ 〜 phase6-modern-ts/
-│   └── phase7-judgment/            # 回収レッスン + 診断レッスン
+│   ├── phase7-judgment/            # 回収レッスン + 診断レッスン
+│   └── svelte/                     # Svelte 5（runes）16件
 ├── scripts/
 │   └── verify-curriculum.mjs       # 教材検証ハーネス（CI で実行）
 └── src/
@@ -121,8 +156,11 @@ typesLearning/
     │   └── useEditorPrefs.ts       # テーマ・型エラー表示
     └── lib/
         ├── labels.ts               # Record<Category,...> で追加漏れを型で検出
+        ├── studyGuide.ts           # 言語ごとのランク分け（分類漏れをCIで検出）
         ├── monaco/setup.ts         # TS 設定・React シム・インスタンス共有
-        └── verify/browserEngine.ts # 採点エンジン
+        └── verify/
+            ├── browserEngine.ts    # TypeScript 採点（型診断）
+            └── svelteEngine.ts     # Svelte 採点（AST・コンパイラ警告）
 ```
 
 ## 教材の追加方法

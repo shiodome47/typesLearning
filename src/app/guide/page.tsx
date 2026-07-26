@@ -1,18 +1,19 @@
 // 学習の手引き（Server Component）
 // 「全部を同じようにやらなくていい」を伝えることが目的のページ。
+// 配分の理由は TypeScript と Svelte で違うので、言語ごとに分けて示す。
 
 import Link from "next/link";
 import { allLessons } from "../../../curriculum";
 import { InlineCodeText } from "@/components/InlineCodeText";
-import {
-  TIER_INFO,
-  TIER_LESSONS,
-  type Tier,
-} from "@/lib/studyGuide";
+import { TIER_INFO, TIER_LESSONS, type Tier } from "@/lib/studyGuide";
+import type { LessonLanguage } from "@curriculum/types";
+import { LANGUAGE_LABELS } from "@/lib/labels";
 
 export const metadata = {
-  title: "学習の手引き | TypeScript 判断力トレーニング",
+  title: "学習の手引き | 判断力トレーニング",
 };
+
+const TIERS = ["focus", "foundation", "reference"] as const;
 
 function Section({
   title,
@@ -29,13 +30,21 @@ function Section({
   );
 }
 
-function TierBlock({ tier }: { tier: Tier }) {
-  const info = TIER_INFO[tier];
-  const ids = TIER_LESSONS[tier];
+function TierBlock({
+  language,
+  tier,
+}: {
+  language: LessonLanguage;
+  tier: Tier;
+}) {
+  const info = TIER_INFO[language][tier];
+  const ids = TIER_LESSONS[language][tier];
   const lessons = ids
     .map((id) => allLessons.find((l) => l.id === id))
     .filter((l) => l !== undefined)
     .sort((a, b) => a.order - b.order);
+
+  if (lessons.length === 0) return null;
 
   return (
     <div className={`rounded-xl border-2 p-4 mb-4 ${info.accent}`}>
@@ -67,6 +76,31 @@ function TierBlock({ tier }: { tier: Tier }) {
   );
 }
 
+function LanguageGuide({
+  language,
+  lead,
+}: {
+  language: LessonLanguage;
+  lead: React.ReactNode;
+}) {
+  const count = TIERS.reduce(
+    (n, t) => n + TIER_LESSONS[language][t].length,
+    0
+  );
+  if (count === 0) return null;
+
+  return (
+    <Section title={`${LANGUAGE_LABELS[language]}の配分（${count}件）`}>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 text-sm text-gray-700 leading-relaxed">
+        {lead}
+      </div>
+      {TIERS.map((tier) => (
+        <TierBlock key={tier} language={language} tier={tier} />
+      ))}
+    </Section>
+  );
+}
+
 export default function GuidePage() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,22 +126,25 @@ export default function GuidePage() {
         <div className="bg-white rounded-xl border-2 border-green-300 p-4 mb-10">
           <ul className="space-y-2 text-sm text-gray-800 leading-relaxed">
             <li>
-              ・<strong>全部を白紙で書けるようになる必要はありません。</strong>
-              構文を覚えることは、いまいちばん価値が下がった能力です
+              ・<strong>全部を同じようにやる必要はありません。</strong>
+              各言語で「時間をかけるもの」だけ繰り返してください
             </li>
             <li>
-              ・大事なのは<strong>読んで判断できること</strong>。
-              AIが書いたコードを見て「これは危ない」と気づけるかどうかです
+              ・
+              <strong>
+                TypeScript と Svelte では、力を入れる場所が違います。
+              </strong>
+              TypeScript は「読んで判断できること」、Svelte は「手が覚えていること」が目的です
             </li>
             <li>
-              ・<strong>37件は同じ重さではありません。</strong>
-              下の「時間をかける」8件だけ、繰り返す価値があります
+              ・<strong>進捗率は目的ではありません。</strong>
+              完走を目標にしないでください
             </li>
           </ul>
         </div>
 
         {/* ── 1レッスンの進め方 ── */}
-        <Section title="1レッスンの進め方">
+        <Section title="1レッスンの進め方（共通）">
           <ol className="space-y-2.5 text-sm text-gray-700 leading-relaxed">
             <li>
               <strong>1.「なぜ必要か」を読む。</strong>
@@ -122,10 +159,10 @@ export default function GuidePage() {
               写経でかまいません。指を動かすと引っかかりに気づきます
             </li>
             <li>
-              <strong>4. 手本を隠して、思い出せるところだけ書く。</strong>
+              <strong>4. 手本を隠して書く。</strong>
               詰まったらすぐ開いていいです。
               <span className="text-gray-900 font-medium">
-                思い出せるまで繰り返す必要はありません
+                ただし Svelte の「手が覚えるまでやる」だけは、見ずに書けるまで繰り返してください
               </span>
             </li>
             <li>
@@ -156,53 +193,62 @@ export default function GuidePage() {
           </div>
         </Section>
 
-        {/* ── ランク ── */}
-        <Section title="37件を3つに分けています">
-          {(["focus", "foundation", "reference"] as const).map((tier) => (
-            <TierBlock key={tier} tier={tier} />
-          ))}
-        </Section>
+        {/* ── 言語ごとの配分 ── */}
+        <LanguageGuide
+          language="typescript"
+          lead={
+            <>
+              <p>
+                <strong>構文を覚える必要はありません。</strong>
+                いま価値があるのは、AIが書いたコードを読んで「これは危ない」と気づけることです。
+              </p>
+              <p className="mt-2">
+                だから「時間をかける」8件は、境界の検証・状態の設計・網羅性・診断に絞ってあります。
+                型パズル（<InlineCodeText text="Mapped Types" />・
+                <InlineCodeText text="keyof" />
+                など）は暗記せず、出てきたときに調べれば間に合います。
+              </p>
+            </>
+          }
+        />
 
-        {/* ── おすすめの順番 ── */}
-        <Section title="おすすめの順番">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <ol className="space-y-2 text-sm text-gray-700 leading-relaxed">
-              <li>
-                <strong>1.「読んで理解する」14件を軽く通す。</strong>
-                1件10分。ここで止まらないでください
-              </li>
-              <li>
-                <strong>2.「時間をかける」8件をじっくり。</strong>
-                ここが本体です。1件30分かける価値があります
-              </li>
-              <li>
-                <strong>3.「必要になったら引く」15件は、今はやらない。</strong>
-                仕事で出てきたときに開いてください
-              </li>
-            </ol>
-            <p className="text-xs text-gray-500 mt-3">
-              一覧ページの「種類」で<strong>診断</strong>だけに絞り込めます。
-              「時間をかける」8件のうち4件は診断問題です。
-            </p>
-          </div>
-        </Section>
+        <LanguageGuide
+          language="svelte"
+          lead={
+            <>
+              <p>
+                <strong>ここは TypeScript と方針が逆です。</strong>
+                Svelte を学ぶ目的が「AIが使えない状況でも書けるという保険」なので、
+                中核の構文は手が覚えているほうがいい。そろばんと同じ考え方です。
+              </p>
+              <p className="mt-2">
+                幸い、<strong>Svelte の中核は驚くほど小さい</strong>です。
+                <InlineCodeText text="$state" />・
+                <InlineCodeText text="$derived" />・
+                <InlineCodeText text="$props" />・
+                <InlineCodeText text="bind:" />
+                あたりが書ければ、たいていの画面は書けます。
+              </p>
+              <p className="mt-2">
+                一方で Svelte の失敗は「
+                <strong>落ちない。動く。でも間違っている</strong>
+                」が主戦場です。書く練習では原理的に気づけないので、診断の比率を上げてあります。
+              </p>
+            </>
+          }
+        />
 
         {/* ── やらなくていいこと ── */}
         <Section title="やらなくていいこと">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <ul className="space-y-2 text-sm text-gray-700 leading-relaxed">
               <li>
-                ・<strong>全37件を白紙で再現できるようにすること。</strong>
+                ・<strong>TypeScript を白紙で再現できるようにすること。</strong>
                 構文はAIが書きます。あなたが判断できることのほうが重要です
               </li>
               <li>
-                ・
-                <strong>
-                  型パズル（<InlineCodeText text="Mapped Types" />・
-                  <InlineCodeText text="keyof" />
-                  など）を暗記すること。
-                </strong>
-                出てきたときに調べれば間に合います
+                ・<strong>Svelte の全16件を暗記すること。</strong>
+                手が覚えるべきなのは「手が覚えるまでやる」の中核だけです
               </li>
               <li>
                 ・<strong>完走すること自体を目標にすること。</strong>
@@ -223,7 +269,7 @@ export default function GuidePage() {
               </li>
               <li>
                 ・<strong>型エラーの意味が分からない</strong> →
-                エディタ右上の「型エラー: ON」にすると、その場で赤線と説明が出ます
+                エディタ右上の「型エラー: ON」にすると、その場で赤線と説明が出ます（TypeScript教材のみ）
               </li>
               <li>
                 ・<strong>「なぜ必要か」が腑に落ちない</strong> →

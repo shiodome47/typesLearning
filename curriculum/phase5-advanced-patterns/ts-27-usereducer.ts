@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson27: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-27-usereducer",
   order: 27,
   title: "useReducer + Discriminated Union",

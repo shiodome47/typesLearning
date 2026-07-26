@@ -49,6 +49,7 @@ export interface CodeEditorProps {
   diagnosticsEnabled?: boolean; // TypeScript 診断（赤波線）の ON/OFF
   theme?: string;               // Monaco テーマ（"vs-dark" / "vs"）
   path?: string;                // モデルのパス。.tsx にすると JSX が解析される
+  editorLanguage?: string;      // Monaco の言語ID（既定: typescript）
 }
 
 export function CodeEditor({
@@ -58,6 +59,7 @@ export function CodeEditor({
   diagnosticsEnabled = false,
   theme = "vs-dark",
   path = "file:///practice.tsx",
+  editorLanguage = "typescript",
 }: CodeEditorProps) {
   const [containerHeight, setContainerHeight] = useState(DEFAULT_HEIGHT);
   const [showHint, setShowHint] = useState(false); // SSR後にのみ表示
@@ -122,7 +124,7 @@ export function CodeEditor({
       )}
       <MonacoEditor
         height="100%"
-        language="typescript"
+        language={editorLanguage}
         path={path}
         theme={theme}
         value={value}

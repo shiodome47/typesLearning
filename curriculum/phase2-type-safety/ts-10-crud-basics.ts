@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson10: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-10-crud-basics",
   order: 10,
   title: "CRUDデータ操作",

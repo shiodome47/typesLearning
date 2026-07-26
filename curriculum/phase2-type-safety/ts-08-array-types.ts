@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson08: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-08-array-types",
   order: 8,
   title: "配列の型と操作",

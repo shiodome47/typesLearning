@@ -6,6 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { Monaco } from "@monaco-editor/react";
+import type { LessonLanguage } from "@curriculum/types";
 
 // 採点の前提はブラウザ/Node で共通の定義を使う（curriculum/verifySupport.ts）
 export { PRELUDE, REACT_SHIM } from "@curriculum/verifySupport";
@@ -55,6 +56,22 @@ export function configureTypeScript(monaco: Monaco): void {
     REACT_SHIM,
     "file:///node_modules/@types/react/index.d.ts"
   );
+}
+
+/**
+ * 教材の言語 → Monaco の言語ID。
+ * Monaco に Svelte の言語サービスは無いので html を使う。
+ * テンプレートも `<script>` 内の JS も妥当に色分けされる。
+ */
+export function monacoLanguageFor(language: LessonLanguage): string {
+  return language === "svelte" ? "html" : "typescript";
+}
+
+/** モデルのパス。拡張子で TypeScript 側の解析対象かどうかが決まる */
+export function modelPathFor(language: LessonLanguage, name: string): string {
+  return language === "svelte"
+    ? `file:///${name}.svelte`
+    : `file:///${name}.tsx`;
 }
 
 /** 型エラーの赤波線を ON/OFF する */

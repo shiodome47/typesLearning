@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson20: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-20-exhaustive-check",
   order: 20,
   title: "網羅性チェック（never と assertNever）",

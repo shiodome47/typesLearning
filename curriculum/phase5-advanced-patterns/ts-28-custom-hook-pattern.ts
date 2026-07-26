@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson28: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-28-custom-hook-pattern",
   order: 28,
   title: "型安全なカスタムhookパターン",

@@ -188,11 +188,14 @@ export function EditorToggles({
   onToggleTheme,
   diagnosticsEnabled,
   onToggleDiagnostics,
+  showDiagnosticsToggle = true,
 }: {
   editorTheme: string;
   onToggleTheme: () => void;
   diagnosticsEnabled: boolean;
   onToggleDiagnostics: () => void;
+  /** Svelte 教材では TypeScript の型診断が効かないので隠す */
+  showDiagnosticsToggle?: boolean;
 }) {
   return (
     <div className="flex items-center gap-3">
@@ -208,6 +211,7 @@ export function EditorToggles({
       >
         テーマ: {editorTheme === "vs-dark" ? "Dark" : "Light"}
       </button>
+      {showDiagnosticsToggle && (
       <button
         onClick={onToggleDiagnostics}
         className={[
@@ -220,6 +224,7 @@ export function EditorToggles({
       >
         型エラー: {diagnosticsEnabled ? "ON" : "OFF"}
       </button>
+      )}
     </div>
   );
 }

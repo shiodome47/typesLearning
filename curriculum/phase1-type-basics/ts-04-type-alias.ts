@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson04: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-04-type-alias",
   order: 4,
   title: "type エイリアス",

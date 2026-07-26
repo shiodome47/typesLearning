@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson21: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-21-utility-types",
   order: 21,
   title: "Utility Types基礎（Partial / Pick / Omit）",

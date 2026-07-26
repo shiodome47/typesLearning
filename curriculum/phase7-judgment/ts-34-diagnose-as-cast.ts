@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson34: Lesson = {
   kind: "diagnose",
+  language: "typescript",
   id: "ts-34-diagnose-as-cast",
   order: 34,
   title: "診断: 型が通るのに本番で落ちるAPI呼び出し",
