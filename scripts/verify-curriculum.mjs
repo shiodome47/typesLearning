@@ -110,6 +110,33 @@ function fail(lessonId, what, detail) {
   failures.push({ lessonId, what, detail });
 }
 
+// 0) 学習の手引きのランク分けが全レッスンを過不足なく覆っているか
+//    （レッスンを追加したとき、手引きから漏れたまま気づかないのを防ぐ）
+{
+  const guideSrc = fs.readFileSync(
+    path.join(ROOT, "src/lib/studyGuide.ts"),
+    "utf8"
+  );
+  const tiered = [...guideSrc.matchAll(/"(ts-[a-z0-9-]+)"/g)].map((m) => m[1]);
+  const counts = new Map();
+  for (const id of tiered) counts.set(id, (counts.get(id) ?? 0) + 1);
+
+  for (const lesson of allLessons) {
+    const n = counts.get(lesson.id) ?? 0;
+    if (n === 0) {
+      fail(lesson.id, "学習の手引き", "どのランクにも分類されていない");
+    } else if (n > 1) {
+      fail(lesson.id, "学習の手引き", `${n} 個のランクに重複している`);
+    }
+  }
+  const lessonIds = new Set(allLessons.map((l) => l.id));
+  for (const id of counts.keys()) {
+    if (!lessonIds.has(id)) {
+      fail(id, "学習の手引き", "存在しない教材が分類されている");
+    }
+  }
+}
+
 // 1) relatedIds の整合性
 const knownIds = new Set(allLessons.map((l) => l.id));
 for (const lesson of allLessons) {
