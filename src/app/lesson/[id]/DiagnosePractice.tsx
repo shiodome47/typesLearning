@@ -104,10 +104,10 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* ── 左カラム: 診断対象 ── */}
+          {/* ── 左カラム: 診断対象 ──
+              症状（短い）→ レビュー対象のコード の順に置き、
+              右カラムの修正エリアと高さを揃える。説明はその下に回す。 */}
           <div className="space-y-4">
-            <ExplanationCard text={lesson.explanation} />
-
             {/* 症状 */}
             <div className="bg-amber-50 rounded-xl border border-amber-200 p-4">
               <h2 className="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-2">
@@ -178,6 +178,8 @@ export function DiagnosePractice({ lesson, allLessons }: DiagnosePracticeProps) 
                 </ul>
               )}
             </div>
+
+            <ExplanationCard text={lesson.explanation} />
 
             <RelatedLessons lesson={lesson} allLessons={allLessons} />
           </div>
