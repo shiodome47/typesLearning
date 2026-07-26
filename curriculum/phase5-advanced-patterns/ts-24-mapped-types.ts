@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson24: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-24-mapped-types",
   order: 24,
   title: "Mapped Types基礎",

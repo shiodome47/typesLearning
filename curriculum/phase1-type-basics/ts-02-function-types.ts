@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson02: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-02-function-types",
   order: 2,
   title: "関数の型注釈",

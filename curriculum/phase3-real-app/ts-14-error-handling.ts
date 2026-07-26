@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson14: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-14-error-handling",
   order: 14,
   title: "try/catch とエラー型",

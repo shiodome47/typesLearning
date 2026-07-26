@@ -7,22 +7,29 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState, useCallback } from "react";
-import type { Checkpoint } from "@curriculum/types";
+import type { Checkpoint, LessonLanguage } from "@curriculum/types";
 import { InlineCodeText } from "./InlineCodeText";
 import { whenMonacoReady } from "@/lib/monaco/setup";
 import { gradeCheckpoints, type CheckResult } from "@/lib/verify/browserEngine";
+import { gradeSvelteCheckpoints } from "@/lib/verify/svelteEngine";
 
 interface CheckpointPanelProps {
   checkpoints: Checkpoint[];
   /** 採点対象のコード */
   code: string;
+  /** 言語によって採点エンジンが変わる */
+  language: LessonLanguage;
   /** レッスンが変わったら結果を捨てるためのキー */
   resetKey?: string;
 }
 
 type Status = "idle" | "grading" | "done" | "error";
 
-export function CheckpointPanel({ checkpoints, code }: CheckpointPanelProps) {
+export function CheckpointPanel({
+  checkpoints,
+  code,
+  language,
+}: CheckpointPanelProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [results, setResults] = useState<CheckResult[]>([]);
   const [selfChecked, setSelfChecked] = useState<Set<string>>(new Set());
@@ -32,14 +39,17 @@ export function CheckpointPanel({ checkpoints, code }: CheckpointPanelProps) {
   const handleGrade = useCallback(async () => {
     setStatus("grading");
     try {
-      const monaco = await whenMonacoReady();
-      const r = await gradeCheckpoints(monaco, code, checkpoints);
+      // TypeScript は Monaco の型診断、Svelte は svelte/compiler で採点する
+      const r =
+        language === "svelte"
+          ? await gradeSvelteCheckpoints(code, checkpoints)
+          : await gradeCheckpoints(await whenMonacoReady(), code, checkpoints);
       setResults(r);
       setStatus("done");
     } catch {
       setStatus("error");
     }
-  }, [code, checkpoints]);
+  }, [code, checkpoints, language]);
 
   const toggleSelf = useCallback((id: string) => {
     setSelfChecked((prev) => {

@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson35: Lesson = {
   kind: "diagnose",
+  language: "typescript",
   id: "ts-35-diagnose-ssr-hook",
   order: 35,
   title: "診断: サーバーでだけ落ちるカスタムhook",

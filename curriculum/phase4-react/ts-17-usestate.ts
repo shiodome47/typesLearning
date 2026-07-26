@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson17: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-17-usestate",
   order: 17,
   title: "useState の型",

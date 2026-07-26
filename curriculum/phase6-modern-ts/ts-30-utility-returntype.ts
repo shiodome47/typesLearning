@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson30: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-30-utility-returntype",
   order: 30,
   title: "ReturnType / Parameters / Awaited",

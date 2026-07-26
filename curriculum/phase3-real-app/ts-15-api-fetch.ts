@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson15: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-15-api-fetch",
   order: 15,
   title: "APIレスポンスを境界で検証する",

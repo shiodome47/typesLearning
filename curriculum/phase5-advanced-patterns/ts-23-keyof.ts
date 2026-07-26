@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson23: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-23-keyof",
   order: 23,
   title: "keyof / Indexed Access型",

@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson06: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-06-union-literal",
   order: 6,
   title: "Union型 / Literal型",

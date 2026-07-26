@@ -38,13 +38,40 @@ export interface Hint {
 //
 // 注意: any は何でも通してしまうため、値の使用可否ではなく
 // Expect<Equal<...>> で型の同一性そのものを問うこと。
-export type CheckKind = "type" | "expect-error";
+/** Svelte の AST に対して問える述語 */
+export type SvelteQuery =
+  | "rune:$state"
+  | "rune:$derived"
+  | "rune:$effect"
+  | "rune:$props"
+  | "rune:$bindable"
+  | "block:each"
+  | "block:if"
+  | "block:await"
+  | "block:key"
+  | "each:keyed"
+  | "directive:bind"
+  | "snippet"
+  | "render";
 
-export interface CheckSpec {
-  kind: CheckKind;
-  /** 学習者コードの後ろに連結されるアサーションコード */
-  assert: string;
-}
+/**
+ * 採点仕様。言語によって判定できることが違うので判別可能Unionにする。
+ *
+ * TypeScript は「型について型で問える」ので型アサーションで判定できるが、
+ * Svelte で確かめたいこと（$derived を使ったか、{#each} に key があるか）は
+ * 型では一切問えない。コンパイラの AST と警告で判定する。
+ */
+export type CheckSpec =
+  /** TS: 学習者コードに assert を連結し、型診断が出なければ合格 */
+  | { kind: "type"; assert: string }
+  /** TS: 型診断が「出れば」合格（不正な使い方を型で弾けている） */
+  | { kind: "expect-error"; assert: string }
+  /** Svelte: コンパイルが通れば合格 */
+  | { kind: "svelte-compile" }
+  /** Svelte: AST クエリの結果が expect と一致すれば合格（既定 true） */
+  | { kind: "svelte-ast"; query: SvelteQuery; expect?: boolean }
+  /** Svelte: 指定コードのコンパイラ警告が出なければ合格（a11y など） */
+  | { kind: "svelte-no-warning"; code: string };
 
 export interface Checkpoint {
   id: string;
@@ -73,9 +100,13 @@ export interface Why {
   insight: string;
 }
 
+/** 教材が扱う言語。採点方法とエディタ設定がこれで決まる */
+export type LessonLanguage = "typescript" | "svelte";
+
 interface LessonBase {
   id: string;          // 例: "ts-01-variable-types"
-  order: number;       // 表示順（ソート用）
+  order: number;       // 表示順（ソート用・言語ごとに独立）
+  language: LessonLanguage;
   title: string;
   category: Category;
   difficulty: Difficulty;

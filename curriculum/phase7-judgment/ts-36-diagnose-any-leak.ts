@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson36: Lesson = {
   kind: "diagnose",
+  language: "typescript",
   id: "ts-36-diagnose-any-leak",
   order: 36,
   title: "診断: 型はあるのに何も守っていないコード",

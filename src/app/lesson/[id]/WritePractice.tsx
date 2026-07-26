@@ -12,6 +12,7 @@ import { CheckpointPanel } from "@/components/CheckpointPanel";
 import { WhyCard } from "@/components/WhyCard";
 import type { Lesson, WriteLesson } from "@curriculum/types";
 import { LESSON_DIAGRAM_LINKS } from "@/lib/lessonDiagramLinks";
+import { monacoLanguageFor, modelPathFor } from "@/lib/monaco/setup";
 import {
   LessonHeader,
   LessonTitle,
@@ -115,7 +116,8 @@ export function WritePractice({ lesson, allLessons }: WritePracticeProps) {
                 code={lesson.modelAnswer}
                 diagramUrl={LESSON_DIAGRAM_LINKS[lesson.id]}
                 theme={prefs.editorTheme}
-                path={`file:///model-${lesson.id}.tsx`}
+                path={modelPathFor(lesson.language, `model-${lesson.id}`)}
+                editorLanguage={monacoLanguageFor(lesson.language)}
               />
             </div>
 
@@ -124,6 +126,7 @@ export function WritePractice({ lesson, allLessons }: WritePracticeProps) {
                 key={lesson.id}
                 checkpoints={lesson.checkpoints}
                 code={code ?? ""}
+                language={lesson.language}
               />
             </div>
 
@@ -146,6 +149,7 @@ export function WritePractice({ lesson, allLessons }: WritePracticeProps) {
                       onToggleTheme={prefs.toggleTheme}
                       diagnosticsEnabled={prefs.diagnosticsEnabled}
                       onToggleDiagnostics={prefs.toggleDiagnostics}
+                      showDiagnosticsToggle={lesson.language === "typescript"}
                     />
                   )}
                   <button
@@ -165,7 +169,8 @@ export function WritePractice({ lesson, allLessons }: WritePracticeProps) {
                   minHeight="min-h-72"
                   diagnosticsEnabled={prefs.diagnosticsEnabled}
                   theme={prefs.editorTheme}
-                  path={`file:///practice-${lesson.id}.tsx`}
+                  path={modelPathFor(lesson.language, `practice-${lesson.id}`)}
+                  editorLanguage={monacoLanguageFor(lesson.language)}
                 />
               ) : (
                 <div className="min-h-72 bg-gray-900 rounded-lg animate-pulse" />

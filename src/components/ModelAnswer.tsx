@@ -9,6 +9,7 @@ interface ModelAnswerProps {
   diagramUrl?: string;
   theme?: string;
   path?: string;
+  editorLanguage?: string;
 }
 
 export function ModelAnswer({
@@ -17,6 +18,7 @@ export function ModelAnswer({
   diagramUrl,
   theme = "vs-dark",
   path,
+  editorLanguage,
 }: ModelAnswerProps) {
   const [isVisible, setIsVisible] = useState(defaultVisible);
   const [copied, setCopied] = useState(false);
@@ -59,7 +61,7 @@ export function ModelAnswer({
 
       {isVisible && (
         <div className="relative">
-          <MonacoViewer code={code} theme={theme} path={path} />
+          <MonacoViewer code={code} theme={theme} path={path} editorLanguage={editorLanguage} />
           <div className="absolute top-2 right-2 z-10">
             {copied ? (
               <span className="text-xs text-green-400 select-none px-1">コピーしました</span>

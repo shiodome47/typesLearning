@@ -2,6 +2,7 @@ import type { Lesson } from "../types";
 
 export const lesson18: Lesson = {
   kind: "write",
+  language: "typescript",
   id: "ts-18-form-input",
   order: 18,
   title: "フォーム入力の型",
