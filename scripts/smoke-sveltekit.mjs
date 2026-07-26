@@ -152,18 +152,75 @@ await page.waitForTimeout(800);
 await page.getByRole("button", { name: /Svelte/ }).click();
 await page.waitForTimeout(600);
 const shown = await page.locator("text=/\\d+ 件表示/").first().textContent();
-log(Boolean(shown?.includes("25")), "一覧に Svelte 25 件（16 + SvelteKit 9）", shown ?? "");
+log(Boolean(shown?.includes("31")), "一覧に Svelte 31 件（16 + SvelteKit 9 + ガードレール 6）", shown ?? "");
 
 // ── 8. 手引きに「順番に通す」が出ているか ──
 await page.goto(`${BASE}/guide`, { waitUntil: "domcontentloaded" });
 await page.waitForTimeout(600);
 const hasTutorial = await page
-  .locator("text=順番に通す（SvelteKit編）")
+  .locator("text=順番に通す（SvelteKit編 → ガードレール編）")
   .first()
   .isVisible()
   .catch(() => false);
 log(hasTutorial, "手引きに SvelteKit 編のランクがある");
 
-console.log(`\n=== ${results.filter(Boolean).length}/${results.length} 合格 ===`);
+
+// ── 9. ガードレール編: 設定ファイルも構造的に採点できるか ──
+await openLesson("gr-03-eslint");
+const grBefore = await grade();
+log(
+  grBefore.total > 0 && grBefore.got < grBefore.total,
+  "gr-03: Lint 未設定のままでは不合格",
+  `${grBefore.got} / ${grBefore.total}`
+);
+
+await selectFile("eslint.config.js");
+await replaceActiveFile(`import svelte from "eslint-plugin-svelte";
+
+export default [
+  ...svelte.configs["flat/recommended"],
+  {
+    rules: {
+      "svelte/require-each-key": "error",
+      "svelte/no-at-html-tags": "error",
+    },
+  },
+];
+`);
+
+await selectFile("+page.svelte");
+await replaceActiveFile(`<script lang="ts">
+  import type { PageData } from "./$types";
+  let { data }: { data: PageData } = $props();
+</script>
+
+<h1>物件一覧</h1>
+<ul>
+  {#each data.items as item (item.id)}
+    <li>
+      <a href="/bukken/{item.id}">{item.name}</a>
+      <p>{item.description}</p>
+    </li>
+  {/each}
+</ul>
+`);
+
+const grAfter = await grade();
+log(
+  grAfter.total > 0 && grAfter.got === grAfter.total,
+  "gr-03: Lint 設定 + コード修正で全合格",
+  `${grAfter.got} / ${grAfter.total}`
+);
+
+// ── 10. package.json（JSON）も採点対象になるか ──
+await openLesson("gr-04-svelte-check");
+const pkgBefore = await grade();
+log(
+  pkgBefore.total > 0 && pkgBefore.got < pkgBefore.total,
+  "gr-04: package.json 未設定のままでは不合格",
+  `${pkgBefore.got} / ${pkgBefore.total}`
+);
+
+console.log(`\n=== 追加分を含む最終: ${results.filter(Boolean).length}/${results.length} 合格 ===`);
 await browser.close();
 process.exit(results.every(Boolean) ? 0 : 1);

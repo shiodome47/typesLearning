@@ -64,6 +64,15 @@ export function isScriptFile(path: string): boolean {
 }
 
 /**
+ * この採点エンジンが解析できる拡張子か。
+ * 教材には参考として YAML などを添えることがあるので、
+ * 解析対象を明示して「読めないファイルで落ちる」のを防ぐ。
+ */
+export function isParsableFile(path: string): boolean {
+  return /\.(svelte|ts|js|mjs|json)$/.test(path);
+}
+
+/**
  * ファイルを解析して Svelte 形式の AST を返す。
  *
  * .ts / .js は `<script lang="ts">` で包んで Svelte のパーサに渡す。
@@ -77,6 +86,12 @@ export function parseFile(
   source: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): any {
+  if (path.endsWith(".json")) {
+    // JSON 単体は式なので、代入の右辺にして構文として成立させる
+    return api.parse(`<script lang="ts">\nconst __json = ${source};\n</script>`, {
+      modern: true,
+    });
+  }
   if (isScriptFile(path)) {
     return api.parse(`<script lang="ts">\n${source}\n</script>`, {
       modern: true,
@@ -462,6 +477,7 @@ function runCheckInner(
     // ── SvelteKit ──
     case "kit-parse": {
       for (const [path, source] of Object.entries(files)) {
+        if (!isParsableFile(path)) continue;
         try {
           parseFile(api, path, source);
         } catch (e) {
@@ -606,10 +622,125 @@ function runCheckInner(
       };
     }
 
+    case "kit-declares": {
+      const ast = parseFile(api, spec.file, requireFile(files, spec.file));
+      let found = false;
+      const members: string[] = [];
+      walkScripts(ast, (n) => {
+        const isDecl =
+          n.type === "TSInterfaceDeclaration" ||
+          n.type === "TSTypeAliasDeclaration";
+        if (!isDecl || nodeName(n.id) !== spec.name) return;
+        found = true;
+        // interface の本体は body.body、type エイリアスは typeAnnotation.members
+        const body =
+          ((n.body as AstNode | undefined)?.body as AstNode[] | undefined) ??
+          ((n.typeAnnotation as AstNode | undefined)?.members as
+            | AstNode[]
+            | undefined) ??
+          [];
+        for (const m of body) {
+          const key = nodeName(m.key);
+          if (key) members.push(key);
+        }
+      });
+      if (!found) {
+        return {
+          pass: false,
+          message: `${spec.file} に ${spec.name} の宣言がありません`,
+        };
+      }
+      const missing = (spec.members ?? []).filter((m) => !members.includes(m));
+      return {
+        pass: missing.length === 0,
+        message:
+          missing.length === 0
+            ? undefined
+            : `${spec.name} に ${missing.join(", ")} がありません`,
+      };
+    }
+
+    case "kit-annotated": {
+      const ast = parseFile(api, spec.file, requireFile(files, spec.file));
+      let declared = false;
+      let annotation: string | null = null;
+      walkScripts(ast, (n) => {
+        if (n.type !== "VariableDeclarator" || nodeName(n.id) !== spec.name) {
+          return;
+        }
+        declared = true;
+        const ta = (n.id as AstNode).typeAnnotation as AstNode | undefined;
+        const inner = ta?.typeAnnotation as AstNode | undefined;
+        const name = nodeName(inner?.typeName);
+        if (name) annotation = name;
+      });
+      if (!declared) {
+        return { pass: false, message: `${spec.name} が見つかりません` };
+      }
+      if (annotation === null) {
+        return {
+          pass: false,
+          message: `${spec.name} に型注釈が付いていません（: ${spec.type} を書いてください）`,
+        };
+      }
+      return {
+        pass: annotation === spec.type,
+        message:
+          annotation === spec.type
+            ? undefined
+            : `${spec.name} の型が ${annotation} になっています（期待: ${spec.type}）`,
+      };
+    }
+
+    case "kit-contains-string": {
+      const ast = parseFile(api, spec.file, requireFile(files, spec.file));
+      let actual = false;
+      walkScripts(ast, (n) => {
+        if (n.type !== "Literal") return;
+        const v = (n as { value?: unknown }).value;
+        if (typeof v === "string" && v.includes(spec.value)) actual = true;
+      });
+      const expected = spec.expect ?? true;
+      return {
+        pass: actual === expected,
+        message:
+          actual === expected
+            ? undefined
+            : expected
+              ? `${spec.file} に "${spec.value}" がありません`
+              : `${spec.file} に "${spec.value}" を書かないでください`,
+      };
+    }
+
+    case "kit-member": {
+      const ast = parseFile(api, spec.file, requireFile(files, spec.file));
+      let actual = false;
+      const visit = (n: AstNode) => {
+        if (n.type !== "MemberExpression") return;
+        if (nodeName(n.object) !== spec.object) return;
+        if (nodeName(n.property) !== spec.property) return;
+        actual = true;
+      };
+      walkScripts(ast, visit);
+      // .svelte はテンプレート側にも式が書ける（{data.bukken.name} など）
+      walk(ast.fragment, visit);
+      const expected = spec.expect ?? true;
+      const what = `${spec.object}.${spec.property}`;
+      return {
+        pass: actual === expected,
+        message:
+          actual === expected
+            ? undefined
+            : expected
+              ? `${what} が見つかりません`
+              : `${what} は間違いです`,
+      };
+    }
+
     case "kit-server-only": {
       const leaks: string[] = [];
       for (const [path, source] of Object.entries(files)) {
-        if (isServerOnlyFile(path)) continue;
+        if (isServerOnlyFile(path) || !isParsableFile(path)) continue;
         const hit = importsOf(api, path, source).some(
           (i) => i.source === spec.source
         );

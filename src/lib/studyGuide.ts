@@ -63,11 +63,11 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
       accent: "border-orange-300 bg-orange-50 text-orange-900",
     },
     tutorial: {
-      label: "順番に通す（SvelteKit編）",
+      label: "順番に通す（SvelteKit編 → ガードレール編）",
       summary:
-        "①から⑨まで通すと、物件サイトが1本できあがります。拾い読みではなく順番にやってください。前の回の続きを書くので、飛ばすと繋がりません。",
+        "SvelteKit編①〜⑨で物件サイトを1本作り、ガードレール編①〜⑥でそれを「納品できる状態」にします。拾い読みではなく順番にやってください。前の回の続きを書くので、飛ばすと繋がりません。",
       howTo:
-        "1件30〜45分。通しで1〜2日。手本を見ながらで構いません。暗記ではなく「どのファイルに書くか」が身につけば十分です。",
+        "1件30〜45分。通しで2〜3日。手本を見ながらで構いません。暗記ではなく「どのファイルに書くか」「何を機械に任せるか」が身につけば十分です。",
       accent: "border-emerald-300 bg-emerald-50 text-emerald-900",
     },
     foundation: {
@@ -165,6 +165,12 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "sk-07-enhance",
       "sk-08-hooks-auth",
       "sk-09-diagnose-review",
+      "gr-01-types-annotation",
+      "gr-02-app-d-ts",
+      "gr-03-eslint",
+      "gr-04-svelte-check",
+      "gr-05-formdata-boundary",
+      "gr-06-diagnose-guardrail-gap",
     ],
     reference: [
       "sv-12-shared-state-class",
