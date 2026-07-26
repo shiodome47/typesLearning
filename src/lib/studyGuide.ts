@@ -180,6 +180,127 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
   },
 };
 
+// ── 進め方のロードマップ ────────────────────────────────────
+//
+// 「どの順番で、何時間かけると、何ができるようになるか」。
+//
+// 件数と所要時間は TIER_LESSONS から計算する。
+// 教材を足したときに手引きの数字だけ古いまま、という事故を防ぐため。
+
+export interface RoadmapStep {
+  /** 段階の見出し */
+  title: string;
+  /** どこから対象レッスンを取るか */
+  source: {
+    language: LessonLanguage;
+    tier: Tier;
+    /** tutorial のように複数章が同居するランクを分けるための接頭辞 */
+    prefix?: string;
+  } | null;
+  /** 1件あたりの目安（分） */
+  minutesPerLesson: number;
+  /** 何をするのか */
+  what: string;
+  /** 終わったときに言えるようになること */
+  outcome: string;
+  /** 進んでよいかの自己判定 */
+  gate: string;
+}
+
+export const ROADMAP: RoadmapStep[] = [
+  {
+    title: "第1段階　AIの出力を疑えるようになる",
+    source: { language: "typescript", tier: "focus" },
+    minutesPerLesson: 30,
+    what:
+      "TypeScript の「時間をかける」だけをやります。" +
+      "境界の検証・状態の設計・網羅性・診断の4つです。それ以外は飛ばしてください。",
+    outcome:
+      "AIが書いた TypeScript を読んで、「この入力が来たら落ちる」と具体的に指摘できる。",
+    gate: "診断レッスンで、症状を読んだだけで原因の見当がつくようになったら次へ。",
+  },
+  {
+    title: "第2段階　AIが無くても画面が書けるようになる",
+    source: { language: "svelte", tier: "focus" },
+    minutesPerLesson: 30,
+    what:
+      "Svelte の「手が覚えるまでやる」だけをやります。" +
+      "ここは TypeScript と違って、手本を見ずに書けるまで繰り返す価値があります。",
+    outcome:
+      "AIが使えない状況でも、$state・$derived・$props・bind: を使って画面を1枚組める。",
+    gate: "$state と $derived を、手本を見ずに書けるようになったら次へ。",
+  },
+  {
+    title: "第3段階　1本のサイトを動かす",
+    source: { language: "svelte", tier: "tutorial", prefix: "sk-" },
+    minutesPerLesson: 40,
+    what:
+      "SvelteKit編を①から⑨まで順番に通します。飛ばさないでください。" +
+      "前の回の続きを書くので、飛ばすと繋がりません。手本は見ながらで構いません。",
+    outcome:
+      "物件サイトが1本できあがる。新しい機能を足すとき「どのファイルに書くか」を自分で決められる。",
+    gate:
+      "「このファイルはブラウザに配られるか？」に、ファイル名を見て即答できるようになったら次へ。",
+  },
+  {
+    title: "第4段階　納品できる状態にする",
+    source: { language: "svelte", tier: "tutorial", prefix: "gr-" },
+    minutesPerLesson: 35,
+    what:
+      "ガードレール編を①から⑥まで通します。" +
+      "第3段階で目で見つけた地雷を、型と Lint に見つけさせる作業です。",
+    outcome:
+      "型・Lint・CI が入り、AIが何行書いてきても機械が止めてくれる。人間が見るべきものが3点（秘密・認可・条件の向き）に絞られる。",
+    gate: "Lint と型が「止められないもの」を3つ挙げられたら、教材は卒業です。",
+  },
+  {
+    title: "第5段階　自分の題材で1本作る",
+    source: null,
+    minutesPerLesson: 0,
+    what:
+      "教材はここで終わりです。第3・第4段階で作ったものを土台に、自分の題材で1本作ってください。" +
+      "ファイル構成も app.d.ts も eslint.config.js も、そのまま持っていけます。",
+    outcome:
+      "受託の相談を受けたときに、できる/できないを自分で判断できる。ここが本来の目的地です。",
+    gate: "—",
+  },
+];
+
+/** ロードマップの1段階に含まれるレッスンID */
+export function stepLessonIds(step: RoadmapStep): string[] {
+  if (!step.source) return [];
+  const { language, tier, prefix } = step.source;
+  const ids = TIER_LESSONS[language][tier];
+  return prefix ? ids.filter((id) => id.startsWith(prefix)) : ids;
+}
+
+/** 「約4時間」のような表記にする */
+export function formatMinutes(total: number): string {
+  if (total <= 0) return "—";
+  const hours = total / 60;
+  if (hours < 1) return `約${total}分`;
+  // 0.5時間刻みに丸める
+  const rounded = Math.round(hours * 2) / 2;
+  return `約${rounded % 1 === 0 ? rounded : rounded.toFixed(1)}時間`;
+}
+
+/** ロードマップ全体の目安時間（分） */
+export function totalRoadmapMinutes(): number {
+  return ROADMAP.reduce(
+    (sum, step) => sum + stepLessonIds(step).length * step.minutesPerLesson,
+    0
+  );
+}
+
+/** 1レッスン（30分）の中の時間配分 */
+export const LESSON_TIME_BREAKDOWN: { minutes: number; label: string }[] = [
+  { minutes: 5, label: "「なぜ必要か」を読む" },
+  { minutes: 5, label: "手本コードを読む" },
+  { minutes: 10, label: "手本を隠して書く（詰まったらすぐ開く）" },
+  { minutes: 5, label: "自動採点して、✕ の理由を読む" },
+  { minutes: 5, label: "もう一度「なぜ必要か」を読む" },
+];
+
 /** レッスンIDからランクを引く */
 export function tierOf(
   language: LessonLanguage,
