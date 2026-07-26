@@ -51,6 +51,14 @@ export function LessonCard({
                   診断
                 </span>
               )}
+              {lesson.kind === "project" && (
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full border text-emerald-700 bg-emerald-50 border-emerald-200"
+                  title="複数ファイルをまたぐ練習（SvelteKit編）"
+                >
+                  複数ファイル
+                </span>
+              )}
             </div>
 
             {/* タイトル */}

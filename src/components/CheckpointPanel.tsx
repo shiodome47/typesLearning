@@ -12,15 +12,22 @@ import { InlineCodeText } from "./InlineCodeText";
 import { whenMonacoReady } from "@/lib/monaco/setup";
 import { gradeCheckpoints, type CheckResult } from "@/lib/verify/browserEngine";
 import { gradeSvelteCheckpoints } from "@/lib/verify/svelteEngine";
+import { gradeKitCheckpoints } from "@/lib/verify/kitEngine";
 
 interface CheckpointPanelProps {
   checkpoints: Checkpoint[];
-  /** 採点対象のコード */
+  /** 採点対象のコード（単一ファイル教材） */
   code: string;
   /** 言語によって採点エンジンが変わる */
   language: LessonLanguage;
   /** レッスンが変わったら結果を捨てるためのキー */
   resetKey?: string;
+  /** 複数ファイル教材のとき「パス → 中身」。指定すると SvelteKit エンジンを使う */
+  files?: Record<string, string>;
+  /** files 指定時、file を省略した採点仕様が対象にするファイル */
+  defaultFile?: string;
+  /** 採点結果を親に渡す（タブに ✕ を出すなど） */
+  onResults?: (results: CheckResult[]) => void;
 }
 
 type Status = "idle" | "grading" | "done" | "error";
@@ -29,6 +36,9 @@ export function CheckpointPanel({
   checkpoints,
   code,
   language,
+  files,
+  defaultFile,
+  onResults,
 }: CheckpointPanelProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [results, setResults] = useState<CheckResult[]>([]);
@@ -39,17 +49,20 @@ export function CheckpointPanel({
   const handleGrade = useCallback(async () => {
     setStatus("grading");
     try {
-      // TypeScript は Monaco の型診断、Svelte は svelte/compiler で採点する
-      const r =
-        language === "svelte"
+      // 複数ファイル教材は SvelteKit エンジン、
+      // 単一ファイルは TypeScript なら Monaco の型診断、Svelte なら svelte/compiler
+      const r = files
+        ? await gradeKitCheckpoints(files, checkpoints, defaultFile ?? "")
+        : language === "svelte"
           ? await gradeSvelteCheckpoints(code, checkpoints)
           : await gradeCheckpoints(await whenMonacoReady(), code, checkpoints);
       setResults(r);
       setStatus("done");
+      onResults?.(r);
     } catch {
       setStatus("error");
     }
-  }, [code, checkpoints, language]);
+  }, [code, checkpoints, language, files, defaultFile, onResults]);
 
   const toggleSelf = useCallback((id: string) => {
     setSelfChecked((prev) => {

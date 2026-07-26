@@ -81,11 +81,47 @@ export type CheckSpec =
   /** TS: 型診断が「出れば」合格（不正な使い方を型で弾けている） */
   | { kind: "expect-error"; assert: string }
   /** Svelte: コンパイルが通れば合格 */
-  | { kind: "svelte-compile" }
+  | { kind: "svelte-compile"; file?: string }
   /** Svelte: AST クエリの結果が expect と一致すれば合格（既定 true） */
-  | { kind: "svelte-ast"; query: SvelteQuery; expect?: boolean }
+  | { kind: "svelte-ast"; query: SvelteQuery; expect?: boolean; file?: string }
   /** Svelte: 指定コードのコンパイラ警告が出なければ合格（a11y など） */
-  | { kind: "svelte-no-warning"; code: string };
+  | { kind: "svelte-no-warning"; code: string; file?: string }
+  // ── SvelteKit（複数ファイル教材） ────────────────────────
+  //
+  // SvelteKit は「ファイル名と export 名が仕様そのもの」というフレームワーク。
+  // +page.server.ts が load を export しているか、といったことが
+  // そのまま動作の正否になるので、AST で構造的に問える。
+  /** 指定ファイルが name を export しているか */
+  | { kind: "kit-export"; file: string; name: string; expect?: boolean }
+  /** 指定ファイルが source から import しているか（name 指定で識別子も見る） */
+  | {
+      kind: "kit-import";
+      file: string;
+      source: string;
+      name?: string;
+      expect?: boolean;
+    }
+  /**
+   * load が返すオブジェクトのキー。
+   * forbid は「返してはいけないキー」。load の戻り値はブラウザへ送られるので、
+   * ここに秘密を入れると HTML に埋め込まれて全世界に配られる。
+   */
+  | { kind: "kit-load-returns"; file: string; keys?: string[]; forbid?: string[] }
+  /** .svelte が $props() で受け取っているキー */
+  | { kind: "kit-props"; file: string; keys: string[] }
+  /** use:enhance などの use: ディレクティブが付いているか */
+  | { kind: "kit-use"; file: string; name: string; expect?: boolean }
+  /** 指定要素の属性（`<form method="POST">` など） */
+  | { kind: "kit-attr"; file: string; element: string; name: string; value?: string }
+  /** 指定ファイルが name を呼び出しているか（redirect / fail / error など） */
+  | { kind: "kit-calls"; file: string; name: string; expect?: boolean }
+  /**
+   * サーバー専用の import が、サーバー専用でないファイルに現れないこと。
+   * SvelteKit で最も高くつく事故（秘密鍵がブラウザに配られる）を機械で止める。
+   */
+  | { kind: "kit-server-only"; source: string }
+  /** 全ファイルが構文として解析できるか */
+  | { kind: "kit-parse" };
 
 export interface Checkpoint {
   id: string;
@@ -179,7 +215,38 @@ export interface DiagnoseLesson extends LessonBase {
   symptom: string;
 }
 
-export type Lesson = WriteLesson | DiagnoseLesson;
+/** 複数ファイル教材の 1 ファイル分 */
+export interface ProjectFile {
+  /** プロジェクト内のパス。例: "src/routes/+page.server.ts" */
+  path: string;
+  /** 白紙練習の開始内容 */
+  starter: string;
+  /** 手本の内容 */
+  model: string;
+  /**
+   * 編集させず参照だけさせるファイル。
+   * 「すでにこう書かれている」という前提を与えて、
+   * 学習者に書かせたい 1〜2 ファイルに集中させるために使う。
+   */
+  readOnly?: boolean;
+  /** タブの下に出す一言。「このファイルは何のためにあるのか」 */
+  role?: string;
+}
+
+/**
+ * 複数ファイルをまたぐ練習。SvelteKit 用。
+ *
+ * SvelteKit の難しさは構文ではなく「どのファイルに書くか」にある。
+ * サーバーでしか動かないファイルとブラウザにも配られるファイルの
+ * 区別を間違えると、動いてしまうのに秘密が漏れる。
+ * 1 ファイルのエディタでは原理的に練習できないので、この種別を分けた。
+ */
+export interface ProjectLesson extends LessonBase {
+  kind: "project";
+  files: ProjectFile[];
+}
+
+export type Lesson = WriteLesson | DiagnoseLesson | ProjectLesson;
 
 export interface Curriculum {
   version: string;
@@ -193,4 +260,13 @@ export function isWriteLesson(lesson: Lesson): lesson is WriteLesson {
 
 export function isDiagnoseLesson(lesson: Lesson): lesson is DiagnoseLesson {
   return lesson.kind === "diagnose";
+}
+
+export function isProjectLesson(lesson: Lesson): lesson is ProjectLesson {
+  return lesson.kind === "project";
+}
+
+/** 編集対象のファイル（readOnly でないもの） */
+export function editableFiles(lesson: ProjectLesson): ProjectFile[] {
+  return lesson.files.filter((f) => !f.readOnly);
 }
