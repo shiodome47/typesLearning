@@ -6,6 +6,7 @@
 import type { Lesson } from "@curriculum/types";
 import { WritePractice } from "./WritePractice";
 import { DiagnosePractice } from "./DiagnosePractice";
+import { ProjectPractice } from "./ProjectPractice";
 
 interface PracticeClientProps {
   lesson: Lesson;
@@ -18,6 +19,8 @@ export function PracticeClient({ lesson, allLessons }: PracticeClientProps) {
       return <WritePractice lesson={lesson} allLessons={allLessons} />;
     case "diagnose":
       return <DiagnosePractice lesson={lesson} allLessons={allLessons} />;
+    case "project":
+      return <ProjectPractice lesson={lesson} allLessons={allLessons} />;
     default:
       return assertNever(lesson);
   }

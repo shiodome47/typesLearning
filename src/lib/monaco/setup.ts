@@ -74,6 +74,30 @@ export function modelPathFor(language: LessonLanguage, name: string): string {
     : `file:///${name}.tsx`;
 }
 
+/**
+ * 複数ファイル教材のファイルパス → Monaco の言語ID。
+ * SvelteKit は .svelte と .ts が混ざるので、拡張子で切り替える。
+ */
+export function monacoLanguageForPath(filePath: string): string {
+  if (filePath.endsWith(".svelte")) return "html";
+  if (filePath.endsWith(".json")) return "json";
+  return "typescript";
+}
+
+/**
+ * 複数ファイル教材のモデルパス。
+ * レッスンID と用途（手本／練習）で名前空間を分け、モデルの衝突を防ぐ。
+ * `+page.server.ts` の `+` は Monaco の URI でそのまま使えないので置き換える。
+ */
+export function projectModelPath(
+  lessonId: string,
+  usage: "model" | "practice",
+  filePath: string
+): string {
+  const safe = filePath.replace(/\+/g, "plus-");
+  return `file:///${usage}/${lessonId}/${safe}`;
+}
+
 /** 型エラーの赤波線を ON/OFF する */
 export function applyDiagnostics(monaco: Monaco, enabled: boolean): void {
   const opts = {

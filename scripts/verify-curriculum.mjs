@@ -33,6 +33,7 @@ function loadCurriculum() {
   fs.rmSync(TMP, { recursive: true, force: true });
   execSync(
     `node node_modules/typescript/bin/tsc curriculum/index.ts curriculum/verifySupport.ts ` +
+      `curriculum/checks.ts ` +
       `--outDir ${TMP} --module commonjs --target es2020 ` +
       `--esModuleInterop --skipLibCheck --moduleResolution node`,
     { cwd: ROOT, stdio: "pipe" }
@@ -117,7 +118,9 @@ function fail(lessonId, what, detail) {
     path.join(ROOT, "src/lib/studyGuide.ts"),
     "utf8"
   );
-  const tiered = [...guideSrc.matchAll(/"((?:ts|sv)-[a-z0-9-]+)"/g)].map((m) => m[1]);
+  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk)-[a-z0-9-]+)"/g)].map(
+    (m) => m[1]
+  );
   const counts = new Map();
   for (const id of tiered) counts.set(id, (counts.get(id) ?? 0) + 1);
 
@@ -147,8 +150,16 @@ for (const lesson of allLessons) {
   }
 }
 
-// ── Svelte 用の検証 ────────────────────────────────────────
+// ── Svelte / SvelteKit 用の検証 ────────────────────────────
+//
+// 採点ロジックはブラウザ側と同じ curriculum/checks.ts を使う。
+// 実装が 1 つなので、ここで通れば実際の採点でも同じ結果になる。
+// （以前はハーネス側が AST クエリを判定できず素通りしていた）
 const svelte = require(path.join(ROOT, "node_modules/svelte/src/compiler/index.js"));
+const checks = require(path.join(TMP, "checks.js"));
+const svelteApi = { parse: svelte.parse, compile: svelte.compile };
+
+const SINGLE = "main.svelte";
 
 function svelteCompileErrors(code) {
   try {
@@ -159,28 +170,83 @@ function svelteCompileErrors(code) {
   }
 }
 
-/** svelteEngine.ts と同じ判定をハーネス側でも行う（採点仕様の正しさ検証用） */
+/** 単一ファイル Svelte 教材の採点仕様を、模範解答に対して判定する */
 function svelteCheck(code, spec) {
-  try {
-    if (spec.kind === "svelte-compile") {
-      svelte.compile(code, { generate: "client", runes: true });
-      return true;
-    }
-    if (spec.kind === "svelte-no-warning") {
-      const { warnings } = svelte.compile(code, { generate: "client", runes: true });
-      return warnings.every((w) => w.code !== spec.code);
-    }
-    // svelte-ast: クエリの詳細判定はブラウザ側エンジンに委ねる。
-    // ここでは「解析できること」だけ確認する（誤った教材コードの検出が目的）
-    svelte.parse(code, { modern: true });
-    return null; // 判定不能（スキップ）
-  } catch {
-    return false;
-  }
+  return checks.runCheck(svelteApi, { [SINGLE]: code }, spec, SINGLE);
 }
 
 // 2) 模範コードの検証 + 3) 採点仕様の検証
 for (const lesson of allLessons) {
+  // ── 複数ファイル教材（SvelteKit） ──
+  if (lesson.kind === "project") {
+    checkedLessons++;
+
+    if (lesson.files.length === 0) {
+      fail(lesson.id, "files", "ファイルが1件も定義されていない");
+      continue;
+    }
+    if (lesson.files.every((f) => f.readOnly)) {
+      fail(lesson.id, "files", "編集できるファイルが1つも無い");
+    }
+
+    const modelFiles = Object.fromEntries(
+      lesson.files.map((f) => [f.path, f.model])
+    );
+    const starterFiles = Object.fromEntries(
+      lesson.files.map((f) => [f.path, f.starter])
+    );
+    const defaultFile =
+      lesson.files.find((f) => !f.readOnly)?.path ?? lesson.files[0].path;
+
+    // 模範コードの .svelte が実際にコンパイルできること
+    for (const f of lesson.files) {
+      if (!f.path.endsWith(".svelte")) continue;
+      const err = svelteCompileErrors(f.model);
+      if (err) {
+        fail(lesson.id, `模範コードがコンパイルできない (${f.path})`, err);
+      }
+    }
+
+    // 採点仕様が「模範解答で合格し、かつ starter では落ちる」こと。
+    // 後者を見ないと、常に合格する無意味なチェックに気づけない。
+    let anyStarterFails = false;
+    for (const cp of lesson.checkpoints) {
+      if (!cp.verify) continue;
+      gradedCheckpoints++;
+
+      const onModel = checks.runCheck(
+        svelteApi,
+        modelFiles,
+        cp.verify,
+        defaultFile
+      );
+      if (!onModel.pass) {
+        fail(
+          lesson.id,
+          `採点仕様 ${cp.id} が模範解答で不合格`,
+          onModel.message ?? cp.verify.kind
+        );
+      }
+
+      const onStarter = checks.runCheck(
+        svelteApi,
+        starterFiles,
+        cp.verify,
+        defaultFile
+      );
+      if (!onStarter.pass) anyStarterFails = true;
+    }
+
+    if (lesson.checkpoints.some((c) => c.verify) && !anyStarterFails) {
+      fail(
+        lesson.id,
+        "採点が機能していない",
+        "starter のままでも全項目に合格してしまう（練習になっていない）"
+      );
+    }
+    continue;
+  }
+
   // モードごとに「正解とされるコード」を取り出す
   const reference =
     lesson.kind === "write" ? lesson.modelAnswer : lesson.fixedCode;
@@ -206,8 +272,12 @@ for (const lesson of allLessons) {
       if (!cp.verify) continue;
       gradedCheckpoints++;
       const r = svelteCheck(reference, cp.verify);
-      if (r === false) {
-        fail(lesson.id, `採点仕様 ${cp.id} が模範解答で不合格`, cp.verify.kind);
+      if (!r.pass) {
+        fail(
+          lesson.id,
+          `採点仕様 ${cp.id} が模範解答で不合格`,
+          r.message ?? cp.verify.kind
+        );
       }
     }
     if (lesson.kind === "diagnose" && lesson.defects.length === 0) {

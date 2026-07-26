@@ -13,7 +13,7 @@ export const metadata = {
   title: "学習の手引き | 判断力トレーニング",
 };
 
-const TIERS = ["focus", "foundation", "reference"] as const;
+const TIERS = ["focus", "tutorial", "foundation", "reference"] as const;
 
 function Section({
   title,
@@ -68,6 +68,11 @@ function TierBlock({
             </Link>
             {l.kind === "diagnose" && (
               <span className="ml-1.5 text-xs text-purple-700">［診断］</span>
+            )}
+            {l.kind === "project" && (
+              <span className="ml-1.5 text-xs text-emerald-700">
+                ［複数ファイル］
+              </span>
             )}
           </li>
         ))}
@@ -233,6 +238,13 @@ export default function GuidePage() {
                 一方で Svelte の失敗は「
                 <strong>落ちない。動く。でも間違っている</strong>
                 」が主戦場です。書く練習では原理的に気づけないので、診断の比率を上げてあります。
+              </p>
+              <p className="mt-2">
+                <strong>SvelteKit編（①〜⑨）だけは性質が違います。</strong>
+                拾い読みする教材ではなく、1本の物件サイトを順番に作り上げる連続チュートリアルです。
+                受託で実際に詰まるのは Svelte の文法ではなく
+                <InlineCodeText text="どのファイルに書くか" />
+                なので、案件に一番近いのはここです。
               </p>
             </>
           }

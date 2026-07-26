@@ -13,7 +13,9 @@
 
 import type { LessonLanguage } from "@curriculum/types";
 
-export type Tier = "focus" | "foundation" | "reference";
+// tutorial は「1本のアプリを順番に作り上げる連続チュートリアル」用。
+// 拾い読みが前提の他のランクとは性質が違うので分けてある。
+export type Tier = "focus" | "tutorial" | "foundation" | "reference";
 
 export interface TierInfo {
   label: string;
@@ -30,6 +32,12 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
         "判断力に直結します。AIが書いたコードをレビューする力そのものなので、ここだけは繰り返す価値があります。",
       howTo: "1件30分。「これが無いと、どんな入力で落ちるか」を口に出して説明できるまで。",
       accent: "border-red-300 bg-red-50 text-red-900",
+    },
+    tutorial: {
+      label: "順番に通す",
+      summary: "（TypeScript 側にはありません）",
+      howTo: "",
+      accent: "border-gray-300 bg-gray-50 text-gray-700",
     },
     foundation: {
       label: "読んで理解する",
@@ -53,6 +61,14 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
         "Svelteの中核です。ここは「AIが使えないときでも書ける」ための保険なので、TypeScriptと違って本当に手を動かして覚える価値があります。中核はこれだけです。",
       howTo: "1件30分。手本を見ずに書けるまで。診断は「症状から原因を言えるか」まで。",
       accent: "border-orange-300 bg-orange-50 text-orange-900",
+    },
+    tutorial: {
+      label: "順番に通す（SvelteKit編）",
+      summary:
+        "①から⑨まで通すと、物件サイトが1本できあがります。拾い読みではなく順番にやってください。前の回の続きを書くので、飛ばすと繋がりません。",
+      howTo:
+        "1件30〜45分。通しで1〜2日。手本を見ながらで構いません。暗記ではなく「どのファイルに書くか」が身につけば十分です。",
+      accent: "border-emerald-300 bg-emerald-50 text-emerald-900",
     },
     foundation: {
       label: "読んで理解する",
@@ -117,6 +133,7 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "ts-31-satisfies",
       "ts-32-generic-react-component",
     ],
+    tutorial: [],
   },
   svelte: {
     // 中核構文4つ + 最重要の診断4つ。ここが「だいたい書ける」の本体
@@ -137,6 +154,18 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "sv-10-form-validation",
       "sv-13-routing-layout",
     ],
+    // SvelteKit編。①→⑨で1本の物件サイトを作り上げる連続チュートリアル
+    tutorial: [
+      "sk-01-routing",
+      "sk-02-load",
+      "sk-03-dynamic-route",
+      "sk-04-server-boundary",
+      "sk-05-layout",
+      "sk-06-form-actions",
+      "sk-07-enhance",
+      "sk-08-hooks-auth",
+      "sk-09-diagnose-review",
+    ],
     reference: [
       "sv-12-shared-state-class",
       "sv-14-load-data",
@@ -151,7 +180,7 @@ export function tierOf(
   lessonId: string
 ): Tier | undefined {
   const tiers = TIER_LESSONS[language];
-  for (const tier of ["focus", "foundation", "reference"] as const) {
+  for (const tier of ["focus", "tutorial", "foundation", "reference"] as const) {
     if (tiers[tier].includes(lessonId)) return tier;
   }
   return undefined;

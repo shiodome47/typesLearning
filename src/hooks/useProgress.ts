@@ -136,6 +136,48 @@ export function useProgress() {
     [scheduleSave]
   );
 
+  // 複数ファイル教材のコード保存。saveCode と同じくデバウンスする
+  const saveFile = useCallback(
+    (lessonId: string, filePath: string, code: string) => {
+      setProgress((prev) => {
+        const current = getOrCreateLessonProgress(prev, lessonId);
+        const next: AppProgress = {
+          ...prev,
+          lastOpenedLessonId: lessonId,
+          lessons: {
+            ...prev.lessons,
+            [lessonId]: {
+              ...current,
+              savedFiles: { ...current.savedFiles, [filePath]: code },
+            },
+          },
+        };
+        scheduleSave(next);
+        return next;
+      });
+    },
+    [scheduleSave]
+  );
+
+  // 複数ファイル教材のリセット（保存済みの全ファイルを捨てる）
+  const clearFiles = useCallback(
+    (lessonId: string) => {
+      setProgress((prev) => {
+        const current = getOrCreateLessonProgress(prev, lessonId);
+        const next: AppProgress = {
+          ...prev,
+          lessons: {
+            ...prev.lessons,
+            [lessonId]: { ...current, savedFiles: undefined },
+          },
+        };
+        persistNow(next);
+        return next;
+      });
+    },
+    [persistNow]
+  );
+
   const addHintUsed = useCallback(
     (lessonId: string, hintLevel: number) => {
       setProgress((prev) => {
@@ -204,6 +246,8 @@ export function useProgress() {
     markCompleted,
     markUncompleted,
     saveCode,
+    saveFile,
+    clearFiles,
     addHintUsed,
     incrementAttempt,
     setLastOpened,

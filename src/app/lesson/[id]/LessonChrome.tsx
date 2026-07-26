@@ -52,6 +52,11 @@ export function LessonTitle({
             診断
           </span>
         )}
+        {lesson.kind === "project" && (
+          <span className="text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+            複数ファイル
+          </span>
+        )}
         {isCompleted && (
           <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
             ✓ 完了済み

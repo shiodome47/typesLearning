@@ -9,7 +9,9 @@ export interface LessonProgress {
   attemptCount: number;
   lastAttemptAt: string; // ISO 8601
   hintsUsed: number[];   // 開示済みヒントレベル [1, 2, 3]
-  savedCode: string;     // 最後に入力したコード
+  savedCode: string;     // 最後に入力したコード（単一ファイル教材）
+  /** 複数ファイル教材の「パス → 最後に入力した内容」。無い＝未着手 */
+  savedFiles?: Record<string, string>;
 }
 
 export interface AppProgress {

@@ -1,7 +1,7 @@
 # 判断力トレーニング（TypeScript / Svelte）
 
 手本を見てゼロから書く「白紙練習」と、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
-TypeScript 37件・Svelte 16件を1つのアプリで扱い、一覧で切り替えられる。
+TypeScript 37件・Svelte 25件（うち SvelteKit 編 9件）を1つのアプリで扱い、一覧で切り替えられる。
 
 ## 学習コンセプト
 
@@ -12,6 +12,7 @@ TypeScript 37件・Svelte 16件を1つのアプリで扱い、一覧で切り替
 |--------|------|-----------|
 | **白紙練習**（write） | 読む → 理解する → 手本を隠す → ゼロから書く → 自動採点 | 型を自分で構築する力 |
 | **診断**（diagnose） | 症状を読む → 欠陥コードを読む → 危険を見抜く → 修正して自動採点 | 書かれたコードを評価する力 |
+| **複数ファイル**（project） | ファイルタブを切り替えながら1本のアプリを作り上げる | **どのファイルに書くか**を判断する力 |
 
 診断モードが扱うのは「**型チェックは通るのに本番で落ちる**」コードです。
 `as` による偽りの型付け、SSR で存在しない `window`、`any` の漏洩、網羅性チェックの欠落など、
@@ -50,8 +51,29 @@ why: {
 |---|---|---|
 | 目的 | **読んで判断できる**こと | **手が覚えている**こと（AIが使えないときの保険） |
 | 構文の暗記 | 不要 | 中核だけは必要 |
-| 診断の比率 | 5/37 | 6/16（「動くが間違っている」が多いため） |
-| 件数 | 37 | 16（Svelteは語彙が小さい） |
+| 診断の比率 | 5/37 | 7/25（「動くが間違っている」が多いため） |
+| 件数 | 37 | 16 + SvelteKit 編 9 |
+
+### SvelteKit 編（連続チュートリアル）
+
+Svelte 本体の 16 件とは性質が違い、**1つの物件サイトを ①→⑨ で作り上げる連続チュートリアル**です。
+
+案件で実際に詰まるのは Svelte の文法ではなく「どのファイルに書くか」です。
+特に `.server.` の有無で決まる**サーバー / ブラウザの境界**は、間違えても
+エラーが出ないまま API キーが全世界に配られるため、1画面のエディタでは原理的に練習できません。
+そのため `ProjectLesson`（複数ファイル）という第3のモードを用意しています。
+
+| 回 | 作るもの | 扱う仕組み |
+|---|---|---|
+| ① | 物件サイトの2ページ | ファイルベースルーティング |
+| ② | 一覧をサーバーから取得 | `+page.server.ts` / `load` / SSR |
+| ③ | 物件詳細ページ | 動的ルート `[id]` / `params` / `error(404)` |
+| ④ | **APIキーが漏れる事故** | サーバー境界（import と `load` の戻り値の2経路） |
+| ⑤ | 共通ヘッダー | `+layout.svelte` / `{@render children()}` |
+| ⑥ | 問い合わせフォーム | form actions / `fail` / 段階的強化 |
+| ⑦ | 送信を滑らかに | `use:enhance` |
+| ⑧ | 管理者ログイン | `hooks.server.ts` / `locals` / `redirect` |
+| ⑨ | 診断：納品してよいか | 秘密の漏洩・XSS・キー欠落・保護漏れ |
 
 ## 自動採点
 
@@ -116,6 +138,7 @@ npm run build              # 本番ビルド
 # 実ブラウザ確認（playwright が必要。CI には入れていない）
 npm run smoke:e2e          # TypeScript 側
 npm run smoke:svelte       # Svelte 側
+npm run smoke:sveltekit    # SvelteKit 側（複数ファイル採点）
 ```
 
 `verify:curriculum` は重要です。教材の `starterCode` / `modelAnswer` は**テンプレート文字列なので
@@ -126,8 +149,11 @@ npm run smoke:svelte       # Svelte 側
 2. 各 `checkpoint.verify` が模範解答に対して正しく合格すること（採点仕様自体の正しさ）
 3. `relatedIds` が実在する教材を指していること
 4. 診断レッスンの欠陥コードが**型チェックを通ること**（型で気づけては診断練習にならない）
+5. 複数ファイル教材で、採点仕様が **starter のままなら落ちること**
+   （常に合格する採点は検証として無意味なので、合格側と不合格側の両方を見る）
 
-ブラウザ側の採点と同じ React シム・同じ前提（`curriculum/verifySupport.ts`）を使うため、
+ブラウザ側の採点と同じ React シム・同じ前提（`curriculum/verifySupport.ts`）を使い、
+Svelte / SvelteKit の判定ロジックも同じ実装（`curriculum/checks.ts`）を共有するため、
 ここで通れば実際の採点でも同じ結果になります。
 
 ## ファイル構成
@@ -137,9 +163,11 @@ typesLearning/
 ├── curriculum/                     # 教材データ
 │   ├── types.ts                    # Lesson は kind / language による判別可能Union
 │   ├── verifySupport.ts            # 採点の共通前提（ブラウザ/Node で共有）
+│   ├── checks.ts                   # Svelte/SvelteKit 採点ロジック本体（ブラウザ/Node で共有）
 │   ├── phase1-type-basics/ 〜 phase6-modern-ts/
 │   ├── phase7-judgment/            # 回収レッスン + 診断レッスン
-│   └── svelte/                     # Svelte 5（runes）16件
+│   ├── svelte/                     # Svelte 5（runes）16件
+│   └── sveltekit/                  # SvelteKit 編 9件（連続チュートリアル）
 ├── scripts/
 │   └── verify-curriculum.mjs       # 教材検証ハーネス（CI で実行）
 └── src/
@@ -160,12 +188,13 @@ typesLearning/
         ├── monaco/setup.ts         # TS 設定・React シム・インスタンス共有
         └── verify/
             ├── browserEngine.ts    # TypeScript 採点（型診断）
-            └── svelteEngine.ts     # Svelte 採点（AST・コンパイラ警告）
+            ├── svelteEngine.ts     # Svelte 採点（単一ファイル）
+            └── kitEngine.ts        # SvelteKit 採点（複数ファイル）
 ```
 
 ## 教材の追加方法
 
-1. `curriculum/phaseN-*/ts-XX-topic.ts` を作成し、`WriteLesson` か `DiagnoseLesson` として定義
+1. `curriculum/phaseN-*/ts-XX-topic.ts` を作成し、`WriteLesson` / `DiagnoseLesson` / `ProjectLesson` として定義
 2. `kind` を必ず指定する（判別可能Unionの判別子）
 3. フェーズの `index.ts` の配列に追加
 4. `npm run verify:curriculum` で模範解答と採点仕様を検証
