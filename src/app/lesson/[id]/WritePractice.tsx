@@ -102,10 +102,11 @@ export function WritePractice({ lesson, allLessons }: WritePracticeProps) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* ── 左カラム: 参照エリア ── */}
+          {/* ── 左カラム: 参照エリア ──
+              手本コードを先頭に置き、右カラムの練習エリアと高さを揃える。
+              「手本を見ながら書く」がこの教材の中核なので、
+              説明はその下に回す。 */}
           <div className="space-y-4">
-            <ExplanationCard text={lesson.explanation} />
-
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 手本コード
@@ -125,6 +126,8 @@ export function WritePractice({ lesson, allLessons }: WritePracticeProps) {
                 code={code ?? ""}
               />
             </div>
+
+            <ExplanationCard text={lesson.explanation} />
 
             <RelatedLessons lesson={lesson} allLessons={allLessons} />
           </div>
