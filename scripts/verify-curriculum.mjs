@@ -117,7 +117,7 @@ function fail(lessonId, what, detail) {
     path.join(ROOT, "src/lib/studyGuide.ts"),
     "utf8"
   );
-  const tiered = [...guideSrc.matchAll(/"(ts-[a-z0-9-]+)"/g)].map((m) => m[1]);
+  const tiered = [...guideSrc.matchAll(/"((?:ts|sv)-[a-z0-9-]+)"/g)].map((m) => m[1]);
   const counts = new Map();
   for (const id of tiered) counts.set(id, (counts.get(id) ?? 0) + 1);
 
@@ -147,11 +147,74 @@ for (const lesson of allLessons) {
   }
 }
 
-// 2) 模範コードの型チェック + 3) 採点仕様の検証
+// ── Svelte 用の検証 ────────────────────────────────────────
+const svelte = require(path.join(ROOT, "node_modules/svelte/src/compiler/index.js"));
+
+function svelteCompileErrors(code) {
+  try {
+    svelte.compile(code, { generate: "client", runes: true });
+    return null;
+  } catch (e) {
+    return String(e.message).split("\n")[0];
+  }
+}
+
+/** svelteEngine.ts と同じ判定をハーネス側でも行う（採点仕様の正しさ検証用） */
+function svelteCheck(code, spec) {
+  try {
+    if (spec.kind === "svelte-compile") {
+      svelte.compile(code, { generate: "client", runes: true });
+      return true;
+    }
+    if (spec.kind === "svelte-no-warning") {
+      const { warnings } = svelte.compile(code, { generate: "client", runes: true });
+      return warnings.every((w) => w.code !== spec.code);
+    }
+    // svelte-ast: クエリの詳細判定はブラウザ側エンジンに委ねる。
+    // ここでは「解析できること」だけ確認する（誤った教材コードの検出が目的）
+    svelte.parse(code, { modern: true });
+    return null; // 判定不能（スキップ）
+  } catch {
+    return false;
+  }
+}
+
+// 2) 模範コードの検証 + 3) 採点仕様の検証
 for (const lesson of allLessons) {
   // モードごとに「正解とされるコード」を取り出す
   const reference =
     lesson.kind === "write" ? lesson.modelAnswer : lesson.fixedCode;
+
+  // ── Svelte 教材 ──
+  if (lesson.language === "svelte") {
+    checkedLessons++;
+    const err = svelteCompileErrors(reference);
+    // .svelte.ts のような素の TS を扱う回はコンポーネントではないので
+    // コンパイル検証の対象外にする。<script> かテンプレート構文がある
+    // ものだけを .svelte として扱う（$state<Item[]>() の < に反応しないよう注意）
+    // コメント内に使用例として <script> や {#each} が書かれていることが
+    // あるので、コメントを除いてから判定する
+    const codeOnly = reference
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+    const looksLikeComponent =
+      /<script[\s>]/.test(codeOnly) || /\{[#@]/.test(codeOnly);
+    if (err && looksLikeComponent) {
+      fail(lesson.id, "模範コードがコンパイルできない", err);
+    }
+    for (const cp of lesson.checkpoints) {
+      if (!cp.verify) continue;
+      gradedCheckpoints++;
+      const r = svelteCheck(reference, cp.verify);
+      if (r === false) {
+        fail(lesson.id, `採点仕様 ${cp.id} が模範解答で不合格`, cp.verify.kind);
+      }
+    }
+    if (lesson.kind === "diagnose" && lesson.defects.length === 0) {
+      fail(lesson.id, "defects", "欠陥が1件も定義されていない");
+    }
+    continue;
+  }
 
   const diags = diagnose(reference);
   if (diags.length > 0) {

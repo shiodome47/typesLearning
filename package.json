@@ -13,7 +13,8 @@
     "copy:monaco": "node scripts/copy-monaco.mjs",
     "predev": "npm run copy:monaco",
     "prebuild": "npm run copy:monaco",
-    "smoke:e2e": "node scripts/smoke-e2e.mjs"
+    "smoke:e2e": "node scripts/smoke-e2e.mjs",
+    "smoke:svelte": "node scripts/smoke-svelte.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

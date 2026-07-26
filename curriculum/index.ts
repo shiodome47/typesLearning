@@ -5,6 +5,7 @@ import { phase4Lessons } from "./phase4-react";
 import { phase5Lessons } from "./phase5-advanced-patterns";
 import { phase6Lessons } from "./phase6-modern-ts";
 import { phase7Lessons } from "./phase7-judgment";
+import { svelteLessons } from "./svelte";
 import type { Curriculum, Lesson } from "./types";
 
 // 全教材: order でソートして学習順を統一
@@ -16,7 +17,13 @@ export const allLessons: Lesson[] = [
   ...phase5Lessons,
   ...phase6Lessons,
   ...phase7Lessons,
-].sort((a, b) => a.order - b.order);
+  ...svelteLessons,
+  // 言語ごとに order を独立採番しているので、言語→order の順に並べる
+].sort((a, b) =>
+  a.language === b.language
+    ? a.order - b.order
+    : a.language.localeCompare(b.language)
+);
 
 export const curriculum: Curriculum = {
   version: "1.0.0",
@@ -36,6 +43,7 @@ export {
   phase5Lessons,
   phase6Lessons,
   phase7Lessons,
+  svelteLessons,
 };
 
 // 型の再エクスポート（appからのimportを簡略化）
@@ -50,5 +58,8 @@ export type {
   Defect,
   Difficulty,
   Category,
+  LessonLanguage,
+  Why,
+  SvelteQuery,
 } from "./types";
 export { isWriteLesson, isDiagnoseLesson } from "./types";

@@ -21,7 +21,13 @@ export type Category =
   | "crud"           // CRUDロジック
   | "react-basics"   // React連携
   | "runtime-safety" // 型と実行時のズレ（境界の検証）
-  | "code-review";   // コードレビュー・欠陥診断
+  | "code-review"    // コードレビュー・欠陥診断
+  // ── Svelte ──
+  | "runes"          // リアクティビティ（$state / $derived / $effect）
+  | "components"     // コンポーネント分割（$props / $bindable / snippet）
+  | "template"       // テンプレート構文（{#each} / {#if} / bind）
+  | "sveltekit"      // ルーティング・load・SSR
+  | "a11y";          // アクセシビリティとコンパイラ警告
 
 export type HintLevel = 1 | 2 | 3; // 1: 方向性, 2: 構文ヒント, 3: ほぼ答え
 
@@ -50,6 +56,14 @@ export type SvelteQuery =
   | "block:await"
   | "block:key"
   | "each:keyed"
+  /** {#each} のキーに index を使っていない（使うと並べ替えで壊れる） */
+  | "each:not-index-key"
+  /** $effect の中で代入していない（$derived で書くべきものを effect で同期していない） */
+  | "effect:no-assignment"
+  /** $effect が後片付けの関数を返している */
+  | "effect:has-teardown"
+  /** {@html} を使っている（XSS の危険） */
+  | "html-tag"
   | "directive:bind"
   | "snippet"
   | "render";

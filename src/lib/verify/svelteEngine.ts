@@ -119,6 +119,75 @@ function evalQuery(
     return total > 0 && total === keyed;
   }
 
+  // {#each} のキーに index を使っていないか（index キーは並べ替えで壊れる）
+  if (query === "each:not-index-key") {
+    let ok = true;
+    walk(ast.fragment, (n) => {
+      if (n.type !== "EachBlock") return;
+      const indexName = (n.index as string | undefined) ?? null;
+      const key = n.key as AstNode | undefined;
+      if (!key) {
+        ok = false; // キーが無いのは論外
+        return;
+      }
+      if (
+        indexName &&
+        key.type === "Identifier" &&
+        (key as { name?: string }).name === indexName
+      ) {
+        ok = false; // index をキーにしている
+      }
+    });
+    return ok;
+  }
+
+  // $effect の中で代入していないか（$derived で書くべきものを effect で同期していないか）
+  if (query === "effect:no-assignment") {
+    let clean = true;
+    walk(ast.instance, (n) => {
+      if (
+        n.type !== "CallExpression" ||
+        (n.callee as AstNode | undefined)?.type !== "Identifier" ||
+        (n.callee as { name?: string }).name !== "$effect"
+      ) {
+        return;
+      }
+      walk(n.arguments, (inner) => {
+        if (inner.type === "AssignmentExpression" || inner.type === "UpdateExpression") {
+          clean = false;
+        }
+      });
+    });
+    return clean;
+  }
+
+  // $effect が後片付けの関数を返しているか
+  if (query === "effect:has-teardown") {
+    let found = false;
+    walk(ast.instance, (n) => {
+      if (
+        n.type !== "CallExpression" ||
+        (n.callee as AstNode | undefined)?.type !== "Identifier" ||
+        (n.callee as { name?: string }).name !== "$effect"
+      ) {
+        return;
+      }
+      walk(n.arguments, (inner) => {
+        if (inner.type === "ReturnStatement" && inner.argument) found = true;
+      });
+    });
+    return found;
+  }
+
+  // {@html} の使用（XSS の危険）
+  if (query === "html-tag") {
+    let found = false;
+    walk(ast.fragment, (n) => {
+      if (n.type === "HtmlTag") found = true;
+    });
+    return found;
+  }
+
   if (query === "directive:bind") {
     let found = false;
     walk(ast.fragment, (n) => {
@@ -155,12 +224,12 @@ export async function runSvelteCheck(
 
   try {
     if (spec.kind === "svelte-compile") {
-      compile(source, { generate: "client" });
+      compile(source, { generate: "client", runes: true });
       return { pass: true };
     }
 
     if (spec.kind === "svelte-no-warning") {
-      const { warnings } = compile(source, { generate: "client" });
+      const { warnings } = compile(source, { generate: "client", runes: true });
       const hit = warnings.filter((w) => w.code === spec.code);
       return {
         pass: hit.length === 0,
