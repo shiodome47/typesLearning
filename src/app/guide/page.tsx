@@ -5,7 +5,16 @@
 import Link from "next/link";
 import { allLessons } from "../../../curriculum";
 import { InlineCodeText } from "@/components/InlineCodeText";
-import { TIER_INFO, TIER_LESSONS, type Tier } from "@/lib/studyGuide";
+import {
+  TIER_INFO,
+  TIER_LESSONS,
+  ROADMAP,
+  LESSON_TIME_BREAKDOWN,
+  stepLessonIds,
+  formatMinutes,
+  totalRoadmapMinutes,
+  type Tier,
+} from "@/lib/studyGuide";
 import type { LessonLanguage } from "@curriculum/types";
 import { LANGUAGE_LABELS } from "@/lib/labels";
 
@@ -106,6 +115,165 @@ function LanguageGuide({
   );
 }
 
+/** 進め方のロードマップ（ページ末尾のまとめ） */
+function Roadmap() {
+  const total = totalRoadmapMinutes();
+
+  return (
+    <section id="roadmap" className="scroll-mt-16">
+      <div className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-4 mb-5">
+        <h2 className="text-lg font-bold text-indigo-900 mb-1">
+          まとめ：どの順番で、何時間かけるか
+        </h2>
+        <p className="text-sm text-indigo-900 leading-relaxed">
+          全部で <strong>{formatMinutes(total)}</strong>{" "}
+          です。1日2時間なら1週間強、集中してやるなら3〜4日。
+          <br />
+          <strong>順番に意味があります。</strong>
+          後の段階は前の段階を前提にしているので、飛ばすと繋がりません。
+        </p>
+      </div>
+
+      <ol className="space-y-4">
+        {ROADMAP.map((step, i) => {
+          const ids = stepLessonIds(step);
+          const minutes = ids.length * step.minutesPerLesson;
+          const isLast = i === ROADMAP.length - 1;
+
+          return (
+            <li
+              key={step.title}
+              className={[
+                "rounded-xl border-2 p-4",
+                isLast
+                  ? "border-emerald-300 bg-emerald-50"
+                  : "border-gray-200 bg-white",
+              ].join(" ")}
+            >
+              <div className="flex items-baseline justify-between gap-3 mb-2 flex-wrap">
+                <h3 className="font-bold text-gray-900">{step.title}</h3>
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  {ids.length > 0 && `${ids.length} 件 / `}
+                  {minutes > 0 ? formatMinutes(minutes) : "期限なし"}
+                </span>
+              </div>
+
+              <p className="text-sm text-gray-700 leading-relaxed mb-3">
+                {step.what}
+              </p>
+
+              <div
+                className={[
+                  "rounded-lg p-3 mb-2",
+                  isLast ? "bg-white/70" : "bg-blue-50",
+                ].join(" ")}
+              >
+                <p className="text-xs font-semibold text-gray-500 mb-1">
+                  ここまでやると、こうなります
+                </p>
+                <p className="text-sm text-gray-900 leading-relaxed font-medium">
+                  {step.outcome}
+                </p>
+              </div>
+
+              {step.source && (
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  <span className="font-semibold">次へ進む目安：</span>
+                  {step.gate}
+                </p>
+              )}
+
+              {ids.length > 0 && (
+                <details className="mt-2">
+                  <summary className="text-xs text-blue-700 cursor-pointer hover:underline">
+                    対象の {ids.length} 件を見る
+                  </summary>
+                  <ul className="mt-2 space-y-1 pl-1">
+                    {ids.map((id) => {
+                      const lesson = allLessons.find((l) => l.id === id);
+                      if (!lesson) return null;
+                      return (
+                        <li key={id} className="text-sm">
+                          <Link
+                            href={`/lesson/${id}`}
+                            className="text-blue-700 hover:text-blue-900 hover:underline"
+                          >
+                            {lesson.title}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </details>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+
+      {/* ── 1レッスンの時間の使い方 ── */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 mt-6">
+        <h3 className="font-bold text-gray-900 mb-1">1レッスン30分の使い方</h3>
+        <p className="text-sm text-gray-600 leading-relaxed mb-3">
+          時間をかけるべきは「書く」ところではありません。
+          <strong className="text-gray-900">
+            前後の「なぜ必要か」に10分使う
+          </strong>
+          のが、この教材の効かせどころです。
+        </p>
+        <ul className="space-y-1.5">
+          {LESSON_TIME_BREAKDOWN.map((row) => (
+            <li key={row.label} className="flex items-baseline gap-3 text-sm">
+              <span className="text-xs font-mono text-gray-400 w-10 shrink-0 text-right">
+                {row.minutes}分
+              </span>
+              <span className="text-gray-700">{row.label}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-gray-500 leading-relaxed mt-3">
+          詰まったら手本をすぐ開いて構いません。悩んでいる時間は学習になりません。
+          ただし Svelte の「手が覚えるまでやる」だけは、見ずに書けるまで繰り返してください。
+        </p>
+      </div>
+
+      {/* ── 終わりの判断 ── */}
+      <div className="bg-white rounded-xl border-2 border-green-300 p-4 mt-4">
+        <h3 className="font-bold text-gray-900 mb-2">
+          「この教材を終えた」と言える条件
+        </h3>
+        <p className="text-sm text-gray-700 leading-relaxed mb-3">
+          完走率ではありません。次の3つに自分の言葉で答えられたら終わりです。
+          <strong className="text-gray-900">
+            残りのレッスンは、やらなくて構いません。
+          </strong>
+        </p>
+        <ol className="space-y-2 text-sm text-gray-800 leading-relaxed">
+          <li>
+            <strong>1.</strong>{" "}
+            手元のファイルを1つ挙げて、「これはブラウザに配られるか？」に即答できる
+          </li>
+          <li>
+            <strong>2.</strong>{" "}
+            AIが書いたコードを受け取ったとき、最初に見る3か所を挙げられる
+          </li>
+          <li>
+            <strong>3.</strong>{" "}
+            型と Lint が「止められないもの」を3つ挙げられる
+          </li>
+        </ol>
+        <p className="text-sm text-gray-600 leading-relaxed mt-3">
+          この3つに答えられる状態が、
+          <strong className="text-gray-900">
+            受託でAIを使いながら仕事をするための最低ライン
+          </strong>
+          です。ここから先は、教材ではなく実際の案件で伸びます。
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export default function GuidePage() {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -123,9 +291,17 @@ export default function GuidePage() {
 
       <main className="max-w-3xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">学習の手引き</h1>
-        <p className="text-sm text-gray-500 mb-8">
+        <p className="text-sm text-gray-500 mb-4">
           この教材をどう使うと効率がいいか
         </p>
+
+        {/* 長いページなので、結論（進め方）へ直接飛べるようにする */}
+        <a
+          href="#roadmap"
+          className="inline-block mb-8 text-sm text-indigo-700 hover:text-indigo-900 hover:underline"
+        >
+          → 先に「どの順番で、何時間かけるか」を見る
+        </a>
 
         {/* ── 結論 ── */}
         <div className="bg-white rounded-xl border-2 border-green-300 p-4 mb-10">
@@ -290,6 +466,10 @@ export default function GuidePage() {
             </ul>
           </div>
         </Section>
+
+        <div className="mt-10 pt-8 border-t-2 border-gray-200">
+          <Roadmap />
+        </div>
 
         <div className="mt-10 pt-6 border-t border-gray-200">
           <Link
