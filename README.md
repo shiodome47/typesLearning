@@ -1,7 +1,8 @@
-# 判断力トレーニング（TypeScript / Svelte）
+# 判断力トレーニング（TypeScript / Svelte / Compact）
 
 手本を見てゼロから書く「白紙練習」と、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
-TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）を1つのアプリで扱い、一覧で切り替えられる。
+TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）・Compact 2件を
+1つのアプリで扱い、一覧で切り替えられる。
 
 ## 学習コンセプト
 
@@ -101,6 +102,50 @@ AIが1日に数百行書く前提に立つと「レビュー能力を上げる�
 ⑥の到達点は **「機械が止められないものが3つに絞られる」** ことです（秘密・認可・仕様）。
 「全部を注意深く読む」は不可能でも、「この3つだけを毎回見る」なら200行来ても続きます。
 
+## Compact 編（Midnight / 現 LFDT Minokawa）
+
+Compact は Midnight のスマートコントラクト言語です。
+言語自体は Linux Foundation Decentralized Trust に移管され、プロジェクト名は **Minokawa** になりましたが、
+コード中のキーワードは `ledger` / `circuit` / `witness` / `disclose` のまま変わりません。
+
+この編を入れた理由は、SvelteKit 編と**同じ構図が言語仕様のレベルで現れる**からです。
+
+| | SvelteKit 編 | Compact 編 |
+|---|---|---|
+| 事故 | APIキーがブラウザに配られる | 秘密鍵が公開台帳に載る |
+| 境界 | ファイル名の `.server.` | `disclose(...)` |
+| 気づけるか | エラーは出ない | エラーは出ない |
+
+Compact は **引数と `witness` が既定で private** で、`disclose(...)` を通したものだけが公開されます。
+つまり公開事故は必ず `disclose` の位置に現れます。見る場所が1か所に定まるので、
+「何を公開し、何を秘匿し、何を証明するか」という判断そのものを教材にできます。
+
+肝は「秘密を渡すこと」と「秘密を知っていると証明すること」の区別です。
+
+```
+owner = disclose(localSecretKey());                   // 生の鍵が台帳に載る = 事故
+owner = disclose(publicKey(localSecretKey(), seq));   // ハッシュ済みの派生値 = 正しい
+```
+
+どちらも本人確認は成立し、テストも通ります。違うのは鍵が漏れるかどうかだけです。
+
+### 採点はコンパイラ無しの構造チェック
+
+Compact は TypeScript としても Svelte としてもパースできず、ブラウザで動くコンパイラもありません。
+しかし採点したいのは文法の暗記ではなく境界の設計判断なので、構造で十分に問えます。
+
+```ts
+{ kind: "compact-ledger", name: "round" }                          // public state を宣言したか
+{ kind: "compact-witness", name: "localSecretKey" }                // 秘密の入口が残っているか
+{ kind: "compact-discloses", value: "localSecretKey", expect: false } // 生の秘密を公開していないか
+{ kind: "compact-discloses", value: "publicKey" }                  // 派生値なら公開してよい
+```
+
+`compact-discloses` は**入れ子の深さ**を見ます。`disclose(publicKey(sk, seq))` の `sk` は
+「公開されていない」と判定されるため、正解を誤って落とすことがありません。
+教材コードは公式の [example-counter](https://github.com/midnightntwrk/example-counter) と
+[example-bboard](https://github.com/midnightntwrk/example-bboard) を土台にしています。
+
 ## 自動採点
 
 確認ポイントは自己申告ではなく、**機械的に判定**されます。サーバーも外部APIも使わず、ブラウザ内で完結します。
@@ -177,6 +222,7 @@ npm run smoke:sveltekit    # SvelteKit / ガードレール 側（複数ファ�
 4. 診断レッスンの欠陥コードが**型チェックを通ること**（型で気づけては診断練習にならない）
 5. 複数ファイル教材で、採点仕様が **starter のままなら落ちること**
    （常に合格する採点は検証として無意味なので、合格側と不合格側の両方を見る）
+6. Compact 教材でも同じく、模範解答で全項目に合格し、**starter / 欠陥コードでは落ちること**
 
 ブラウザ側の採点と同じ React シム・同じ前提（`curriculum/verifySupport.ts`）を使い、
 Svelte / SvelteKit の判定ロジックも同じ実装（`curriculum/checks.ts`）を共有するため、
@@ -194,7 +240,8 @@ typesLearning/
 │   ├── phase7-judgment/            # 回収レッスン + 診断レッスン
 │   ├── svelte/                     # Svelte 5（runes）16件
 │   ├── sveltekit/                  # SvelteKit 編 9件（連続チュートリアル）
-│   └── guardrails/                 # ガードレール編 6件（型・Lint・CI）
+│   ├── guardrails/                 # ガードレール編 6件（型・Lint・CI）
+│   └── compact/                    # Compact 編 2件（公開と秘匿の境界）
 ├── scripts/
 │   └── verify-curriculum.mjs       # 教材検証ハーネス（CI で実行）
 └── src/
@@ -216,7 +263,8 @@ typesLearning/
         └── verify/
             ├── browserEngine.ts    # TypeScript 採点（型診断）
             ├── svelteEngine.ts     # Svelte 採点（単一ファイル）
-            └── kitEngine.ts        # SvelteKit 採点（複数ファイル）
+            ├── kitEngine.ts        # SvelteKit 採点（複数ファイル）
+            └── compactEngine.ts    # Compact 採点（構造チェック・コンパイラ不要）
 ```
 
 ## 教材の追加方法

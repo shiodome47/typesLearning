@@ -27,11 +27,14 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   sveltekit: "SvelteKit",
   a11y: "アクセシビリティ",
   tooling: "ガードレール",
+  compact: "Compact",
+  "zk-privacy": "公開と秘匿",
 };
 
 export const LANGUAGE_LABELS: Record<LessonLanguage, string> = {
   typescript: "TypeScript",
   svelte: "Svelte",
+  compact: "Compact",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

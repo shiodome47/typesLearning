@@ -85,6 +85,41 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
       accent: "border-gray-300 bg-gray-50 text-gray-700",
     },
   },
+  // Compact（Midnight / 現 LFDT Minokawa）。
+  // 目的は TypeScript 側とも Svelte 側とも違う。構文は小さいので暗記は要らないが、
+  // 「何を公開し、何を隠し、何を証明するか」の判断は間違えると取り返しがつかない。
+  // だから focus は構文ではなく境界の設計判断に置く。
+  compact: {
+    focus: {
+      label: "境界の判断を身につける",
+      summary:
+        "Compact の難しさは文法ではなく「何を公開してよいか」の判断です。公開してしまった秘密は取り消せないので、ここは繰り返す価値があります。",
+      howTo:
+        "1件30分。`disclose(...)` の中身を指さして「なぜこれは公開してよいのか」を言えるまで。",
+      accent: "border-violet-300 bg-violet-50 text-violet-900",
+    },
+    tutorial: {
+      label: "順番に通す（Compact 編）",
+      summary:
+        "公開だけの世界から始めて、秘密が登場したときに何が増えるのかを順番に見ます。",
+      howTo: "1件30〜40分。手本を見ながらで構いません。",
+      accent: "border-emerald-300 bg-emerald-50 text-emerald-900",
+    },
+    foundation: {
+      label: "読んで理解する",
+      summary:
+        "Compact の骨格（ledger / circuit / witness）です。書き写して意味が分かれば十分です。",
+      howTo: "1件15分。手本を写して、どれが公開でどれが秘密かを言えたら次へ。",
+      accent: "border-blue-300 bg-blue-50 text-blue-900",
+    },
+    reference: {
+      label: "必要になったら引く",
+      summary:
+        "実際に dApp を書き始めてから戻ってくる場所です。今は「そういう問題がある」とだけ知っておけば十分です。",
+      howTo: "今はやらなくてよい。",
+      accent: "border-gray-300 bg-gray-50 text-gray-700",
+    },
+  },
 };
 
 /** 言語ごとのランク分け */
@@ -177,6 +212,13 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "sv-14-load-data",
       "sv-15-diagnose-server-shared-state",
     ],
+  },
+  compact: {
+    // 公開事故は取り消せないので、診断は最初から focus に置く
+    focus: ["cp-02-diagnose-secret-leak"],
+    foundation: ["cp-01-ledger-circuit"],
+    tutorial: [],
+    reference: [],
   },
 };
 

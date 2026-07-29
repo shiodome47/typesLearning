@@ -64,14 +64,21 @@ export function configureTypeScript(monaco: Monaco): void {
  * テンプレートも `<script>` 内の JS も妥当に色分けされる。
  */
 export function monacoLanguageFor(language: LessonLanguage): string {
-  return language === "svelte" ? "html" : "typescript";
+  if (language === "svelte") return "html";
+  // Compact を typescript として渡すと `export ledger x: Counter;` が
+  // 構文エラーになり、エディタが赤線だらけになる。
+  // 見た目が近く、かつ TypeScript ワーカーの解析対象にならない rust を借りる
+  // （Compact 用の言語定義は Monaco に無い）。
+  if (language === "compact") return "rust";
+  return "typescript";
 }
 
 /** モデルのパス。拡張子で TypeScript 側の解析対象かどうかが決まる */
 export function modelPathFor(language: LessonLanguage, name: string): string {
-  return language === "svelte"
-    ? `file:///${name}.svelte`
-    : `file:///${name}.tsx`;
+  if (language === "svelte") return `file:///${name}.svelte`;
+  // .tsx にすると TypeScript ワーカーが拾ってしまうので拡張子を分ける
+  if (language === "compact") return `file:///${name}.compact`;
+  return `file:///${name}.tsx`;
 }
 
 /**
@@ -81,6 +88,8 @@ export function modelPathFor(language: LessonLanguage, name: string): string {
 export function monacoLanguageForPath(filePath: string): string {
   if (filePath.endsWith(".svelte")) return "html";
   if (filePath.endsWith(".json")) return "json";
+  // Compact は独自言語。TypeScript として扱うと構文エラーになる
+  if (filePath.endsWith(".compact")) return "rust";
   return "typescript";
 }
 

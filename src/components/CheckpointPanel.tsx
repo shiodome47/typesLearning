@@ -13,6 +13,7 @@ import { whenMonacoReady } from "@/lib/monaco/setup";
 import { gradeCheckpoints, type CheckResult } from "@/lib/verify/browserEngine";
 import { gradeSvelteCheckpoints } from "@/lib/verify/svelteEngine";
 import { gradeKitCheckpoints } from "@/lib/verify/kitEngine";
+import { gradeCompactCheckpoints } from "@/lib/verify/compactEngine";
 
 interface CheckpointPanelProps {
   checkpoints: Checkpoint[];
@@ -49,13 +50,22 @@ export function CheckpointPanel({
   const handleGrade = useCallback(async () => {
     setStatus("grading");
     try {
-      // 複数ファイル教材は SvelteKit エンジン、
-      // 単一ファイルは TypeScript なら Monaco の型診断、Svelte なら svelte/compiler
-      const r = files
-        ? await gradeKitCheckpoints(files, checkpoints, defaultFile ?? "")
-        : language === "svelte"
-          ? await gradeSvelteCheckpoints(code, checkpoints)
-          : await gradeCheckpoints(await whenMonacoReady(), code, checkpoints);
+      // Compact は独自言語で、TypeScript の型診断も svelte/compiler も使えない。
+      // ファイル数に関わらず専用エンジンへ送るので、files 判定より先に分岐する。
+      // 残りは、複数ファイルなら SvelteKit エンジン、単一ファイルは
+      // TypeScript なら Monaco の型診断、Svelte なら svelte/compiler。
+      const r =
+        language === "compact"
+          ? gradeCompactCheckpoints(
+              files ?? { "main.compact": code },
+              checkpoints,
+              defaultFile ?? "main.compact"
+            )
+          : files
+            ? await gradeKitCheckpoints(files, checkpoints, defaultFile ?? "")
+            : language === "svelte"
+              ? await gradeSvelteCheckpoints(code, checkpoints)
+              : await gradeCheckpoints(await whenMonacoReady(), code, checkpoints);
       setResults(r);
       setStatus("done");
       onResults?.(r);
