@@ -255,6 +255,40 @@ export circuit bid(): [] {
 const rp2 = await grade();
 log(rp2.total > 0 && rp2.got === rp2.total, "cp-08: 3種類の事実を書けると全合格", `${rp2.got} / ${rp2.total}`);
 
+
+// ── ⑦ 診断: 開示しすぎ（秘密は漏れていないのに特定される） ──
+await open("cp-09-diagnose-over-disclosure");
+const od1 = await grade();
+log(od1.total > 0 && od1.got < od1.total, "cp-09: 開示しすぎのままでは不合格", `${od1.got} / ${od1.total}`);
+await replaceCode(`pragma language_version 0.23;
+import CompactStandardLibrary;
+
+export ledger memberId: Bytes<32>;
+export ledger bidCount: Counter;
+
+witness localBalance(): Uint<64>;
+witness localPrefCode(): Uint<8>;
+witness localSecretKey(): Bytes<32>;
+
+export circuit publicKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "auction:pk:"), sk]);
+}
+
+export circuit bid(): [] {
+  const balance = localBalance();
+  assert(balance >= 100000, "insufficient balance");
+
+  const pref = localPrefCode();
+  assert(pref == 13 || pref == 14 || pref == 12, "out of area");
+
+  assert(memberId == publicKey(localSecretKey()), "not a member");
+
+  bidCount.increment(1);
+}
+`);
+const od2 = await grade();
+log(od2.total > 0 && od2.got === od2.total, "cp-09: 粒度とドメイン分離を直すと全合格", `${od2.got} / ${od2.total}`);
+
 console.log(`\n=== ${results.filter(Boolean).length}/${results.length} 合格 ===`);
 await b.close();
 process.exit(results.every(Boolean)?0:1);

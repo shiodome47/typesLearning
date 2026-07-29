@@ -25,6 +25,7 @@ import { cpLesson05 } from "./cp-05-selective-disclosure";
 import { cpLesson06 } from "./cp-06-diagnose-secret-leak";
 import { cpLesson07 } from "./cp-07-dapp-wiring";
 import { cpLesson08 } from "./cp-08-range-proof";
+import { cpLesson09 } from "./cp-09-diagnose-over-disclosure";
 import type { Lesson } from "../types";
 
 export const compactLessons: Lesson[] = [
@@ -36,4 +37,5 @@ export const compactLessons: Lesson[] = [
   cpLesson06,
   cpLesson07,
   cpLesson08,
+  cpLesson09,
 ];

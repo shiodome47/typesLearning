@@ -4,8 +4,8 @@ export const cpLesson07: Lesson = {
   kind: "project",
   language: "compact",
   id: "cp-07-dapp-wiring",
-  order: 7,
-  title: "⑦ dApp として動かす — 秘密はどのファイルに置くのか",
+  order: 8,
+  title: "⑧ dApp として動かす — 秘密はどのファイルに置くのか",
   category: "compact",
   difficulty: 4,
 
@@ -13,7 +13,7 @@ export const cpLesson07: Lesson = {
 
   why: {
     problem:
-      "⑥までで、コントラクトは書けるようになりました。\n" +
+      "⑦までで、コントラクトは書けるようになりました。\n" +
       "しかし `.compact` ファイルだけでは**アプリになりません**。\n\n" +
       "②で `witness localSecretKey(): Bytes<32>;` と書きましたが、" +
       "あれは宣言だけで、中身がありません。\n" +

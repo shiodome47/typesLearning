@@ -192,6 +192,67 @@ export { withRetry, withTimeout, robust };
 const r2 = await grade();
 log(r2.total > 0 && r2.got === r2.total, "ef-04: リトライ/タイムアウトの型差を書けると全合格", `${r2.got} / ${r2.total}`);
 
+
+// ── ⑤ 診断: 依存が型から消えている ──
+await open("ef-05-diagnose-lost-dependency");
+const dl1 = await grade();
+log(dl1.total > 0 && dl1.got < dl1.total, "ef-05: 依存が消えたままでは不合格", `${dl1.got} / ${dl1.total}`);
+await replaceCode(`import { Effect, Context, Data } from "effect";
+
+type User = { id: string; name: string };
+
+class QueryError extends Data.TaggedError("QueryError")<{}> {}
+
+interface Database {
+  readonly query: (sql: string) => Effect.Effect<User[], QueryError>;
+  readonly insert: (sql: string) => Effect.Effect<void, QueryError>;
+}
+const Database = Context.GenericTag<Database, Database>("Database");
+
+interface Clock {
+  readonly now: () => number;
+}
+const Clock = Context.GenericTag<Clock, Clock>("Clock");
+
+const listUsers = (): Effect.Effect<User[], QueryError, Database> =>
+  Effect.gen(function* () {
+    const database = yield* Effect.service(Database);
+    return yield* database.query("select * from users");
+  });
+
+const seedTestData = (): Effect.Effect<void, QueryError, Database> =>
+  Effect.gen(function* () {
+    const database = yield* Effect.service(Database);
+    return yield* database.insert("insert into users values ('t1', 'test')");
+  });
+
+const stamped = (): Effect.Effect<number, never, Clock> =>
+  Effect.gen(function* () {
+    const clock = yield* Effect.service(Clock);
+    return clock.now();
+  });
+
+const testDatabase: Database = {
+  query: () => Effect.succeed([{ id: "t1", name: "テスト" }]),
+  insert: () => Effect.succeed(undefined),
+};
+
+export const runList = () =>
+  Effect.runPromise(Effect.provideService(listUsers(), Database, testDatabase));
+
+export const runSeed = () =>
+  Effect.runPromise(
+    Effect.provideService(seedTestData(), Database, testDatabase)
+  );
+
+export const runStamp = () =>
+  Effect.runPromise(
+    Effect.provideService(stamped(), Clock, { now: () => 0 })
+  );
+`);
+const dl2 = await grade();
+log(dl2.total > 0 && dl2.got === dl2.total, "ef-05: 依存を型に戻すと全合格", `${dl2.got} / ${dl2.total}`);
+
 console.log(`\n=== ${results.filter(Boolean).length}/${results.length} 合格 ===`);
 await b.close();
 process.exit(results.every(Boolean) ? 0 : 1);

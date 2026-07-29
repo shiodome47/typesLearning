@@ -419,12 +419,20 @@ export function isCompactSpecKind(kind: CheckSpec["kind"]): boolean {
 // 採点したいのは文法の暗記ではなく「公開・秘匿・証明の境界の設計判断」
 // なので、宣言と呼び出しの構造が読めれば十分に問える。
 
-/** コメントと文字列リテラルを取り除く（"secret" のような文字列に反応しないため） */
-function stripCompactNoise(source: string): string {
+/** コメントだけを取り除く。文字列リテラルは残す */
+function stripCompactComments(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/\/\/[^\n]*/g, " ")
-    .replace(/"(?:[^"\\]|\\.)*"/g, '""');
+    .replace(/\/\/[^\n]*/g, " ");
+}
+
+/**
+ * コメントと文字列リテラルを取り除く。
+ * 識別子を探すときに、コメントの注意書きや "secret" のような
+ * 文字列リテラルへ反応してしまうのを防ぐ。
+ */
+function stripCompactNoise(source: string): string {
+  return stripCompactComments(source).replace(/"(?:[^"\\]|\\.)*"/g, '""');
 }
 
 /** `ledger` / `circuit` / `witness` で宣言されている名前の一覧 */
@@ -620,11 +628,12 @@ export function runCompactCheck(
       }
 
       case "compact-contains-string": {
-        // コメントや文字列は stripCompactNoise で落としてから見る。
-        // 「コメントで注意書きに書いた」だけで不合格にしないため。
-        const code = stripCompactNoise(source);
-        const escaped = spec.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const actual = new RegExp(`\\b${escaped}\\b`).test(code);
+        // コメントだけを落として見る。文字列リテラルは残す。
+        // ドメイン分離の目印（pad(32, "auction:pk:")）のように、
+        // 文字列そのものが仕様になるものを問うため。
+        // コメントを残すと「注意書きに書いただけ」で合格してしまう。
+        const code = stripCompactComments(source);
+        const actual = code.includes(spec.value);
         const expected = spec.expect ?? true;
         return {
           pass: actual === expected,
