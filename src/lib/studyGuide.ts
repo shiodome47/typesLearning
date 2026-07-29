@@ -85,6 +85,41 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
       accent: "border-gray-300 bg-gray-50 text-gray-700",
     },
   },
+  // Compact（Midnight / 現 LFDT Minokawa）。
+  // 目的は TypeScript 側とも Svelte 側とも違う。構文は小さいので暗記は要らないが、
+  // 「何を公開し、何を隠し、何を証明するか」の判断は間違えると取り返しがつかない。
+  // だから focus は構文ではなく境界の設計判断に置く。
+  compact: {
+    focus: {
+      label: "境界の判断を身につける",
+      summary:
+        "Compact の難しさは文法ではなく「何を公開してよいか」の判断です。公開してしまった秘密は取り消せないので、ここは繰り返す価値があります。",
+      howTo:
+        "1件30分。`disclose(...)` の中身を指さして「なぜこれは公開してよいのか」を言えるまで。",
+      accent: "border-violet-300 bg-violet-50 text-violet-900",
+    },
+    tutorial: {
+      label: "順番に通す（Compact 編）",
+      summary:
+        "公開だけの世界から始めて、秘密が登場したときに何が増えるのかを順番に見ます。診断が2回あり、⑦は⑤⑥の、⑨は②④の回収です。",
+      howTo: "1件30〜40分。手本を見ながらで構いません。",
+      accent: "border-emerald-300 bg-emerald-50 text-emerald-900",
+    },
+    foundation: {
+      label: "読んで理解する",
+      summary:
+        "Compact の骨格（ledger / circuit / witness）です。書き写して意味が分かれば十分です。",
+      howTo: "1件15分。手本を写して、どれが公開でどれが秘密かを言えたら次へ。",
+      accent: "border-blue-300 bg-blue-50 text-blue-900",
+    },
+    reference: {
+      label: "必要になったら引く",
+      summary:
+        "実際に dApp を書き始めてから戻ってくる場所です。今は「そういう問題がある」とだけ知っておけば十分です。",
+      howTo: "今はやらなくてよい。",
+      accent: "border-gray-300 bg-gray-50 text-gray-700",
+    },
+  },
 };
 
 /** 言語ごとのランク分け */
@@ -99,6 +134,11 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "ts-35-diagnose-ssr-hook",
       "ts-36-diagnose-any-leak",
       "ts-37-diagnose-missing-exhaustive",
+      "ef-01-error-in-type",
+      "ef-02-diagnose-swallowed-error",
+      "ef-03-dependency-in-type",
+      "ef-04-retry-timeout",
+      "ef-05-diagnose-lost-dependency",
     ],
     foundation: [
       "ts-01-variable-types",
@@ -178,6 +218,24 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "sv-15-diagnose-server-shared-state",
     ],
   },
+  compact: {
+    focus: [],
+    foundation: [],
+    // ①→⑨で会員制の掲示板とオークションを作る連続チュートリアル。
+    // 前の回の続きを書くので、拾い読みではなく順番に通す
+    tutorial: [
+      "cp-01-ledger-circuit",
+      "cp-02-witness-secret",
+      "cp-03-assert-guard",
+      "cp-04-authorization",
+      "cp-05-selective-disclosure",
+      "cp-08-range-proof",
+      "cp-09-diagnose-over-disclosure",
+      "cp-07-dapp-wiring",
+      "cp-06-diagnose-secret-leak",
+    ],
+    reference: [],
+  },
 };
 
 // ── 進め方のロードマップ ────────────────────────────────────
@@ -254,7 +312,21 @@ export const ROADMAP: RoadmapStep[] = [
     gate: "Lint と型が「止められないもの」を3つ挙げられたら、教材は卒業です。",
   },
   {
-    title: "第5段階　自分の題材で1本作る",
+    title: "第5段階　公開してよいものを見分ける（Compact編）",
+    source: { language: "compact", tier: "tutorial" },
+    minutesPerLesson: 35,
+    what:
+      "Compact 編を①から⑨まで順番に通します。" +
+      "第3・第4段階で扱った「秘密がブラウザに漏れる」話が、ここでは言語仕様そのものになります。" +
+      "見る場所は毎回 `disclose(...)` の中身だけです。",
+    outcome:
+      "秘密そのものを渡さずに「条件を満たしている」ことだけを示せる。" +
+      "公開してよい値と、派生値にしてからでないと出せない値を、コードを見て切り分けられる。",
+    gate:
+      "`disclose` の中身を指さして「なぜこれは公開してよいのか」を毎回言えるようになったら次へ。",
+  },
+  {
+    title: "第6段階　自分の題材で1本作る",
     source: null,
     minutesPerLesson: 0,
     what:

@@ -28,7 +28,10 @@ export type Category =
   | "template"       // テンプレート構文（{#each} / {#if} / bind）
   | "sveltekit"      // ルーティング・load・SSR
   | "a11y"           // アクセシビリティとコンパイラ警告
-  | "tooling";       // 型宣言・Lint・CI（機械に守らせる仕組み）
+  | "tooling"        // 型宣言・Lint・CI（機械に守らせる仕組み）
+  // ── Compact（Midnight / 現 LFDT Minokawa） ──
+  | "compact"        // Compact 言語・スマートコントラクトの記述
+  | "zk-privacy";    // 公開/秘匿の境界・disclose・witness（ZKの判断）
 
 export type HintLevel = 1 | 2 | 3; // 1: 方向性, 2: 構文ヒント, 3: ほぼ答え
 
@@ -147,6 +150,56 @@ export type CheckSpec =
       object: string;
       property: string;
       expect?: boolean;
+    }
+  // ── Compact（Midnight / 現 LFDT Minokawa） ──────────────────
+  //
+  // Compact は TypeScript でも Svelte でもパースできない独自言語
+  // （`export ledger x: Counter;` `export circuit f(): [] {}` `witness w(): Bytes<32>;`）。
+  // なので既存の AST パーサは使えず、行指向・キーワード駆動の構文を
+  // コンパイラ無しで構造的に問う。ZK 証明を実際に走らせる必要はなく、
+  // 「何を public に置き、何を disclose し、何を witness に隠すか」という
+  // 境界の設計判断こそが採点したいものなので、構造で十分に問える。
+  /** pragma と括弧の対応など、最低限の構文健全性 */
+  | { kind: "compact-parse"; file?: string }
+  /**
+   * `ledger <name>` を宣言しているか（public state の宣言）。
+   * type を指定すると型注釈も見る（`Map` / `Counter` / `Bytes<32>` など、前方一致）。
+   */
+  | {
+      kind: "compact-ledger";
+      name: string;
+      type?: string;
+      expect?: boolean;
+      file?: string;
+    }
+  /** `circuit <name>` を宣言しているか（エントリポイント） */
+  | { kind: "compact-circuit"; name: string; expect?: boolean; file?: string }
+  /** `witness <name>` を宣言しているか（TS側で実装する秘密入力） */
+  | { kind: "compact-witness"; name: string; expect?: boolean; file?: string }
+  /** `<name>(` の呼び出しがあるか（`disclose` / `assert` / `round.increment` など） */
+  | { kind: "compact-calls"; name: string; expect?: boolean; file?: string }
+  /**
+   * `disclose(...)` が value を **そのまま**（直接の引数として）公開しているか。
+   *
+   * 入れ子の内側は数えない。つまり
+   *   disclose(localSecretKey())                 → value:"localSecretKey" は true
+   *   disclose(publicKey(localSecretKey(), seq)) → value:"localSecretKey" は false
+   *                                                value:"publicKey"     は true
+   * これにより「生の秘密を公開するな」(expect:false) と
+   * 「派生値なら公開してよい」(expect:true) を同時に問える。
+   * Compact の肝（秘密そのものは渡さず、ハッシュ等の派生値だけ出す）が機械で採点できる。
+   */
+  | { kind: "compact-discloses"; value: string; expect?: boolean; file?: string }
+  /**
+   * `.compact` の中に識別子が現れるか（コメントと文字列は除いて見る）。
+   * 「秘密の在り処を示す名前が、チェーン側のファイルに漏れていないか」のように、
+   * 宣言でも呼び出しでもない形での混入を止めるのに使う。
+   */
+  | {
+      kind: "compact-contains-string";
+      value: string;
+      expect?: boolean;
+      file?: string;
     };
 
 export interface Checkpoint {
@@ -177,7 +230,7 @@ export interface Why {
 }
 
 /** 教材が扱う言語。採点方法とエディタ設定がこれで決まる */
-export type LessonLanguage = "typescript" | "svelte";
+export type LessonLanguage = "typescript" | "svelte" | "compact";
 
 interface LessonBase {
   id: string;          // 例: "ts-01-variable-types"

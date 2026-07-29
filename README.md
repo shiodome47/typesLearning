@@ -1,7 +1,8 @@
-# 判断力トレーニング（TypeScript / Svelte）
+# 判断力トレーニング（TypeScript / Svelte / Compact / Effect）
 
 手本を見てゼロから書く「白紙練習」と、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
-TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）を1つのアプリで扱い、一覧で切り替えられる。
+TypeScript 42件（Effect 編 5件を含む）・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）・
+Compact 9件を1つのアプリで扱い、一覧で切り替えられる。
 
 ## 学習コンセプト
 
@@ -21,7 +22,7 @@ TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6�
 ## 学習の手引き（`/guide`）
 
 `/guide` に「どの順番で、何時間かけると、何ができるようになるか」をまとめてあります。
-5段階のロードマップで、各段階に **到達点** と **次へ進む目安** を置いています。
+6段階のロードマップで、各段階に **到達点** と **次へ進む目安** を置いています。
 
 件数と所要時間は `TIER_LESSONS` から計算しているため、教材を追加しても数字がずれません。
 
@@ -50,16 +51,19 @@ why: {
 見本は `curriculum/phase5-advanced-patterns/ts-20-exhaustive-check.ts` と
 `curriculum/phase3-real-app/ts-15-api-fetch.ts` にあります。
 
-## 2つの言語、2つの目的
+## 3つの言語、3つの目的
 
 同じアプリですが、力を入れる場所が違います。
 
-| | TypeScript | Svelte |
-|---|---|---|
-| 目的 | **読んで判断できる**こと | **手が覚えている**こと（AIが使えないときの保険） |
-| 構文の暗記 | 不要 | 中核だけは必要 |
-| 診断の比率 | 5/37 | 8/31（「動くが間違っている」が多いため） |
-| 件数 | 37 | 16 + SvelteKit 編 9 + ガードレール編 6 |
+| | TypeScript | Svelte | Compact |
+|---|---|---|---|
+| 目的 | **読んで判断できる**こと | **手が覚えている**こと（AIが使えないときの保険） | **公開してよいか判断できる**こと |
+| 構文の暗記 | 不要 | 中核だけは必要 | 不要（構文は小さい） |
+| 診断の比率 | 5/42 | 8/31（「動くが間違っている」が多いため） | 2/9 |
+| 件数 | 37 + Effect 編 5 | 16 + SvelteKit 編 9 + ガードレール編 6 | 9 |
+
+Compact だけ目的が違うのは、**間違いが取り消せない**からです。
+型の誤りは直せば済み、画面の崩れは作り直せますが、公開台帳に載った秘密は消せません。
 
 ### SvelteKit 編（連続チュートリアル）
 
@@ -100,6 +104,135 @@ AIが1日に数百行書く前提に立つと「レビュー能力を上げる�
 
 ⑥の到達点は **「機械が止められないものが3つに絞られる」** ことです（秘密・認可・仕様）。
 「全部を注意深く読む」は不可能でも、「この3つだけを毎回見る」なら200行来ても続きます。
+
+## Compact 編（Midnight / 現 LFDT Minokawa）
+
+Compact は Midnight のスマートコントラクト言語です。
+言語自体は Linux Foundation Decentralized Trust に移管され、プロジェクト名は **Minokawa** になりましたが、
+コード中のキーワードは `ledger` / `circuit` / `witness` / `disclose` のまま変わりません。
+
+①→⑨で会員制の掲示板とオークションを作り上げる連続チュートリアルです。
+
+| 回 | 作るもの | 扱う仕組み |
+|---|---|---|
+| ① | 公開カウンター | `ledger` / `circuit`（全部公開でよい世界） |
+| ② | 会員登録 | `witness` / `persistentHash`（名前を付けずに identify する） |
+| ③ | 二重登録の防止 | `assert` / `Map`（前提条件は分岐ではなく assert） |
+| ④ | **本人だけが消せる** | 鍵を渡さずに本人だと証明する |
+| ⑤ | 年齢制限 | 選択的開示（生年は伏せて「18歳以上」だけ示す） |
+| ⑥ | **dApp として動かす** | 3層の責務分担（`.compact` / `witnesses.ts` / UI） |
+| ⑦ | 診断：納品してよいか | 秘密鍵が台帳に載っている |
+
+①で「全部公開でよい世界」を書いてから②で秘密が登場するので、**何が増えたのか**が差分で見えます。
+④で教えた認可の作法を⑨の診断で回収する構造は、SvelteKit 編の sk-04 → sk-09 と同じです。
+
+⑧は複数ファイル教材（`ProjectLesson`）です。`witness` は `.compact` では**宣言だけ**で、
+実装は利用者の端末で動く `witnesses.ts` にあります。この分離が Midnight の要で、
+秘密鍵をサーバーに置いた瞬間に ZK の意味が消えるため、「どのファイルに置くか」を練習させます。
+1 レッスンの中で `compact-*` と `kit-*` の採点仕様を混ぜて使えます。
+
+診断が2つあるのは、**見落とす層が2つある**からです。
+⑨は「秘密そのものを公開した」という分かりやすい事故ですが、
+⑦は**秘密を1バイトも公開していないのに特定される**という話を扱います。
+
+| | ⑦ 開示しすぎ | ⑨ 秘密の漏洩 |
+|---|---|---|
+| `disclose` の中身 | 正しい（事実だけ） | 誤り（生の秘密） |
+| レビューで気づくか | **通過してしまう** | 指摘できる |
+| 何が起きるか | 繰り返しと名寄せで特定される | 直接なりすまされる |
+
+⑦の要点は2つです。**判定は `assert` で済ませ `ledger` に残さない**（残すと取引のたびに積み上がる）ことと、
+**識別子に用途を混ぜる**（`pad(32, "auction:pk:")`）ことです。
+後者が無いと、同じ鍵から作った識別子が他アプリでも同じ値になり、履歴を突き合わせられます。
+
+この編を入れた理由は、SvelteKit 編と**同じ構図が言語仕様のレベルで現れる**からです。
+
+| | SvelteKit 編 | Compact 編 |
+|---|---|---|
+| 事故 | APIキーがブラウザに配られる | 秘密鍵が公開台帳に載る |
+| 境界 | ファイル名の `.server.` | `disclose(...)` |
+| 気づけるか | エラーは出ない | エラーは出ない |
+
+Compact は **引数と `witness` が既定で private** で、`disclose(...)` を通したものだけが公開されます。
+つまり公開事故は必ず `disclose` の位置に現れます。見る場所が1か所に定まるので、
+「何を公開し、何を秘匿し、何を証明するか」という判断そのものを教材にできます。
+
+肝は「秘密を渡すこと」と「秘密を知っていると証明すること」の区別です。
+
+```
+owner = disclose(localSecretKey());                   // 生の鍵が台帳に載る = 事故
+owner = disclose(publicKey(localSecretKey(), seq));   // ハッシュ済みの派生値 = 正しい
+```
+
+どちらも本人確認は成立し、テストも通ります。違うのは鍵が漏れるかどうかだけです。
+
+### 採点はコンパイラ無しの構造チェック
+
+Compact は TypeScript としても Svelte としてもパースできず、ブラウザで動くコンパイラもありません。
+しかし採点したいのは文法の暗記ではなく境界の設計判断なので、構造で十分に問えます。
+
+```ts
+{ kind: "compact-ledger", name: "round" }                          // public state を宣言したか
+{ kind: "compact-witness", name: "localSecretKey" }                // 秘密の入口が残っているか
+{ kind: "compact-discloses", value: "localSecretKey", expect: false } // 生の秘密を公開していないか
+{ kind: "compact-discloses", value: "publicKey" }                  // 派生値なら公開してよい
+```
+
+`compact-discloses` は**入れ子の深さ**を見ます。`disclose(publicKey(sk, seq))` の `sk` は
+「公開されていない」と判定されるため、正解を誤って落とすことがありません。
+教材コードは公式の [example-counter](https://github.com/midnightntwrk/example-counter) と
+[example-bboard](https://github.com/midnightntwrk/example-bboard) を土台にしています。
+
+## Effect 編
+
+Effect は学習コストが高く、全体を手で覚えるのは割に合いません。
+そこで**白紙練習では攻めず、診断に寄せて核だけ**を扱います。
+
+Effect を使う理由は結局1つで、`Effect<成功する値, 起きうるエラー, 必要な依存>` の
+**2つ目の型引数**に尽きます。`Promise<User>` が「User が返る」しか言わないのに対し、
+`Effect<User, NetworkError | ParseError>` は「2通りに失敗する」まで言い、
+処理しなければコンパイルが通りません。
+
+逆に言えば **Effect を使いながらエラー型を `never` に潰す**書き方が存在します。
+
+```ts
+Effect.tryPromise(() => fetch(url))                  // catch 無し → UnknownException
+Effect.catchAll(self, () => Effect.succeed(null))    // 握りつぶし → エラー型が never
+```
+
+どちらもコンパイルは通り、`Effect.gen` も型注釈もあるので、レビューでは正しく見えます。
+**型を通すために型を弱めるのは AI が最も自然にやる修正**なので、診断の題材として強い。
+だからこの編は5件で、②と⑤の診断2件が本命です。
+
+| 回 | 扱うもの | 型がどう動くか |
+|---|---|---|
+| ① | 失敗を型に出す | `Promise<User>` → `Effect<User, NetworkError \| ParseError>` |
+| ② | **診断：失敗が消えている** | `never` / `UnknownException` を探す |
+| ③ | 依存を型に出す | 3番目が埋まるまで実行できない |
+| ④ | リトライとタイムアウト | リトライは型が**変わらず**、タイムアウトは**増える** |
+| ⑤ | **診断：依存が型から消えている** | `never` が「埋めた結果」か「消した結果」か |
+
+④の要点は型の動き方の差です。リトライしても失敗は消えない（＝型が変わらない）のに対し、
+タイムアウトは「時間切れ」という失敗を新しく生むのでエラー型が増えます。
+`Promise` ではどちらも `Promise<User>` のままで、この差が見えません。
+
+⑤が問うのは `R` が空の Effect を見たときの判断です。**「この空は、埋めた結果か、消した結果か」**。
+モジュール外の値を直接使えば `R` は最初から空のまま本物に繋がり、
+`R` を `any` にしたり `as any` を付ければ安全装置ごと消えます。
+どちらも `never` に見えるので区別がつきません。
+`never` は「依存が無い」ではなく「もう全部渡した」という意味である、というのが到達点です。
+
+### effect 本体は持ち込まない
+
+`effect` パッケージは数百ファイルあるためブラウザには入れず、
+React シムと同じ考え方で**最小の型シム**（`EFFECT_SHIM`）を置いています。
+問うのは API の網羅ではなく「失敗と依存が型に出ているか」の1点なので、これで足ります。
+採点は既存の TypeScript 型診断をそのまま使い、新しいエンジンは要りません。
+
+```ts
+{ kind: "type", assert: `type _c = Expect<Equal<ReturnType<typeof getUser>,
+  Effect.Effect<User, NetworkError | ParseError>>>;` }
+```
 
 ## 自動採点
 
@@ -157,7 +290,7 @@ npm run dev     # http://localhost:3000
 
 ```bash
 npm run type-check         # アプリ本体の型チェック
-npm run verify:curriculum  # 教材コードの検証 + 採点仕様の検証（TypeScript / Svelte 両方）
+npm run verify:curriculum  # 教材コードの検証 + 採点仕様の検証（全言語）
 npm run audit:diagrams     # 図解リンクの整合性
 npm run build              # 本番ビルド
 
@@ -165,6 +298,8 @@ npm run build              # 本番ビルド
 npm run smoke:e2e          # TypeScript 側
 npm run smoke:svelte       # Svelte 側
 npm run smoke:sveltekit    # SvelteKit / ガードレール 側（複数ファイル採点）
+npm run smoke:compact      # Compact 側（構造採点）
+npm run smoke:effect       # Effect 側（型診断・シム経由）
 ```
 
 `verify:curriculum` は重要です。教材の `starterCode` / `modelAnswer` は**テンプレート文字列なので
@@ -177,6 +312,7 @@ npm run smoke:sveltekit    # SvelteKit / ガードレール 側（複数ファ�
 4. 診断レッスンの欠陥コードが**型チェックを通ること**（型で気づけては診断練習にならない）
 5. 複数ファイル教材で、採点仕様が **starter のままなら落ちること**
    （常に合格する採点は検証として無意味なので、合格側と不合格側の両方を見る）
+6. Compact 教材でも同じく、模範解答で全項目に合格し、**starter / 欠陥コードでは落ちること**
 
 ブラウザ側の採点と同じ React シム・同じ前提（`curriculum/verifySupport.ts`）を使い、
 Svelte / SvelteKit の判定ロジックも同じ実装（`curriculum/checks.ts`）を共有するため、
@@ -194,7 +330,9 @@ typesLearning/
 │   ├── phase7-judgment/            # 回収レッスン + 診断レッスン
 │   ├── svelte/                     # Svelte 5（runes）16件
 │   ├── sveltekit/                  # SvelteKit 編 9件（連続チュートリアル）
-│   └── guardrails/                 # ガードレール編 6件（型・Lint・CI）
+│   ├── guardrails/                 # ガードレール編 6件（型・Lint・CI）
+│   ├── compact/                    # Compact 編 9件（連続チュートリアル）
+│   └── effect/                     # Effect 編 5件（失敗・依存を型に出す）
 ├── scripts/
 │   └── verify-curriculum.mjs       # 教材検証ハーネス（CI で実行）
 └── src/
@@ -216,7 +354,8 @@ typesLearning/
         └── verify/
             ├── browserEngine.ts    # TypeScript 採点（型診断）
             ├── svelteEngine.ts     # Svelte 採点（単一ファイル）
-            └── kitEngine.ts        # SvelteKit 採点（複数ファイル）
+            ├── kitEngine.ts        # SvelteKit 採点（複数ファイル）
+            └── compactEngine.ts    # Compact 採点（構造チェック・コンパイラ不要）
 ```
 
 ## 教材の追加方法

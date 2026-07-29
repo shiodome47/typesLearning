@@ -42,10 +42,11 @@ function loadCurriculum() {
 }
 
 const { allLessons } = loadCurriculum();
-const { PRELUDE, REACT_SHIM } = require(path.join(TMP, "verifySupport.js"));
+const { PRELUDE, REACT_SHIM, EFFECT_SHIM } = require(path.join(TMP, "verifySupport.js"));
 
 // ── 型チェック ──────────────────────────────────────────────
 const SHIM_PATH = path.join(ROOT, "__react_shim__.d.ts");
+const EFFECT_SHIM_PATH = path.join(ROOT, "__effect_shim__.d.ts");
 const CHECK_PATH = path.join(ROOT, "__check__.tsx");
 
 const OPTIONS = {
@@ -61,6 +62,8 @@ const OPTIONS = {
   paths: {
     react: [SHIM_PATH],
     "react/jsx-runtime": [SHIM_PATH],
+    // Effect も本体ではなくシムに解決させる（ブラウザ側と条件を揃える）
+    effect: [EFFECT_SHIM_PATH],
   },
   baseUrl: ROOT,
   types: [],
@@ -73,6 +76,7 @@ function diagnose(code) {
   const virtual = new Map([
     [CHECK_PATH, source],
     [SHIM_PATH, REACT_SHIM],
+    [EFFECT_SHIM_PATH, EFFECT_SHIM],
   ]);
 
   const host = ts.createCompilerHost(OPTIONS, true);
@@ -94,7 +98,11 @@ function diagnose(code) {
   const origRead = host.readFile.bind(host);
   host.readFile = (name) => (virtual.has(name) ? virtual.get(name) : origRead(name));
 
-  const program = ts.createProgram([CHECK_PATH, SHIM_PATH], OPTIONS, host);
+  const program = ts.createProgram(
+    [CHECK_PATH, SHIM_PATH, EFFECT_SHIM_PATH],
+    OPTIONS,
+    host
+  );
   const sf = program.getSourceFile(CHECK_PATH);
   return [
     ...program.getSyntacticDiagnostics(sf),
@@ -118,7 +126,7 @@ function fail(lessonId, what, detail) {
     path.join(ROOT, "src/lib/studyGuide.ts"),
     "utf8"
   );
-  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk|gr)-[a-z0-9-]+)"/g)].map(
+  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk|gr|cp|ef)-[a-z0-9-]+)"/g)].map(
     (m) => m[1]
   );
   const counts = new Map();
@@ -250,6 +258,61 @@ for (const lesson of allLessons) {
   // モードごとに「正解とされるコード」を取り出す
   const reference =
     lesson.kind === "write" ? lesson.modelAnswer : lesson.fixedCode;
+
+  // ── Compact 教材 ──
+  //
+  // Compact は TypeScript でも Svelte でもパースできない独自言語なので、
+  // 型チェックにはかけられない。代わりに採点仕様そのものを両側から検証する。
+  //   1. 模範解答で全項目に合格すること
+  //   2. starter / brokenCode では少なくとも1項目落ちること
+  // 2 を見ないと「常に合格する無意味な採点」に気づけない。
+  if (lesson.language === "compact") {
+    checkedLessons++;
+
+    const before = lesson.kind === "write" ? lesson.starterCode : lesson.brokenCode;
+    const SINGLE_CP = "main.compact";
+    let anyBeforeFails = false;
+
+    for (const cp of lesson.checkpoints) {
+      if (!cp.verify) continue;
+      gradedCheckpoints++;
+
+      const onModel = checks.runCompactCheck(
+        { [SINGLE_CP]: reference },
+        cp.verify,
+        SINGLE_CP
+      );
+      if (!onModel.pass) {
+        fail(
+          lesson.id,
+          `採点仕様 ${cp.id} が模範解答で不合格`,
+          onModel.message ?? cp.verify.kind
+        );
+      }
+
+      const onBefore = checks.runCompactCheck(
+        { [SINGLE_CP]: before },
+        cp.verify,
+        SINGLE_CP
+      );
+      if (!onBefore.pass) anyBeforeFails = true;
+    }
+
+    if (lesson.checkpoints.some((c) => c.verify) && !anyBeforeFails) {
+      fail(
+        lesson.id,
+        "採点が機能していない",
+        lesson.kind === "write"
+          ? "starter のままでも全項目に合格してしまう（練習になっていない）"
+          : "欠陥コードのままでも全項目に合格してしまう（診断になっていない）"
+      );
+    }
+
+    if (lesson.kind === "diagnose" && lesson.defects.length === 0) {
+      fail(lesson.id, "defects", "欠陥が1件も定義されていない");
+    }
+    continue;
+  }
 
   // ── Svelte 教材 ──
   if (lesson.language === "svelte") {

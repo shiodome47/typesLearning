@@ -405,6 +405,272 @@ export function isKitSpecKind(kind: CheckSpec["kind"]): boolean {
   return kind.startsWith("kit-");
 }
 
+/** Compact 用の採点仕様か */
+export function isCompactSpecKind(kind: CheckSpec["kind"]): boolean {
+  return kind.startsWith("compact-");
+}
+
+// ── Compact の構造クエリ ────────────────────────────────────
+//
+// Compact（Midnight / 現 LFDT Minokawa）は TypeScript でも Svelte でも
+// パースできないので、svelte/compiler は使えない。
+// コンパイラをブラウザに持ち込まずに済むよう、行指向で構造だけを読む。
+//
+// 採点したいのは文法の暗記ではなく「公開・秘匿・証明の境界の設計判断」
+// なので、宣言と呼び出しの構造が読めれば十分に問える。
+
+/** コメントだけを取り除く。文字列リテラルは残す */
+function stripCompactComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/\/\/[^\n]*/g, " ");
+}
+
+/**
+ * コメントと文字列リテラルを取り除く。
+ * 識別子を探すときに、コメントの注意書きや "secret" のような
+ * 文字列リテラルへ反応してしまうのを防ぐ。
+ */
+function stripCompactNoise(source: string): string {
+  return stripCompactComments(source).replace(/"(?:[^"\\]|\\.)*"/g, '""');
+}
+
+/** `ledger` / `circuit` / `witness` で宣言されている名前の一覧 */
+export function compactDeclarations(
+  source: string,
+  keyword: "ledger" | "circuit" | "witness"
+): string[] {
+  const code = stripCompactNoise(source);
+  // export は任意。`export ledger round: Counter;` / `witness localSecretKey(): Bytes<32>;`
+  const re = new RegExp(`\\b${keyword}\\s+([A-Za-z_][A-Za-z0-9_]*)`, "g");
+  return [...code.matchAll(re)].map((m) => m[1]);
+}
+
+/**
+ * `ledger <name>: <型>` の型注釈を返す。
+ * 宣言が無ければ null。`Map<K, V>` のように山括弧を含む型もそのまま返す。
+ */
+export function compactLedgerType(
+  source: string,
+  name: string
+): string | null {
+  const code = stripCompactNoise(source);
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // ledger 宣言は `;` で終わるので、そこまでを型注釈として読む
+  const m = code.match(new RegExp(`\\bledger\\s+${escaped}\\s*:\\s*([^;]+);`));
+  return m ? m[1].trim().replace(/\s+/g, " ") : null;
+}
+
+/**
+ * `<name>(` という呼び出しがあるか（宣言そのものは数えない）。
+ *
+ * Compact は型引数を取る呼び出しが多いので、名前と `(` の間に
+ * `<Vector<2, Bytes<32>>>` のような山括弧が挟まることがある。
+ * これを飛ばさないと persistentHash や some を検出できない。
+ */
+export function compactCalls(source: string, name: string): boolean {
+  const code = stripCompactNoise(source);
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // 宣言（circuit foo( / witness foo( ）は呼び出しではないので除く
+  const re = new RegExp(
+    `(?<!\\b(?:circuit|witness|ledger)\\s+)\\b${escaped}\\s*(?:<[^()]*>\\s*)?\\(`
+  );
+  return re.test(code);
+}
+
+/**
+ * `disclose(...)` が value を **そのまま** 公開しているか。
+ *
+ * Compact は「引数と witness は既定で private、disclose した分だけ public」
+ * という言語なので、何を disclose に通したかがそのまま公開範囲になる。
+ *
+ * 判定で肝心なのは「入れ子の深さ」。
+ *   disclose(localSecretKey())                  → 生の秘密が公開される（事故）
+ *   disclose(publicKey(localSecretKey(), seq))  → 公開されるのはハッシュ済みの派生値（正しい）
+ * 後者にも文字列としては localSecretKey が現れるので、単なる部分一致で見ると
+ * 正解まで不合格にしてしまう。disclose の *直接の* 引数に現れるかどうかで見る。
+ */
+export function compactDiscloses(source: string, value: string): boolean {
+  const code = stripCompactNoise(source);
+  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // disclose( から対応する括弧までを取り出して、その中に value があるか見る
+  for (let i = code.indexOf("disclose"); i !== -1; i = code.indexOf("disclose", i + 1)) {
+    const open = code.indexOf("(", i);
+    if (open === -1) continue;
+    let depth = 0;
+    let end = -1;
+    for (let j = open; j < code.length; j++) {
+      if (code[j] === "(") depth++;
+      else if (code[j] === ")") {
+        depth--;
+        if (depth === 0) {
+          end = j;
+          break;
+        }
+      }
+    }
+    if (end === -1) continue;
+    const inner = code.slice(open + 1, end);
+    // 入れ子の内側（別の関数に包まれた分）を伏せてから探す。
+    // これで disclose(publicKey(sk, seq)) の sk は「公開されていない」と読める。
+    let nested = 0;
+    let topLevel = "";
+    for (const ch of inner) {
+      if (ch === "(") {
+        nested++;
+        topLevel += " ";
+        continue;
+      }
+      if (ch === ")") {
+        nested--;
+        topLevel += " ";
+        continue;
+      }
+      topLevel += nested === 0 ? ch : " ";
+    }
+    if (new RegExp(`\\b${escaped}\\b`).test(topLevel)) return true;
+  }
+  return false;
+}
+
+/**
+ * Compact の最低限の構文健全性。
+ *
+ * コンパイラを持ち込まないので完全な検証はできないが、
+ * 「pragma がある」「括弧が閉じている」は構造として確実に問える。
+ * 教材で学習者がコードを壊したまま合格するのを防ぐのが目的。
+ */
+function compactParseError(source: string): string | null {
+  const code = stripCompactNoise(source);
+  if (!/\bpragma\s+language_version\b/.test(code)) {
+    return "pragma language_version がありません";
+  }
+  const pairs: [string, string, string][] = [
+    ["(", ")", "丸括弧"],
+    ["{", "}", "波括弧"],
+  ];
+  for (const [open, close, label] of pairs) {
+    let depth = 0;
+    for (const ch of code) {
+      if (ch === open) depth++;
+      else if (ch === close) depth--;
+      if (depth < 0) return `${label}の対応が取れていません`;
+    }
+    if (depth !== 0) return `${label}が閉じていません`;
+  }
+  return null;
+}
+
+/** Compact の採点仕様を 1 件判定する */
+export function runCompactCheck(
+  files: FileMap,
+  spec: CheckSpec,
+  defaultFile: string
+): CheckOutcome {
+  if (!isCompactSpecKind(spec.kind)) {
+    return { pass: false, message: "このエンジンでは判定できません" };
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const path = (spec as any).file ?? defaultFile;
+    const source = requireFile(files, path);
+
+    switch (spec.kind) {
+      case "compact-parse": {
+        const err = compactParseError(source);
+        return { pass: err === null, message: err ?? undefined };
+      }
+
+      case "compact-ledger":
+      case "compact-circuit":
+      case "compact-witness": {
+        const keyword =
+          spec.kind === "compact-ledger"
+            ? "ledger"
+            : spec.kind === "compact-circuit"
+              ? "circuit"
+              : "witness";
+        const actual = compactDeclarations(source, keyword).includes(spec.name);
+        const expected = spec.expect ?? true;
+        if (actual !== expected) {
+          return {
+            pass: false,
+            message: expected
+              ? `${keyword} ${spec.name} が宣言されていません`
+              : `${keyword} ${spec.name} を宣言してはいけません`,
+          };
+        }
+        // 型注釈まで問う場合（Map で持たせたいのに Counter になっている等）
+        if (spec.kind === "compact-ledger" && expected && spec.type) {
+          const declared = compactLedgerType(source, spec.name);
+          if (declared === null || !declared.startsWith(spec.type)) {
+            return {
+              pass: false,
+              message: `ledger ${spec.name} の型が ${spec.type} で始まっていません（今: ${declared ?? "型注釈なし"}）`,
+            };
+          }
+        }
+        return { pass: true };
+      }
+
+      case "compact-calls": {
+        const actual = compactCalls(source, spec.name);
+        const expected = spec.expect ?? true;
+        return {
+          pass: actual === expected,
+          message:
+            actual === expected
+              ? undefined
+              : expected
+                ? `${spec.name}(...) を呼んでいません`
+                : `${spec.name}(...) を使わないでください`,
+        };
+      }
+
+      case "compact-contains-string": {
+        // コメントだけを落として見る。文字列リテラルは残す。
+        // ドメイン分離の目印（pad(32, "auction:pk:")）のように、
+        // 文字列そのものが仕様になるものを問うため。
+        // コメントを残すと「注意書きに書いただけ」で合格してしまう。
+        const code = stripCompactComments(source);
+        const actual = code.includes(spec.value);
+        const expected = spec.expect ?? true;
+        return {
+          pass: actual === expected,
+          message:
+            actual === expected
+              ? undefined
+              : expected
+                ? `${path} に ${spec.value} がありません`
+                : `${path} に ${spec.value} が現れています。このファイルはチェーン上で動くので、秘密の在り処を書く場所ではありません`,
+        };
+      }
+
+      case "compact-discloses": {
+        const actual = compactDiscloses(source, spec.value);
+        const expected = spec.expect ?? true;
+        return {
+          pass: actual === expected,
+          message:
+            actual === expected
+              ? undefined
+              : expected
+                ? `disclose(...) の中に ${spec.value} がありません`
+                : `disclose(...) に ${spec.value} を渡してはいけません。` +
+                  `disclose を通したものは公開台帳に載り、全員に見えます`,
+        };
+      }
+
+      default:
+        return { pass: false, message: "このエンジンでは判定できません" };
+    }
+  } catch (e) {
+    const message =
+      e instanceof Error ? e.message.split("\n")[0] : "解析できません";
+    return { pass: false, message };
+  }
+}
+
 /**
  * 採点仕様を 1 件判定する。
  * files は「パス → 現在の中身」。単一ファイル教材でも
@@ -437,6 +703,17 @@ function runCheckInner(
     case "expect-error":
       // TypeScript の採点は Monaco 側が担当する
       return { pass: false, message: "このエンジンでは判定できません" };
+
+    // ── Compact ──
+    // svelte/compiler を使わないので、そのまま専用の判定へ委ねる
+    case "compact-parse":
+    case "compact-ledger":
+    case "compact-circuit":
+    case "compact-witness":
+    case "compact-calls":
+    case "compact-discloses":
+    case "compact-contains-string":
+      return runCompactCheck(files, spec, defaultFile);
 
     // ── Svelte 単一ファイル ──
     case "svelte-compile": {

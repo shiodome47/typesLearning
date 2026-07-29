@@ -14,6 +14,7 @@ import {
   runCheck,
   isKitSpecKind,
   isSvelteSpecKind,
+  isCompactSpecKind,
   type FileMap,
   type SvelteApi,
 } from "@curriculum/checks";
@@ -31,9 +32,19 @@ export function loadSvelteApi(): Promise<SvelteApi> {
   return apiPromise;
 }
 
-/** 複数ファイル教材でこのエンジンが扱える採点仕様か */
+/**
+ * 複数ファイル教材でこのエンジンが扱える採点仕様か。
+ *
+ * Compact の dApp 教材は `.compact` と `.ts` が混ざる。
+ * runCheck が compact-* を専用の判定へ回してくれるので、
+ * 1 レッスンの中で両方の採点仕様を混ぜて使える。
+ */
 export function isKitGradable(spec: CheckSpec): boolean {
-  return isKitSpecKind(spec.kind) || isSvelteSpecKind(spec.kind);
+  return (
+    isKitSpecKind(spec.kind) ||
+    isSvelteSpecKind(spec.kind) ||
+    isCompactSpecKind(spec.kind)
+  );
 }
 
 /**
