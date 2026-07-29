@@ -101,7 +101,7 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
     tutorial: {
       label: "順番に通す（Compact 編）",
       summary:
-        "公開だけの世界から始めて、秘密が登場したときに何が増えるのかを順番に見ます。",
+        "公開だけの世界から始めて、秘密が登場したときに何が増えるのかを順番に見ます。診断が2回あり、⑦は⑤⑥の、⑨は②④の回収です。",
       howTo: "1件30〜40分。手本を見ながらで構いません。",
       accent: "border-emerald-300 bg-emerald-50 text-emerald-900",
     },
@@ -221,7 +221,7 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
   compact: {
     focus: [],
     foundation: [],
-    // ①→⑥で会員制の掲示板を1本作る連続チュートリアル。
+    // ①→⑨で会員制の掲示板とオークションを作る連続チュートリアル。
     // 前の回の続きを書くので、拾い読みではなく順番に通す
     tutorial: [
       "cp-01-ledger-circuit",
@@ -316,7 +316,7 @@ export const ROADMAP: RoadmapStep[] = [
     source: { language: "compact", tier: "tutorial" },
     minutesPerLesson: 35,
     what:
-      "Compact 編を①から⑥まで順番に通します。" +
+      "Compact 編を①から⑨まで順番に通します。" +
       "第3・第4段階で扱った「秘密がブラウザに漏れる」話が、ここでは言語仕様そのものになります。" +
       "見る場所は毎回 `disclose(...)` の中身だけです。",
     outcome:
