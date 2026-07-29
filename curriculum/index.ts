@@ -9,6 +9,7 @@ import { svelteLessons } from "./svelte";
 import { svelteKitLessons } from "./sveltekit";
 import { guardrailLessons } from "./guardrails";
 import { compactLessons } from "./compact";
+import { effectLessons } from "./effect";
 import type { Curriculum, Lesson } from "./types";
 
 // 全教材: order でソートして学習順を統一
@@ -24,6 +25,7 @@ export const allLessons: Lesson[] = [
   ...svelteKitLessons,
   ...guardrailLessons,
   ...compactLessons,
+  ...effectLessons,
   // 言語ごとに order を独立採番しているので、言語→order の順に並べる
 ].sort((a, b) =>
   a.language === b.language
@@ -53,6 +55,7 @@ export {
   svelteKitLessons,
   guardrailLessons,
   compactLessons,
+  effectLessons,
 };
 
 // 型の再エクスポート（appからのimportを簡略化）

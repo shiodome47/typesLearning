@@ -1,8 +1,8 @@
-# 判断力トレーニング（TypeScript / Svelte / Compact）
+# 判断力トレーニング（TypeScript / Svelte / Compact / Effect）
 
 手本を見てゼロから書く「白紙練習」と、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
-TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）・Compact 7件を
-1つのアプリで扱い、一覧で切り替えられる。
+TypeScript 39件（Effect 編 2件を含む）・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）・
+Compact 7件を1つのアプリで扱い、一覧で切り替えられる。
 
 ## 学習コンセプト
 
@@ -169,6 +169,39 @@ Compact は TypeScript としても Svelte としてもパースできず、ブ�
 教材コードは公式の [example-counter](https://github.com/midnightntwrk/example-counter) と
 [example-bboard](https://github.com/midnightntwrk/example-bboard) を土台にしています。
 
+## Effect 編
+
+Effect は学習コストが高く、全体を手で覚えるのは割に合いません。
+そこで**白紙練習では攻めず、診断に寄せて核だけ**を扱います。
+
+Effect を使う理由は結局1つで、`Effect<成功する値, 起きうるエラー, 必要な依存>` の
+**2つ目の型引数**に尽きます。`Promise<User>` が「User が返る」しか言わないのに対し、
+`Effect<User, NetworkError | ParseError>` は「2通りに失敗する」まで言い、
+処理しなければコンパイルが通りません。
+
+逆に言えば **Effect を使いながらエラー型を `never` に潰す**書き方が存在します。
+
+```ts
+Effect.tryPromise(() => fetch(url))                  // catch 無し → UnknownException
+Effect.catchAll(self, () => Effect.succeed(null))    // 握りつぶし → エラー型が never
+```
+
+どちらもコンパイルは通り、`Effect.gen` も型注釈もあるので、レビューでは正しく見えます。
+**型を通すために型を弱めるのは AI が最も自然にやる修正**なので、診断の題材として強い。
+だからこの編は①（書く）→②（診断）の2件で、②が本命です。
+
+### effect 本体は持ち込まない
+
+`effect` パッケージは数百ファイルあるためブラウザには入れず、
+React シムと同じ考え方で**最小の型シム**（`EFFECT_SHIM`）を置いています。
+問うのは API の網羅ではなく「失敗と依存が型に出ているか」の1点なので、これで足ります。
+採点は既存の TypeScript 型診断をそのまま使い、新しいエンジンは要りません。
+
+```ts
+{ kind: "type", assert: `type _c = Expect<Equal<ReturnType<typeof getUser>,
+  Effect.Effect<User, NetworkError | ParseError>>>;` }
+```
+
 ## 自動採点
 
 確認ポイントは自己申告ではなく、**機械的に判定**されます。サーバーも外部APIも使わず、ブラウザ内で完結します。
@@ -234,6 +267,7 @@ npm run smoke:e2e          # TypeScript 側
 npm run smoke:svelte       # Svelte 側
 npm run smoke:sveltekit    # SvelteKit / ガードレール 側（複数ファイル採点）
 npm run smoke:compact      # Compact 側（構造採点）
+npm run smoke:effect       # Effect 側（型診断・シム経由）
 ```
 
 `verify:curriculum` は重要です。教材の `starterCode` / `modelAnswer` は**テンプレート文字列なので
@@ -265,7 +299,8 @@ typesLearning/
 │   ├── svelte/                     # Svelte 5（runes）16件
 │   ├── sveltekit/                  # SvelteKit 編 9件（連続チュートリアル）
 │   ├── guardrails/                 # ガードレール編 6件（型・Lint・CI）
-│   └── compact/                    # Compact 編 7件（連続チュートリアル）
+│   ├── compact/                    # Compact 編 7件（連続チュートリアル）
+│   └── effect/                     # Effect 編 2件（失敗を型に出す）
 ├── scripts/
 │   └── verify-curriculum.mjs       # 教材検証ハーネス（CI で実行）
 └── src/

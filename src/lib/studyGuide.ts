@@ -134,6 +134,8 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "ts-35-diagnose-ssr-hook",
       "ts-36-diagnose-any-leak",
       "ts-37-diagnose-missing-exhaustive",
+      "ef-01-error-in-type",
+      "ef-02-diagnose-swallowed-error",
     ],
     foundation: [
       "ts-01-variable-types",

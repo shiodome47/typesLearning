@@ -42,10 +42,11 @@ function loadCurriculum() {
 }
 
 const { allLessons } = loadCurriculum();
-const { PRELUDE, REACT_SHIM } = require(path.join(TMP, "verifySupport.js"));
+const { PRELUDE, REACT_SHIM, EFFECT_SHIM } = require(path.join(TMP, "verifySupport.js"));
 
 // ── 型チェック ──────────────────────────────────────────────
 const SHIM_PATH = path.join(ROOT, "__react_shim__.d.ts");
+const EFFECT_SHIM_PATH = path.join(ROOT, "__effect_shim__.d.ts");
 const CHECK_PATH = path.join(ROOT, "__check__.tsx");
 
 const OPTIONS = {
@@ -61,6 +62,8 @@ const OPTIONS = {
   paths: {
     react: [SHIM_PATH],
     "react/jsx-runtime": [SHIM_PATH],
+    // Effect も本体ではなくシムに解決させる（ブラウザ側と条件を揃える）
+    effect: [EFFECT_SHIM_PATH],
   },
   baseUrl: ROOT,
   types: [],
@@ -73,6 +76,7 @@ function diagnose(code) {
   const virtual = new Map([
     [CHECK_PATH, source],
     [SHIM_PATH, REACT_SHIM],
+    [EFFECT_SHIM_PATH, EFFECT_SHIM],
   ]);
 
   const host = ts.createCompilerHost(OPTIONS, true);
@@ -94,7 +98,11 @@ function diagnose(code) {
   const origRead = host.readFile.bind(host);
   host.readFile = (name) => (virtual.has(name) ? virtual.get(name) : origRead(name));
 
-  const program = ts.createProgram([CHECK_PATH, SHIM_PATH], OPTIONS, host);
+  const program = ts.createProgram(
+    [CHECK_PATH, SHIM_PATH, EFFECT_SHIM_PATH],
+    OPTIONS,
+    host
+  );
   const sf = program.getSourceFile(CHECK_PATH);
   return [
     ...program.getSyntacticDiagnostics(sf),
@@ -118,7 +126,7 @@ function fail(lessonId, what, detail) {
     path.join(ROOT, "src/lib/studyGuide.ts"),
     "utf8"
   );
-  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk|gr|cp)-[a-z0-9-]+)"/g)].map(
+  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk|gr|cp|ef)-[a-z0-9-]+)"/g)].map(
     (m) => m[1]
   );
   const counts = new Map();

@@ -9,8 +9,8 @@ import type { Monaco } from "@monaco-editor/react";
 import type { LessonLanguage } from "@curriculum/types";
 
 // 採点の前提はブラウザ/Node で共通の定義を使う（curriculum/verifySupport.ts）
-export { PRELUDE, REACT_SHIM } from "@curriculum/verifySupport";
-import { REACT_SHIM } from "@curriculum/verifySupport";
+export { PRELUDE, REACT_SHIM, EFFECT_SHIM } from "@curriculum/verifySupport";
+import { REACT_SHIM, EFFECT_SHIM } from "@curriculum/verifySupport";
 
 // ── Monaco インスタンスの共有 ───────────────────────────────
 // エディタのマウント時に登録し、採点エンジンから参照する。
@@ -55,6 +55,12 @@ export function configureTypeScript(monaco: Monaco): void {
   ts.typescriptDefaults.addExtraLib(
     REACT_SHIM,
     "file:///node_modules/@types/react/index.d.ts"
+  );
+  // Effect 本体は数百ファイルあるのでブラウザに持ち込まない。
+  // 教材で問うのは「失敗と依存が型に出ているか」だけなので、シムで足りる。
+  ts.typescriptDefaults.addExtraLib(
+    EFFECT_SHIM,
+    "file:///node_modules/effect/index.d.ts"
   );
 }
 
