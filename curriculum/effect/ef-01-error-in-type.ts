@@ -2,9 +2,9 @@ import type { Lesson } from "../types";
 
 export const efLesson01: Lesson = {
   kind: "write",
-  language: "typescript",
+  language: "effect",
   id: "ef-01-error-in-type",
-  order: 40,
+  order: 1,
   title: "① 失敗を型に出す — Promise が隠しているもの",
   category: "error-handling",
   difficulty: 3,

@@ -230,7 +230,7 @@ export interface Why {
 }
 
 /** 教材が扱う言語。採点方法とエディタ設定がこれで決まる */
-export type LessonLanguage = "typescript" | "svelte" | "compact";
+export type LessonLanguage = "typescript" | "svelte" | "compact" | "effect";
 
 interface LessonBase {
   id: string;          // 例: "ts-01-variable-types"

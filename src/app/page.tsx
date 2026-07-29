@@ -11,8 +11,9 @@ export default function HomePage() {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-start justify-between gap-3">
           <div>
+            {/* 言語が増えても直し忘れないよう、特定の言語名は入れない */}
             <h1 className="text-xl font-bold text-gray-900">
-              TypeScript 判断力トレーニング
+              判断力トレーニング
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">
               手本を見て書く練習と、欠陥を見抜く診断

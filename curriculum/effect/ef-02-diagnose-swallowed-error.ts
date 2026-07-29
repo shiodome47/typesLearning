@@ -2,9 +2,9 @@ import type { Lesson } from "../types";
 
 export const efLesson02: Lesson = {
   kind: "diagnose",
-  language: "typescript",
+  language: "effect",
   id: "ef-02-diagnose-swallowed-error",
-  order: 41,
+  order: 2,
   title: "② 診断: Effect なのに失敗が消えている",
   category: "code-review",
   difficulty: 4,

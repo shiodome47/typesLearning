@@ -2,9 +2,9 @@ import type { Lesson } from "../types";
 
 export const efLesson04: Lesson = {
   kind: "write",
-  language: "typescript",
+  language: "effect",
   id: "ef-04-retry-timeout",
-  order: 43,
+  order: 4,
   title: "④ リトライとタイムアウト — 直る失敗と、増える失敗",
   category: "error-handling",
   difficulty: 3,

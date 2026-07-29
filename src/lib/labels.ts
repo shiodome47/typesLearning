@@ -35,6 +35,7 @@ export const LANGUAGE_LABELS: Record<LessonLanguage, string> = {
   typescript: "TypeScript",
   svelte: "Svelte",
   compact: "Compact",
+  effect: "Effect",
 };
 
 export const DIFFICULTY_LABELS: Record<Difficulty, string> = {

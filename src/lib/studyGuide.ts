@@ -120,6 +120,38 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
       accent: "border-gray-300 bg-gray-50 text-gray-700",
     },
   },
+  // Effect。学習コストが高いので、全体を手で覚えさせる方針は取らない。
+  // 使う理由は Effect<成功, エラー, 依存> の 2 番目と 3 番目に尽きるので、
+  // そこだけを扱い、白紙練習ではなく診断に寄せる。
+  effect: {
+    focus: {
+      label: "順番に通す（5件だけ）",
+      summary:
+        "Effect の全体を覚える必要はありません。見るのは「失敗と依存が型に出ているか」の1点だけです。①から⑤まで順番に通してください。②と⑤の診断が本命で、①③④はその準備です。",
+      howTo:
+        "1件30分。診断は「エラー型が never になっている箇所」を自分で指させるまで。",
+      accent: "border-indigo-300 bg-indigo-50 text-indigo-900",
+    },
+    tutorial: {
+      label: "順番に通す",
+      summary: "（focus と同じ扱いです）",
+      howTo: "",
+      accent: "border-gray-300 bg-gray-50 text-gray-700",
+    },
+    foundation: {
+      label: "読んで理解する",
+      summary: "（Effect 側にはありません。5件すべてが中核です）",
+      howTo: "",
+      accent: "border-blue-300 bg-blue-50 text-blue-900",
+    },
+    reference: {
+      label: "必要になったら引く",
+      summary:
+        "実際に Effect でアプリを書き始めてから戻ってくる場所です。",
+      howTo: "今はやらなくてよい。",
+      accent: "border-gray-300 bg-gray-50 text-gray-700",
+    },
+  },
 };
 
 /** 言語ごとのランク分け */
@@ -134,11 +166,6 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "ts-35-diagnose-ssr-hook",
       "ts-36-diagnose-any-leak",
       "ts-37-diagnose-missing-exhaustive",
-      "ef-01-error-in-type",
-      "ef-02-diagnose-swallowed-error",
-      "ef-03-dependency-in-type",
-      "ef-04-retry-timeout",
-      "ef-05-diagnose-lost-dependency",
     ],
     foundation: [
       "ts-01-variable-types",
@@ -236,6 +263,19 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
     ],
     reference: [],
   },
+  effect: {
+    // 5件すべてが中核。②と⑤の診断が本命で、①③④はその準備
+    focus: [
+      "ef-01-error-in-type",
+      "ef-02-diagnose-swallowed-error",
+      "ef-03-dependency-in-type",
+      "ef-04-retry-timeout",
+      "ef-05-diagnose-lost-dependency",
+    ],
+    foundation: [],
+    tutorial: [],
+    reference: [],
+  },
 };
 
 // ── 進め方のロードマップ ────────────────────────────────────
@@ -326,7 +366,21 @@ export const ROADMAP: RoadmapStep[] = [
       "`disclose` の中身を指さして「なぜこれは公開してよいのか」を毎回言えるようになったら次へ。",
   },
   {
-    title: "第6段階　自分の題材で1本作る",
+    title: "第6段階　失敗と依存を型に出す（Effect編）",
+    source: { language: "effect", tier: "focus" },
+    minutesPerLesson: 30,
+    what:
+      "Effect 編を①から⑤まで順番に通します。" +
+      "全体を覚える必要はありません。見るのは「失敗と依存が型に出ているか」の1点だけです。" +
+      "②と⑤の診断が本命で、①③④はその準備です。",
+    outcome:
+      "AIが書いた Effect のコードを読んで、エラー型や依存が握りつぶされている箇所を型から指摘できる。" +
+      "`never` を見たときに「埋めた結果か、消した結果か」を判断できる。",
+    gate:
+      "エラー型が `never` になっている箇所を見て、その理由を毎回言えるようになったら卒業です。",
+  },
+  {
+    title: "第7段階　自分の題材で1本作る",
     source: null,
     minutesPerLesson: 0,
     what:
