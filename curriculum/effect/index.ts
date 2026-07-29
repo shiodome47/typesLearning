@@ -21,6 +21,13 @@
 
 import { efLesson01 } from "./ef-01-error-in-type";
 import { efLesson02 } from "./ef-02-diagnose-swallowed-error";
+import { efLesson03 } from "./ef-03-dependency-in-type";
+import { efLesson04 } from "./ef-04-retry-timeout";
 import type { Lesson } from "../types";
 
-export const effectLessons: Lesson[] = [efLesson01, efLesson02];
+export const effectLessons: Lesson[] = [
+  efLesson01,
+  efLesson02,
+  efLesson03,
+  efLesson04,
+];

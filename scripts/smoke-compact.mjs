@@ -221,6 +221,40 @@ const p2 = await grade();
 log(p2.total > 0 && p2.got === p2.total, "cp-07: 2ファイルとも直すと全合格", `${p2.got} / ${p2.total}`);
 await page.screenshot({ path: `${SHOT}/07-dapp.png` });
 
+
+// ── ⑧ 選択的開示の応用: 3種類の事実 ──
+await open("cp-08-range-proof");
+const rp1 = await grade();
+log(rp1.total > 0 && rp1.got < rp1.total, "cp-08: starter のままでは不合格", `${rp1.got} / ${rp1.total}`);
+await replaceCode(`pragma language_version 0.23;
+import CompactStandardLibrary;
+
+export ledger memberId: Bytes<32>;
+export ledger bidCount: Counter;
+
+witness localBalance(): Uint<64>;
+witness localPrefCode(): Uint<8>;
+witness localSecretKey(): Bytes<32>;
+
+export circuit publicKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "auction:pk:"), sk]);
+}
+
+export circuit bid(): [] {
+  const balance = localBalance();
+  assert(balance >= 100000, "insufficient balance");
+
+  const pref = localPrefCode();
+  assert(pref == 13 || pref == 14 || pref == 12, "out of area");
+
+  assert(memberId == publicKey(localSecretKey()), "not a member");
+
+  bidCount.increment(1);
+}
+`);
+const rp2 = await grade();
+log(rp2.total > 0 && rp2.got === rp2.total, "cp-08: 3種類の事実を書けると全合格", `${rp2.got} / ${rp2.total}`);
+
 console.log(`\n=== ${results.filter(Boolean).length}/${results.length} 合格 ===`);
 await b.close();
 process.exit(results.every(Boolean)?0:1);

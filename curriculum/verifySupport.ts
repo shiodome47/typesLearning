@@ -178,6 +178,33 @@ declare module "effect" {
       f: () => Generator<Y, AEff, any>
     ): Effect<AEff, ErrorOf<Y>, ContextOf<Y>>;
 
+    /** 依存をまとめて解決する（Layer 相当を単純化したもの） */
+    export function provide<A, E, R, R2>(
+      self: Effect<A, E, R>,
+      layer: Layer<R, R2>
+    ): Effect<A, E, R2>;
+
+    /** タグを取り出す。R に依存が現れるのはここ */
+    export function service<I, S>(tag: Tag<I, S>): Effect<S, never, I>;
+
+    /**
+     * 失敗したらやり直す。成功型もエラー型も変わらない。
+     * 「リトライしたから安全」ではないことを型が示す。
+     */
+    export function retry<A, E, R>(
+      self: Effect<A, E, R>,
+      policy: Schedule
+    ): Effect<A, E, R>;
+
+    /**
+     * 制限時間を付ける。時間切れという新しい失敗が増えるので、
+     * エラー型に TimeoutException が足される。
+     */
+    export function timeout<A, E, R>(
+      self: Effect<A, E, R>,
+      duration: DurationInput
+    ): Effect<A, E | Cause.TimeoutException, R>;
+
     /** 実行できるのは依存が解決済み（R = never）のときだけ */
     export function runPromise<A, E>(self: Effect<A, E, never>): Promise<A>;
     export function runSync<A, E>(self: Effect<A, E, never>): A;
@@ -195,6 +222,34 @@ declare module "effect" {
   export interface Tag<in out Id, in out Service> {
     readonly _id: Id;
     readonly _service: Service;
+  }
+
+  /** 依存の作り方をまとめたもの。RIn を必要とし ROut を提供する */
+  export interface Layer<out ROut, in RIn = never> {
+    readonly _ROut: (_: never) => ROut;
+    readonly _RIn: (_: RIn) => void;
+  }
+  export namespace Layer {
+    /** 出来合いの値をそのまま提供する */
+    export function succeed<I, S>(tag: Tag<I, S>, service: S): Layer<I, never>;
+  }
+
+  /** リトライの方針 */
+  export interface Schedule {
+    readonly _tag: "Schedule";
+  }
+  export namespace Schedule {
+    export function recurs(times: number): Schedule;
+    export function exponential(base: DurationInput): Schedule;
+  }
+
+  export type DurationInput = number | string;
+
+  /** 本物の effect と同じく、時間切れは Cause 名前空間にある */
+  export namespace Cause {
+    export class TimeoutException {
+      readonly _tag: "TimeoutException";
+    }
   }
 
   export class UnknownException {

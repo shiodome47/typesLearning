@@ -116,6 +116,82 @@ const d2 = await grade();
 log(d2.total > 0 && d2.got === d2.total, "ef-02: エラーを型に戻すと全合格", `${d2.got} / ${d2.total}`);
 await page.screenshot({ path: `${SHOT}/10-effect-fixed.png` });
 
+
+// ── ③④ も starter では落ち、模範で通ること ──
+await open("ef-03-dependency-in-type");
+const c1 = await grade();
+log(c1.total > 0 && c1.got < c1.total, "ef-03: starter のままでは不合格", `${c1.got} / ${c1.total}`);
+await replaceCode(`import { Effect, Context, Data } from "effect";
+
+type User = { id: string; name: string };
+
+class NetworkError extends Data.TaggedError("NetworkError")<{
+  status: number;
+}> {}
+
+interface HttpClient {
+  readonly get: (url: string) => Effect.Effect<unknown, NetworkError>;
+}
+
+const HttpClient = Context.GenericTag<HttpClient, HttpClient>("HttpClient");
+
+const getUser = (
+  id: string
+): Effect.Effect<User, NetworkError, HttpClient> =>
+  Effect.gen(function* () {
+    const http = yield* Effect.service(HttpClient);
+    const raw = yield* http.get("/api/users/" + id);
+    return raw as User;
+  });
+
+const testable: Effect.Effect<User, NetworkError, never> =
+  Effect.provideService(getUser("1"), HttpClient, {
+    get: () => Effect.succeed({ id: "1", name: "テスト" }),
+  });
+
+export const run = () => Effect.runPromise(testable);
+`);
+const c2 = await grade();
+log(c2.total > 0 && c2.got === c2.total, "ef-03: 依存を型に出すと全合格", `${c2.got} / ${c2.total}`);
+
+await open("ef-04-retry-timeout");
+const r1 = await grade();
+log(r1.total > 0 && r1.got < r1.total, "ef-04: starter のままでは不合格", `${r1.got} / ${r1.total}`);
+await replaceCode(`import { Effect, Data, Schedule, Cause } from "effect";
+
+type User = { id: string; name: string };
+
+class NetworkError extends Data.TaggedError("NetworkError")<{
+  status: number;
+}> {}
+
+const fetchUser = (id: string): Effect.Effect<User, NetworkError> =>
+  Effect.tryPromise({
+    try: () => fetch("/api/users/" + id).then((r) => r.json() as Promise<User>),
+    catch: () => new NetworkError({ status: 500 }),
+  });
+
+const withRetry = (id: string): Effect.Effect<User, NetworkError> =>
+  Effect.retry(fetchUser(id), Schedule.exponential("100 millis"));
+
+const withTimeout = (
+  id: string
+): Effect.Effect<User, NetworkError | Cause.TimeoutException> =>
+  Effect.timeout(fetchUser(id), "3 seconds");
+
+const robust = (
+  id: string
+): Effect.Effect<User, NetworkError | Cause.TimeoutException> =>
+  Effect.retry(
+    Effect.timeout(fetchUser(id), "3 seconds"),
+    Schedule.exponential("100 millis")
+  );
+
+export { withRetry, withTimeout, robust };
+`);
+const r2 = await grade();
+log(r2.total > 0 && r2.got === r2.total, "ef-04: リトライ/タイムアウトの型差を書けると全合格", `${r2.got} / ${r2.total}`);
+
 console.log(`\n=== ${results.filter(Boolean).length}/${results.length} 合格 ===`);
 await b.close();
 process.exit(results.every(Boolean) ? 0 : 1);

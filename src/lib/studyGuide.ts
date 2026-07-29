@@ -136,6 +136,8 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "ts-37-diagnose-missing-exhaustive",
       "ef-01-error-in-type",
       "ef-02-diagnose-swallowed-error",
+      "ef-03-dependency-in-type",
+      "ef-04-retry-timeout",
     ],
     foundation: [
       "ts-01-variable-types",
@@ -226,6 +228,7 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "cp-03-assert-guard",
       "cp-04-authorization",
       "cp-05-selective-disclosure",
+      "cp-08-range-proof",
       "cp-07-dapp-wiring",
       "cp-06-diagnose-secret-leak",
     ],
