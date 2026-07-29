@@ -2,9 +2,9 @@ import type { Lesson } from "../types";
 
 export const efLesson03: Lesson = {
   kind: "write",
-  language: "typescript",
+  language: "effect",
   id: "ef-03-dependency-in-type",
-  order: 42,
+  order: 3,
   title: "③ 依存を型に出す — テストのために本番のコードを曲げない",
   category: "error-handling",
   difficulty: 4,

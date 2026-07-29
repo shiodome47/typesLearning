@@ -2,9 +2,9 @@ import type { Lesson } from "../types";
 
 export const efLesson05: Lesson = {
   kind: "diagnose",
-  language: "typescript",
+  language: "effect",
   id: "ef-05-diagnose-lost-dependency",
-  order: 44,
+  order: 5,
   title: "⑤ 診断: 依存が型から消えている",
   category: "code-review",
   difficulty: 4,
