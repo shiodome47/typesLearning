@@ -161,8 +161,17 @@ export type CheckSpec =
   // 境界の設計判断こそが採点したいものなので、構造で十分に問える。
   /** pragma と括弧の対応など、最低限の構文健全性 */
   | { kind: "compact-parse"; file?: string }
-  /** `ledger <name>` を宣言しているか（public state の宣言） */
-  | { kind: "compact-ledger"; name: string; expect?: boolean; file?: string }
+  /**
+   * `ledger <name>` を宣言しているか（public state の宣言）。
+   * type を指定すると型注釈も見る（`Map` / `Counter` / `Bytes<32>` など、前方一致）。
+   */
+  | {
+      kind: "compact-ledger";
+      name: string;
+      type?: string;
+      expect?: boolean;
+      file?: string;
+    }
   /** `circuit <name>` を宣言しているか（エントリポイント） */
   | { kind: "compact-circuit"; name: string; expect?: boolean; file?: string }
   /** `witness <name>` を宣言しているか（TS側で実装する秘密入力） */

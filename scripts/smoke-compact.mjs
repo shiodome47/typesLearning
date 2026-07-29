@@ -62,16 +62,68 @@ const a2=await grade();
 log(a2.total>0&&a2.got===a2.total,"cp-01: 正しく書くと全合格",`${a2.got} / ${a2.total}`);
 await page.screenshot({path:`${SHOT}/03-cp01-pass.png`});
 
-// ── cp-02: 欠陥コードは落ちる ──
-await open("cp-02-diagnose-secret-leak");
+// ── ②〜⑤ も starter のままでは落ちること ──
+// 常に合格する採点は練習にならないので、全回について不合格側を見る
+for (const id of [
+  "cp-02-witness-secret",
+  "cp-03-assert-guard",
+  "cp-04-authorization",
+  "cp-05-selective-disclosure",
+]) {
+  await open(id);
+  const r = await grade();
+  log(r.total > 0 && r.got < r.total, `${id}: starter のままでは不合格`, `${r.got} / ${r.total}`);
+}
+
+// ── ④ を正しく直すと全合格（認可の作法が採点できているか）──
+await open("cp-04-authorization");
+await replaceCode(`pragma language_version 0.23;
+import CompactStandardLibrary;
+
+export enum State { VACANT, OCCUPIED }
+
+export ledger state: State;
+export ledger message: Maybe<Opaque<"string">>;
+export ledger owner: Bytes<32>;
+
+constructor() {
+  state = State.VACANT;
+  message = none<Opaque<"string">>();
+}
+
+witness localSecretKey(): Bytes<32>;
+
+export circuit publicKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "bboard:pk:"), sk]);
+}
+
+export circuit post(newMessage: Opaque<"string">): [] {
+  assert(state == State.VACANT, "occupied");
+  owner = disclose(publicKey(localSecretKey()));
+  message = disclose(some<Opaque<"string">>(newMessage));
+  state = State.OCCUPIED;
+}
+
+export circuit takeDown(): [] {
+  assert(state == State.OCCUPIED, "empty");
+  assert(owner == publicKey(localSecretKey()), "not the owner");
+  state = State.VACANT;
+  message = none<Opaque<"string">>();
+}
+`);
+const au = await grade();
+log(au.total > 0 && au.got === au.total, "cp-04: 派生値で認可すると全合格", `${au.got} / ${au.total}`);
+
+// ── cp-06: 欠陥コードは落ちる ──
+await open("cp-06-diagnose-secret-leak");
 await page.screenshot({path:`${SHOT}/04-cp02.png`});
 const d=await grade();
-log(d.total>0&&d.got<d.total,"cp-02: 秘密鍵を漏らしたままでは不合格",`${d.got} / ${d.total}`);
+log(d.total>0&&d.got<d.total,"cp-06: 秘密鍵を漏らしたままでは不合格",`${d.got} / ${d.total}`);
 const msg=await page.locator("text=/公開台帳に載り/").first().isVisible().catch(()=>false);
-log(msg,"cp-02: 漏洩を名指しで指摘している");
+log(msg,"cp-06: 漏洩を名指しで指摘している");
 await page.screenshot({path:`${SHOT}/05-cp02-fail.png`});
 
-// ── cp-02: 直すと通る（派生値だけ公開）──
+// ── cp-06: 直すと通る（派生値だけ公開）──
 await replaceCode(`pragma language_version 0.23;
 import CompactStandardLibrary;
 
@@ -112,7 +164,7 @@ export circuit publicKey(sk: Bytes<32>, sequence: Bytes<32>): Bytes<32> {
 }
 `);
 const d2=await grade();
-log(d2.total>0&&d2.got===d2.total,"cp-02: 派生値だけ公開に直すと全合格",`${d2.got} / ${d2.total}`);
+log(d2.total>0&&d2.got===d2.total,"cp-06: 派生値だけ公開に直すと全合格",`${d2.got} / ${d2.total}`);
 await page.screenshot({path:`${SHOT}/06-cp02-pass.png`});
 
 console.log(`\n=== ${results.filter(Boolean).length}/${results.length} 合格 ===`);

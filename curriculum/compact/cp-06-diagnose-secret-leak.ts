@@ -1,11 +1,11 @@
 import type { Lesson } from "../types";
 
-export const cpLesson02: Lesson = {
+export const cpLesson06: Lesson = {
   kind: "diagnose",
   language: "compact",
-  id: "cp-02-diagnose-secret-leak",
-  order: 2,
-  title: "② 秘密鍵が台帳に載る — disclose が公開の境界",
+  id: "cp-06-diagnose-secret-leak",
+  order: 6,
+  title: "⑥ 診断: 納品してよいか — 秘密鍵が台帳に載っている",
   category: "zk-privacy",
   difficulty: 4,
 
@@ -114,7 +114,7 @@ export circuit takeDown(): Opaque<"string"> {
 
   defects: [
     {
-      id: "d-cp-02-1",
+      id: "d-cp-06-1",
       summary:
         "秘密鍵そのものを disclose して公開台帳に書き込んでいる（`owner = disclose(localSecretKey())`）",
       why:
@@ -125,7 +125,7 @@ export circuit takeDown(): Opaque<"string"> {
       marker: "owner = disclose(localSecretKey());",
     },
     {
-      id: "d-cp-02-2",
+      id: "d-cp-06-2",
       summary:
         "本人確認に必要なのは鍵そのものではなく、ハッシュ化した派生値の一致だけ",
       why:
@@ -217,12 +217,12 @@ export circuit publicKey(sk: Bytes<32>, sequence: Bytes<32>): Bytes<32> {
 
   checkpoints: [
     {
-      id: "cp-cp-02-1",
+      id: "cp-cp-06-1",
       description: "pragma があり、括弧が閉じているか？",
       verify: { kind: "compact-parse" },
     },
     {
-      id: "cp-cp-02-2",
+      id: "cp-cp-06-2",
       description:
         "秘密鍵そのものを disclose していないか（台帳に載れば全員が読める）？",
       verify: {
@@ -232,27 +232,27 @@ export circuit publicKey(sk: Bytes<32>, sequence: Bytes<32>): Bytes<32> {
       },
     },
     {
-      id: "cp-cp-02-3",
+      id: "cp-cp-06-3",
       description: "公開しているのはハッシュ化した派生値か？",
       verify: { kind: "compact-discloses", value: "publicKey" },
     },
     {
-      id: "cp-cp-02-4",
+      id: "cp-cp-06-4",
       description: "派生値を作る circuit を用意したか？",
       verify: { kind: "compact-circuit", name: "publicKey" },
     },
     {
-      id: "cp-cp-02-5",
+      id: "cp-cp-06-5",
       description: "秘密の入口（witness）自体は残っているか（消して回避していないか）？",
       verify: { kind: "compact-witness", name: "localSecretKey" },
     },
     {
-      id: "cp-cp-02-6",
+      id: "cp-cp-06-6",
       description: "本人確認そのものは残っているか？",
       verify: { kind: "compact-calls", name: "assert" },
     },
     {
-      id: "cp-cp-02-7",
+      id: "cp-cp-06-7",
       description:
         "「鍵を知っていることの証明」と「鍵を渡すこと」の違いを説明できるか？",
     },
@@ -267,5 +267,5 @@ export circuit publicKey(sk: Bytes<32>, sequence: Bytes<32>): Bytes<32> {
     "ゼロ知識",
     "選択的開示",
   ],
-  relatedIds: ["cp-01-ledger-circuit"],
+  relatedIds: ["cp-02-witness-secret", "cp-04-authorization", "cp-05-selective-disclosure"],
 };

@@ -132,5 +132,5 @@ export circuit increment(): [] {
   ],
 
   tags: ["Compact", "Midnight", "ledger", "circuit", "public state"],
-  relatedIds: ["cp-02-diagnose-secret-leak"],
+  relatedIds: ["cp-02-witness-secret", "cp-06-diagnose-secret-leak"],
 };

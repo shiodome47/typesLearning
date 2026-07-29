@@ -214,10 +214,18 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
     ],
   },
   compact: {
-    // 公開事故は取り消せないので、診断は最初から focus に置く
-    focus: ["cp-02-diagnose-secret-leak"],
-    foundation: ["cp-01-ledger-circuit"],
-    tutorial: [],
+    focus: [],
+    foundation: [],
+    // ①→⑥で会員制の掲示板を1本作る連続チュートリアル。
+    // 前の回の続きを書くので、拾い読みではなく順番に通す
+    tutorial: [
+      "cp-01-ledger-circuit",
+      "cp-02-witness-secret",
+      "cp-03-assert-guard",
+      "cp-04-authorization",
+      "cp-05-selective-disclosure",
+      "cp-06-diagnose-secret-leak",
+    ],
     reference: [],
   },
 };
@@ -296,7 +304,21 @@ export const ROADMAP: RoadmapStep[] = [
     gate: "Lint と型が「止められないもの」を3つ挙げられたら、教材は卒業です。",
   },
   {
-    title: "第5段階　自分の題材で1本作る",
+    title: "第5段階　公開してよいものを見分ける（Compact編）",
+    source: { language: "compact", tier: "tutorial" },
+    minutesPerLesson: 35,
+    what:
+      "Compact 編を①から⑥まで順番に通します。" +
+      "第3・第4段階で扱った「秘密がブラウザに漏れる」話が、ここでは言語仕様そのものになります。" +
+      "見る場所は毎回 `disclose(...)` の中身だけです。",
+    outcome:
+      "秘密そのものを渡さずに「条件を満たしている」ことだけを示せる。" +
+      "公開してよい値と、派生値にしてからでないと出せない値を、コードを見て切り分けられる。",
+    gate:
+      "`disclose` の中身を指さして「なぜこれは公開してよいのか」を毎回言えるようになったら次へ。",
+  },
+  {
+    title: "第6段階　自分の題材で1本作る",
     source: null,
     minutesPerLesson: 0,
     what:

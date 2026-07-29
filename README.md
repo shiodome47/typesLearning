@@ -1,7 +1,7 @@
 # 判断力トレーニング（TypeScript / Svelte / Compact）
 
 手本を見てゼロから書く「白紙練習」と、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
-TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）・Compact 2件を
+TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）・Compact 6件を
 1つのアプリで扱い、一覧で切り替えられる。
 
 ## 学習コンセプト
@@ -22,7 +22,7 @@ TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6�
 ## 学習の手引き（`/guide`）
 
 `/guide` に「どの順番で、何時間かけると、何ができるようになるか」をまとめてあります。
-5段階のロードマップで、各段階に **到達点** と **次へ進む目安** を置いています。
+6段階のロードマップで、各段階に **到達点** と **次へ進む目安** を置いています。
 
 件数と所要時間は `TIER_LESSONS` から計算しているため、教材を追加しても数字がずれません。
 
@@ -51,16 +51,19 @@ why: {
 見本は `curriculum/phase5-advanced-patterns/ts-20-exhaustive-check.ts` と
 `curriculum/phase3-real-app/ts-15-api-fetch.ts` にあります。
 
-## 2つの言語、2つの目的
+## 3つの言語、3つの目的
 
 同じアプリですが、力を入れる場所が違います。
 
-| | TypeScript | Svelte |
-|---|---|---|
-| 目的 | **読んで判断できる**こと | **手が覚えている**こと（AIが使えないときの保険） |
-| 構文の暗記 | 不要 | 中核だけは必要 |
-| 診断の比率 | 5/37 | 8/31（「動くが間違っている」が多いため） |
-| 件数 | 37 | 16 + SvelteKit 編 9 + ガードレール編 6 |
+| | TypeScript | Svelte | Compact |
+|---|---|---|---|
+| 目的 | **読んで判断できる**こと | **手が覚えている**こと（AIが使えないときの保険） | **公開してよいか判断できる**こと |
+| 構文の暗記 | 不要 | 中核だけは必要 | 不要（構文は小さい） |
+| 診断の比率 | 5/37 | 8/31（「動くが間違っている」が多いため） | 1/6 |
+| 件数 | 37 | 16 + SvelteKit 編 9 + ガードレール編 6 | 6 |
+
+Compact だけ目的が違うのは、**間違いが取り消せない**からです。
+型の誤りは直せば済み、画面の崩れは作り直せますが、公開台帳に載った秘密は消せません。
 
 ### SvelteKit 編（連続チュートリアル）
 
@@ -107,6 +110,20 @@ AIが1日に数百行書く前提に立つと「レビュー能力を上げる�
 Compact は Midnight のスマートコントラクト言語です。
 言語自体は Linux Foundation Decentralized Trust に移管され、プロジェクト名は **Minokawa** になりましたが、
 コード中のキーワードは `ledger` / `circuit` / `witness` / `disclose` のまま変わりません。
+
+①→⑥で会員制の掲示板を1本作り上げる連続チュートリアルです。
+
+| 回 | 作るもの | 扱う仕組み |
+|---|---|---|
+| ① | 公開カウンター | `ledger` / `circuit`（全部公開でよい世界） |
+| ② | 会員登録 | `witness` / `persistentHash`（名前を付けずに identify する） |
+| ③ | 二重登録の防止 | `assert` / `Map`（前提条件は分岐ではなく assert） |
+| ④ | **本人だけが消せる** | 鍵を渡さずに本人だと証明する |
+| ⑤ | 年齢制限 | 選択的開示（生年は伏せて「18歳以上」だけ示す） |
+| ⑥ | 診断：納品してよいか | 秘密鍵が台帳に載っている |
+
+①で「全部公開でよい世界」を書いてから②で秘密が登場するので、**何が増えたのか**が差分で見えます。
+④で教えた認可の作法を⑥の診断で回収する構造は、SvelteKit 編の sk-04 → sk-09 と同じです。
 
 この編を入れた理由は、SvelteKit 編と**同じ構図が言語仕様のレベルで現れる**からです。
 
@@ -202,7 +219,7 @@ npm run dev     # http://localhost:3000
 
 ```bash
 npm run type-check         # アプリ本体の型チェック
-npm run verify:curriculum  # 教材コードの検証 + 採点仕様の検証（TypeScript / Svelte 両方）
+npm run verify:curriculum  # 教材コードの検証 + 採点仕様の検証（全言語）
 npm run audit:diagrams     # 図解リンクの整合性
 npm run build              # 本番ビルド
 
@@ -210,6 +227,7 @@ npm run build              # 本番ビルド
 npm run smoke:e2e          # TypeScript 側
 npm run smoke:svelte       # Svelte 側
 npm run smoke:sveltekit    # SvelteKit / ガードレール 側（複数ファイル採点）
+npm run smoke:compact      # Compact 側（構造採点）
 ```
 
 `verify:curriculum` は重要です。教材の `starterCode` / `modelAnswer` は**テンプレート文字列なので
@@ -241,7 +259,7 @@ typesLearning/
 │   ├── svelte/                     # Svelte 5（runes）16件
 │   ├── sveltekit/                  # SvelteKit 編 9件（連続チュートリアル）
 │   ├── guardrails/                 # ガードレール編 6件（型・Lint・CI）
-│   └── compact/                    # Compact 編 2件（公開と秘匿の境界）
+│   └── compact/                    # Compact 編 6件（連続チュートリアル）
 ├── scripts/
 │   └── verify-curriculum.mjs       # 教材検証ハーネス（CI で実行）
 └── src/

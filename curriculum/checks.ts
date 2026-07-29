@@ -438,13 +438,34 @@ export function compactDeclarations(
   return [...code.matchAll(re)].map((m) => m[1]);
 }
 
-/** `<name>(` という呼び出しがあるか（宣言そのものは数えない） */
+/**
+ * `ledger <name>: <型>` の型注釈を返す。
+ * 宣言が無ければ null。`Map<K, V>` のように山括弧を含む型もそのまま返す。
+ */
+export function compactLedgerType(
+  source: string,
+  name: string
+): string | null {
+  const code = stripCompactNoise(source);
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // ledger 宣言は `;` で終わるので、そこまでを型注釈として読む
+  const m = code.match(new RegExp(`\\bledger\\s+${escaped}\\s*:\\s*([^;]+);`));
+  return m ? m[1].trim().replace(/\s+/g, " ") : null;
+}
+
+/**
+ * `<name>(` という呼び出しがあるか（宣言そのものは数えない）。
+ *
+ * Compact は型引数を取る呼び出しが多いので、名前と `(` の間に
+ * `<Vector<2, Bytes<32>>>` のような山括弧が挟まることがある。
+ * これを飛ばさないと persistentHash や some を検出できない。
+ */
 export function compactCalls(source: string, name: string): boolean {
   const code = stripCompactNoise(source);
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // 宣言（circuit foo( / witness foo( ）は呼び出しではないので除く
   const re = new RegExp(
-    `(?<!\\b(?:circuit|witness|ledger)\\s+)\\b${escaped}\\s*\\(`
+    `(?<!\\b(?:circuit|witness|ledger)\\s+)\\b${escaped}\\s*(?:<[^()]*>\\s*)?\\(`
   );
   return re.test(code);
 }
@@ -563,15 +584,25 @@ export function runCompactCheck(
               : "witness";
         const actual = compactDeclarations(source, keyword).includes(spec.name);
         const expected = spec.expect ?? true;
-        return {
-          pass: actual === expected,
-          message:
-            actual === expected
-              ? undefined
-              : expected
-                ? `${keyword} ${spec.name} が宣言されていません`
-                : `${keyword} ${spec.name} を宣言してはいけません`,
-        };
+        if (actual !== expected) {
+          return {
+            pass: false,
+            message: expected
+              ? `${keyword} ${spec.name} が宣言されていません`
+              : `${keyword} ${spec.name} を宣言してはいけません`,
+          };
+        }
+        // 型注釈まで問う場合（Map で持たせたいのに Counter になっている等）
+        if (spec.kind === "compact-ledger" && expected && spec.type) {
+          const declared = compactLedgerType(source, spec.name);
+          if (declared === null || !declared.startsWith(spec.type)) {
+            return {
+              pass: false,
+              message: `ledger ${spec.name} の型が ${spec.type} で始まっていません（今: ${declared ?? "型注釈なし"}）`,
+            };
+          }
+        }
+        return { pass: true };
       }
 
       case "compact-calls": {
