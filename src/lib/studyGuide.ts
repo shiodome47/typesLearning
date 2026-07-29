@@ -224,6 +224,7 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "cp-03-assert-guard",
       "cp-04-authorization",
       "cp-05-selective-disclosure",
+      "cp-07-dapp-wiring",
       "cp-06-diagnose-secret-leak",
     ],
     reference: [],

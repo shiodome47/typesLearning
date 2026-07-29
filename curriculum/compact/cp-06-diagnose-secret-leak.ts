@@ -4,8 +4,8 @@ export const cpLesson06: Lesson = {
   kind: "diagnose",
   language: "compact",
   id: "cp-06-diagnose-secret-leak",
-  order: 6,
-  title: "⑥ 診断: 納品してよいか — 秘密鍵が台帳に載っている",
+  order: 7,
+  title: "⑦ 診断: 納品してよいか — 秘密鍵が台帳に載っている",
   category: "zk-privacy",
   difficulty: 4,
 

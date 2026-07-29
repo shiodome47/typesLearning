@@ -189,7 +189,18 @@ export type CheckSpec =
    * 「派生値なら公開してよい」(expect:true) を同時に問える。
    * Compact の肝（秘密そのものは渡さず、ハッシュ等の派生値だけ出す）が機械で採点できる。
    */
-  | { kind: "compact-discloses"; value: string; expect?: boolean; file?: string };
+  | { kind: "compact-discloses"; value: string; expect?: boolean; file?: string }
+  /**
+   * `.compact` の中に識別子が現れるか（コメントと文字列は除いて見る）。
+   * 「秘密の在り処を示す名前が、チェーン側のファイルに漏れていないか」のように、
+   * 宣言でも呼び出しでもない形での混入を止めるのに使う。
+   */
+  | {
+      kind: "compact-contains-string";
+      value: string;
+      expect?: boolean;
+      file?: string;
+    };
 
 export interface Checkpoint {
   id: string;

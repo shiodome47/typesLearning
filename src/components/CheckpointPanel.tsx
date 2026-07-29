@@ -50,16 +50,19 @@ export function CheckpointPanel({
   const handleGrade = useCallback(async () => {
     setStatus("grading");
     try {
-      // Compact は独自言語で、TypeScript の型診断も svelte/compiler も使えない。
-      // ファイル数に関わらず専用エンジンへ送るので、files 判定より先に分岐する。
-      // 残りは、複数ファイルなら SvelteKit エンジン、単一ファイルは
-      // TypeScript なら Monaco の型診断、Svelte なら svelte/compiler。
+      // Compact の単一ファイル教材だけは専用エンジンへ送る。
+      // 独自言語なので TypeScript の型診断も svelte/compiler も使えず、
+      // 構造チェックだけで済むためコンパイラを読み込まなくてよい。
+      //
+      // 複数ファイル教材は Compact でも SvelteKit エンジンに任せる。
+      // dApp 教材は .compact と .ts が混ざり、両方の採点仕様を
+      // 1 レッスンで使うため（runCheck が種別ごとに振り分ける）。
       const r =
-        language === "compact"
+        language === "compact" && !files
           ? gradeCompactCheckpoints(
-              files ?? { "main.compact": code },
+              { "main.compact": code },
               checkpoints,
-              defaultFile ?? "main.compact"
+              "main.compact"
             )
           : files
             ? await gradeKitCheckpoints(files, checkpoints, defaultFile ?? "")

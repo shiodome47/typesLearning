@@ -167,6 +167,60 @@ const d2=await grade();
 log(d2.total>0&&d2.got===d2.total,"cp-06: 派生値だけ公開に直すと全合格",`${d2.got} / ${d2.total}`);
 await page.screenshot({path:`${SHOT}/06-cp02-pass.png`});
 
+
+// ── ⑥ dApp（複数ファイル）: タブが出て、両方直すと全合格 ──
+await open("cp-07-dapp-wiring");
+const tabs = await page.getByRole("tab").count();
+log(tabs >= 3, "cp-07: ファイルタブが出る", `${tabs} タブ`);
+const p1 = await grade();
+log(p1.total > 0 && p1.got < p1.total, "cp-07: starter のままでは不合格", `${p1.got} / ${p1.total}`);
+
+async function selectFile(name) {
+  await page.getByRole("tab", { name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) }).click();
+  await page.waitForTimeout(700);
+}
+
+await selectFile("bboard.compact");
+await replaceCode(`pragma language_version 0.23;
+import CompactStandardLibrary;
+
+export ledger owner: Bytes<32>;
+export ledger message: Maybe<Opaque<"string">>;
+
+witness localSecretKey(): Bytes<32>;
+
+export circuit publicKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "bboard:pk:"), sk]);
+}
+
+export circuit post(newMessage: Opaque<"string">): [] {
+  owner = disclose(publicKey(localSecretKey()));
+  message = disclose(some<Opaque<"string">>(newMessage));
+}
+`);
+
+await selectFile("witnesses.ts");
+await replaceCode(`import type { WitnessContext } from "@midnight-ntwrk/compact-runtime";
+import type { Ledger } from "./managed/bboard/contract/index.cjs";
+
+export type BBoardPrivateState = {
+  readonly secretKey: Uint8Array;
+};
+
+export const witnesses = {
+  localSecretKey: ({
+    privateState,
+  }: WitnessContext<Ledger, BBoardPrivateState>): [
+    BBoardPrivateState,
+    Uint8Array,
+  ] => [privateState, privateState.secretKey],
+};
+`);
+
+const p2 = await grade();
+log(p2.total > 0 && p2.got === p2.total, "cp-07: 2ファイルとも直すと全合格", `${p2.got} / ${p2.total}`);
+await page.screenshot({ path: `${SHOT}/07-dapp.png` });
+
 console.log(`\n=== ${results.filter(Boolean).length}/${results.length} 合格 ===`);
 await b.close();
 process.exit(results.every(Boolean)?0:1);

@@ -23,6 +23,7 @@ import { cpLesson03 } from "./cp-03-assert-guard";
 import { cpLesson04 } from "./cp-04-authorization";
 import { cpLesson05 } from "./cp-05-selective-disclosure";
 import { cpLesson06 } from "./cp-06-diagnose-secret-leak";
+import { cpLesson07 } from "./cp-07-dapp-wiring";
 import type { Lesson } from "../types";
 
 export const compactLessons: Lesson[] = [
@@ -32,4 +33,5 @@ export const compactLessons: Lesson[] = [
   cpLesson04,
   cpLesson05,
   cpLesson06,
+  cpLesson07,
 ];

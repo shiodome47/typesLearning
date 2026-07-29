@@ -619,6 +619,24 @@ export function runCompactCheck(
         };
       }
 
+      case "compact-contains-string": {
+        // コメントや文字列は stripCompactNoise で落としてから見る。
+        // 「コメントで注意書きに書いた」だけで不合格にしないため。
+        const code = stripCompactNoise(source);
+        const escaped = spec.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const actual = new RegExp(`\\b${escaped}\\b`).test(code);
+        const expected = spec.expect ?? true;
+        return {
+          pass: actual === expected,
+          message:
+            actual === expected
+              ? undefined
+              : expected
+                ? `${path} に ${spec.value} がありません`
+                : `${path} に ${spec.value} が現れています。このファイルはチェーン上で動くので、秘密の在り処を書く場所ではありません`,
+        };
+      }
+
       case "compact-discloses": {
         const actual = compactDiscloses(source, spec.value);
         const expected = spec.expect ?? true;
@@ -685,6 +703,7 @@ function runCheckInner(
     case "compact-witness":
     case "compact-calls":
     case "compact-discloses":
+    case "compact-contains-string":
       return runCompactCheck(files, spec, defaultFile);
 
     // ── Svelte 単一ファイル ──
