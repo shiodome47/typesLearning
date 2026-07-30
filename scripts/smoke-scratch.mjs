@@ -56,23 +56,36 @@ const FULL = `type Todo = { id: string; text: string; done: boolean };
 
 let nextId = 1;
 
-const createTodo = (text: string): Todo => ({
-  id: String(nextId++),
-  text,
-  done: false,
-});
+const createTodo = (text: string): Todo => {
+  const id = String(nextId);
+  nextId = nextId + 1;
+  return { id: id, text: text, done: false };
+};
 
-const addTodo = (list: Todo[], text: string): Todo[] => [...list, createTodo(text)];
+const addTodo = (list: Todo[], text: string): Todo[] => {
+  return [...list, createTodo(text)];
+};
 
-const toggleTodo = (list: Todo[], id: string): Todo[] =>
-  list.map((t) => (t.id === id ? { ...t, done: !t.done } : t));
+const toggleTodo = (list: Todo[], id: string): Todo[] => {
+  return list.map((t) => {
+    if (t.id === id) {
+      return { id: t.id, text: t.text, done: !t.done };
+    }
+    return t;
+  });
+};
 
-const removeTodo = (list: Todo[], id: string): Todo[] =>
-  list.filter((t) => t.id !== id);
+const removeTodo = (list: Todo[], id: string): Todo[] => {
+  return list.filter((t) => t.id !== id);
+};
 
-const activeTodos = (list: Todo[]): Todo[] => list.filter((t) => !t.done);
+const activeTodos = (list: Todo[]): Todo[] => {
+  return list.filter((t) => !t.done);
+};
 
-const remainingCount = (list: Todo[]): number => activeTodos(list).length;
+const remainingCount = (list: Todo[]): number => {
+  return activeTodos(list).length;
+};
 
 const STORAGE_KEY = "todos";
 
@@ -80,35 +93,52 @@ const saveTodos = (list: Todo[]): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 };
 
-const isTodo = (v: unknown): v is Todo =>
-  typeof v === "object" &&
-  v !== null &&
-  typeof (v as Todo).id === "string" &&
-  typeof (v as Todo).text === "string" &&
-  typeof (v as Todo).done === "boolean";
+const isTodo = (v: unknown): v is Todo => {
+  if (typeof v !== "object") {
+    return false;
+  }
+  if (v === null) {
+    return false;
+  }
+  const o = v as { id?: unknown; text?: unknown; done?: unknown };
+  return (
+    typeof o.id === "string" &&
+    typeof o.text === "string" &&
+    typeof o.done === "boolean"
+  );
+};
 
 const loadTodos = (): Todo[] => {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw === null) return [];
+  if (raw === null) {
+    return [];
+  }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
     return [];
   }
-  if (!Array.isArray(parsed)) return [];
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
   return parsed.filter(isTodo);
 };
 `;
 
 // ── 全6件: 白紙では落ちること ──
 for (const id of [
-  "sc-01-decide-the-type",
-  "sc-02-hold-the-list",
-  "sc-03-toggle-and-remove",
-  "sc-04-derive-dont-store",
-  "sc-05-save-and-load",
-  "sc-06-from-scratch",
+  "sc-01-write-one-type",
+  "sc-02-return-an-object",
+  "sc-03-unique-id",
+  "sc-04-add-without-breaking",
+  "sc-05-toggle-one",
+  "sc-06-remove-one",
+  "sc-07-derive-dont-store",
+  "sc-08-save-and-load-basic",
+  "sc-09-survive-broken-json",
+  "sc-10-check-the-shape",
+  "sc-11-from-scratch",
 ]) {
   await open(id);
   const r = await grade();
@@ -116,31 +146,38 @@ for (const id of [
 }
 
 // ── ⑥ 卒業試験: 模範で全合格 ──
-await open("sc-06-from-scratch");
+await open("sc-11-from-scratch");
 await replaceCode(FULL);
 const full = await grade();
-log(full.total > 0 && full.got === full.total, "sc-06: 模範解答で全合格", `${full.got} / ${full.total}`);
+log(full.total > 0 && full.got === full.total, "sc-11: 模範解答で全合格", `${full.got} / ${full.total}`);
 await page.screenshot({ path: `${SHOT}/17-scratch-pass.png` });
 
 // ── 実行採点の存在意義: 型は合うが何もしない実装は落ちる ──
 await replaceCode(
   FULL.replace(
-    "const addTodo = (list: Todo[], text: string): Todo[] => [...list, createTodo(text)];",
-    "const addTodo = (list: Todo[], text: string): Todo[] => list;"
+    "  return [...list, createTodo(text)];",
+    "  return list;"
   )
 );
 const lazy = await grade();
 log(
   lazy.total > 0 && lazy.got < lazy.total,
-  "sc-06: 型は合うが何もしない addTodo は落ちる",
+  "sc-11: 型は合うが何もしない addTodo は落ちる",
   `${lazy.got} / ${lazy.total}`
 );
 
 // ── push で元を壊す実装も落ちる ──
-await open("sc-02-hold-the-list");
+await open("sc-04-add-without-breaking");
 await replaceCode(`type Todo = { id: string; text: string; done: boolean };
+
 let nextId = 1;
-const createTodo = (text: string): Todo => ({ id: String(nextId++), text, done: false });
+
+const createTodo = (text: string): Todo => {
+  const id = String(nextId);
+  nextId = nextId + 1;
+  return { id: id, text: text, done: false };
+};
+
 const addTodo = (list: Todo[], text: string): Todo[] => {
   list.push(createTodo(text));
   return list;
@@ -149,7 +186,7 @@ const addTodo = (list: Todo[], text: string): Todo[] => {
 const mutating = await grade();
 log(
   mutating.total > 0 && mutating.got < mutating.total,
-  "sc-02: push で元を壊す実装は落ちる",
+  "sc-04: push で元を壊す実装は落ちる",
   `${mutating.got} / ${mutating.total}`
 );
 await page.screenshot({ path: `${SHOT}/18-scratch-mutation.png` });
