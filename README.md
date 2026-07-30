@@ -47,6 +47,7 @@ why: {
 - **problem は具体的な場面で** — 誰が何をして、何が起きて、いつ気づくのか
 - **用語は定義ではなく直感で** — ×「到達できない値の型」 ○「もう何も残っていない、という意味の型」
 - 段落は `\n\n` で区切る。コード片はバッククォートで囲む
+- 強調は `**...**`、複数行のコードは ``` で囲む（`why` のみ対応）
 
 見本は `curriculum/phase5-advanced-patterns/ts-20-exhaustive-check.ts` と
 `curriculum/phase3-real-app/ts-15-api-fetch.ts` にあります。
@@ -303,6 +304,7 @@ npm run smoke:svelte       # Svelte 側
 npm run smoke:sveltekit    # SvelteKit / ガードレール 側（複数ファイル採点）
 npm run smoke:compact      # Compact 側（構造採点）
 npm run smoke:effect       # Effect 側（型診断・シム経由）
+npm run audit:markup       # 教材テキストの記法が画面で解釈されているか
 ```
 
 `verify:curriculum` は重要です。教材の `starterCode` / `modelAnswer` は**テンプレート文字列なので
