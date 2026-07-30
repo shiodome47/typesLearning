@@ -1,7 +1,7 @@
 # 判断力トレーニング（TypeScript / Svelte / Compact / Effect）
 
 手本を見てゼロから書く「白紙練習」と、**欠陥のあるコードを読んで危険を見抜く「診断」** を行う学習アプリ。
-TypeScript 37件・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）・
+TypeScript 43件（スクラッチ編 6件を含む）・Svelte 31件（SvelteKit 編 9件・ガードレール編 6件を含む）・
 Compact 9件・Effect 5件を1つのアプリで扱い、一覧で切り替えられる。
 
 ## 学習コンセプト
@@ -22,7 +22,7 @@ Compact 9件・Effect 5件を1つのアプリで扱い、一覧で切り替え�
 ## 学習の手引き（`/guide`）
 
 `/guide` に「どの順番で、何時間かけると、何ができるようになるか」をまとめてあります。
-7段階のロードマップで、各段階に **到達点** と **次へ進む目安** を置いています。
+8段階のロードマップで、各段階に **到達点** と **次へ進む目安** を置いています。
 
 件数と所要時間は `TIER_LESSONS` から計算しているため、教材を追加しても数字がずれません。
 
@@ -58,13 +58,56 @@ why: {
 
 | | TypeScript | Svelte | Compact | Effect |
 |---|---|---|---|---|
-| 目的 | **読んで判断できる**こと | **手が覚えている**こと（AIが使えないときの保険） | **公開してよいか判断できる**こと | **握りつぶしを見抜ける**こと |
+| 目的 | **読んで判断できる**こと＋**白紙から組み立てられる**こと | **手が覚えている**こと（AIが使えないときの保険） | **公開してよいか判断できる**こと | **握りつぶしを見抜ける**こと |
 | 構文の暗記 | 不要 | 中核だけは必要 | 不要（構文は小さい） | 不要（核だけ） |
-| 診断の比率 | 5/37 | 8/31（「動くが間違っている」が多いため） | 2/9 | 2/5 |
-| 件数 | 37 | 16 + SvelteKit 編 9 + ガードレール編 6 | 9 | 5 |
+| 診断の比率 | 5/43 | 8/31（「動くが間違っている」が多いため） | 2/9 | 2/5 |
+| 件数 | 37 + スクラッチ編 6 | 16 + SvelteKit 編 9 + ガードレール編 6 | 9 | 5 |
 
 Compact だけ目的が違うのは、**間違いが取り消せない**からです。
 型の誤りは直せば済み、画面の崩れは作り直せますが、公開台帳に載った秘密は消せません。
+
+## スクラッチ編（starter にコードが1行も無い）
+
+他の章はすべて `starter` に穴埋めの枠を用意しています。これは「白紙のファイルを前にして
+何も書けない」という壁を越えられません。構文を全部知っていても起きる壁で、
+教材が扱ってこなかった領域です。
+
+そこでこの章だけは **`starter` に要件のコメントしか書かず、コードを1行も置きません**。
+
+| 回 | 作るもの | 判断すること |
+|---|---|---|
+| ① | `Todo` 型と `createTodo` | **最初の1行を何にするか**。なぜ `id` が必要か |
+| ② | `addTodo` | 元の配列を壊さない（`push` だと画面が更新されない） |
+| ③ | `toggleTodo` / `removeTodo` | 位置ではなく `id` で探す |
+| ④ | `activeTodos` / `remainingCount` | 計算できる値は状態として持たない |
+| ⑤ | `saveTodos` / `loadTodos` | 外から戻ってきたものを信じない（型ガード） |
+| ⑥ | **卒業試験** | 要件だけを渡し、順番も渡さない。手本なしで書き切る |
+
+⑥が本番です。①〜⑤では順番をこちらが決めていましたが、⑥では要件を全部並べるだけです。
+**手本を開かずに書き切れたら「作れる」ということ**、というのがこの章の到達点です。
+
+### 実行して採点する（`kind: "run"`）
+
+この章では型だけでは採点になりません。
+
+```ts
+const addTodo = (list: Todo[], text: string): Todo[] => list;  // 型は合う。何もしない
+```
+
+型検査は通ります。つまり型だけを見る採点は**嘘をつきます**。
+そこで学習者コードを JS に変換して実行し、挙動を確かめます。
+
+```ts
+{ kind: "run", assert: `var r = addTodo([], "牛乳");
+assertEqual(r.length, 1, "1件になる");` }
+```
+
+`assertEqual` / `assertTrue` / `assertThrows` と `localStorage` のシムは
+`RUN_PRELUDE`（`curriculum/verifySupport.ts`）に置き、ブラウザと Node で共有します。
+ブラウザは Monaco の `getEmitOutput`、Node は `ts.transpileModule` + `vm` で走らせるため、
+CI で通れば実際の採点でも同じ結果になります。
+
+検証ハーネスは実行採点についても **「模範解答で通り、starter では落ちる」** の両側を見ます。
 
 ### SvelteKit 編（連続チュートリアル）
 
@@ -304,6 +347,7 @@ npm run smoke:svelte       # Svelte 側
 npm run smoke:sveltekit    # SvelteKit / ガードレール 側（複数ファイル採点）
 npm run smoke:compact      # Compact 側（構造採点）
 npm run smoke:effect       # Effect 側（型診断・シム経由）
+npm run smoke:scratch      # スクラッチ編（実行採点）
 npm run audit:markup       # 教材テキストの記法が画面で解釈されているか
 ```
 
@@ -336,6 +380,7 @@ typesLearning/
 │   ├── svelte/                     # Svelte 5（runes）16件
 │   ├── sveltekit/                  # SvelteKit 編 9件（連続チュートリアル）
 │   ├── guardrails/                 # ガードレール編 6件（型・Lint・CI）
+│   ├── scratch/                    # スクラッチ編 6件（starter が空）
 │   ├── compact/                    # Compact 編 9件（連続チュートリアル）
 │   └── effect/                     # Effect 編 5件（独立言語。採点は TS の型診断）
 ├── scripts/
@@ -360,7 +405,8 @@ typesLearning/
             ├── browserEngine.ts    # TypeScript 採点（型診断）
             ├── svelteEngine.ts     # Svelte 採点（単一ファイル）
             ├── kitEngine.ts        # SvelteKit 採点（複数ファイル）
-            └── compactEngine.ts    # Compact 採点（構造チェック・コンパイラ不要）
+            ├── compactEngine.ts    # Compact 採点（構造チェック・コンパイラ不要）
+            └── runEngine.ts        # 実行採点（動かして結果を見る）
 ```
 
 ## 教材の追加方法

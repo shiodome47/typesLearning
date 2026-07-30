@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { execSync } from "node:child_process";
+import vm from "node:vm";
 import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
@@ -42,7 +43,9 @@ function loadCurriculum() {
 }
 
 const { allLessons } = loadCurriculum();
-const { PRELUDE, REACT_SHIM, EFFECT_SHIM } = require(path.join(TMP, "verifySupport.js"));
+const { PRELUDE, REACT_SHIM, EFFECT_SHIM, RUN_PRELUDE } = require(
+  path.join(TMP, "verifySupport.js")
+);
 
 // ── 型チェック ──────────────────────────────────────────────
 const SHIM_PATH = path.join(ROOT, "__react_shim__.d.ts");
@@ -110,6 +113,38 @@ function diagnose(code) {
   ].map((d) => ts.flattenDiagnosticMessageText(d.messageText, " "));
 }
 
+/**
+ * 実行採点。学習者コード + アサーションを JS に変換して走らせ、
+ * 例外が出なければ合格。
+ *
+ * 型だけを見る採点では「型は合うが何もしない」実装が通ってしまうため、
+ * アプリを組み立てる教材ではこちらで挙動を確かめる。
+ * ブラウザ側（src/lib/verify/runEngine.ts）と同じ RUN_PRELUDE を使うので、
+ * ここで通れば実際の採点でも同じ結果になる。
+ */
+function runAssert(code, assertCode) {
+  let js;
+  try {
+    js = ts.transpileModule(`${code}\n${assertCode}`, {
+      compilerOptions: {
+        target: ts.ScriptTarget.ES2020,
+        module: ts.ModuleKind.CommonJS,
+      },
+    }).outputText;
+  } catch (e) {
+    return { pass: false, message: `変換に失敗: ${e.message}` };
+  }
+  try {
+    // 無限ループで CI が止まらないよう時間を切る
+    vm.runInNewContext(`"use strict";\n${RUN_PRELUDE}\n${js}`, Object.create(null), {
+      timeout: 5000,
+    });
+    return { pass: true };
+  } catch (e) {
+    return { pass: false, message: e.message };
+  }
+}
+
 // ── 検証本体 ────────────────────────────────────────────────
 const failures = [];
 let checkedLessons = 0;
@@ -126,7 +161,7 @@ function fail(lessonId, what, detail) {
     path.join(ROOT, "src/lib/studyGuide.ts"),
     "utf8"
   );
-  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk|gr|cp|ef)-[a-z0-9-]+)"/g)].map(
+  const tiered = [...guideSrc.matchAll(/"((?:ts|sv|sk|gr|cp|ef|sc)-[a-z0-9-]+)"/g)].map(
     (m) => m[1]
   );
   const counts = new Map();
@@ -375,6 +410,30 @@ for (const lesson of allLessons) {
   for (const cp of lesson.checkpoints) {
     if (!cp.verify) continue;
     gradedCheckpoints++;
+
+    // 実行採点は「模範解答で通る」ことと「starter では落ちる」ことの
+    // 両方を見る。常に通る採点は練習として無意味なので
+    if (cp.verify.kind === "run") {
+      const onModel = runAssert(reference, cp.verify.assert);
+      if (!onModel.pass) {
+        fail(
+          lesson.id,
+          `実行採点 ${cp.id} が模範解答で不合格`,
+          onModel.message ?? ""
+        );
+      }
+      const before =
+        lesson.kind === "write" ? lesson.starterCode : lesson.brokenCode;
+      if (runAssert(before, cp.verify.assert).pass) {
+        fail(
+          lesson.id,
+          `実行採点 ${cp.id} が starter でも合格`,
+          "常に合格する採点は練習にならない"
+        );
+      }
+      continue;
+    }
+
     const messages = diagnose(`${reference}\n${cp.verify.assert}`);
     const hasError = messages.length > 0;
     const pass = cp.verify.kind === "expect-error" ? hasError : !hasError;

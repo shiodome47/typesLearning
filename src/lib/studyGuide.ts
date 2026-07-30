@@ -33,11 +33,15 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
       howTo: "1件30分。「これが無いと、どんな入力で落ちるか」を口に出して説明できるまで。",
       accent: "border-red-300 bg-red-50 text-red-900",
     },
+    // ここがスクラッチ編。starter にコードが1行も無い唯一の章で、
+    // 「白紙のファイルを前にして何も書けない」という壁を越えるために置いている。
     tutorial: {
-      label: "順番に通す",
-      summary: "（TypeScript 側にはありません）",
-      howTo: "",
-      accent: "border-gray-300 bg-gray-50 text-gray-700",
+      label: "白紙から作る（スクラッチ編）",
+      summary:
+        "①〜⑥で ToDoアプリのロジックを、コードが1行も無い状態から組み立てます。他の章と違って穴埋めの枠がありません。構文を知っていても白紙から書けない、という壁はここでしか越えられません。",
+      howTo:
+        "1件30〜40分。⑥は手本を開かずに書き切ってください。開いたら閉じて、もう一度ゼロから書く。それができたら「作れる」ということです。",
+      accent: "border-rose-300 bg-rose-50 text-rose-900",
     },
     foundation: {
       label: "読んで理解する",
@@ -200,7 +204,14 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "ts-31-satisfies",
       "ts-32-generic-react-component",
     ],
-    tutorial: [],
+    tutorial: [
+      "sc-01-decide-the-type",
+      "sc-02-hold-the-list",
+      "sc-03-toggle-and-remove",
+      "sc-04-derive-dont-store",
+      "sc-05-save-and-load",
+      "sc-06-from-scratch",
+    ],
   },
   svelte: {
     // 中核構文4つ + 最重要の診断4つ。ここが「だいたい書ける」の本体
@@ -307,7 +318,21 @@ export interface RoadmapStep {
 
 export const ROADMAP: RoadmapStep[] = [
   {
-    title: "第1段階　AIの出力を疑えるようになる",
+    title: "第1段階　白紙から1本作る（スクラッチ編）",
+    source: { language: "typescript", tier: "tutorial" },
+    minutesPerLesson: 35,
+    what:
+      "①から⑥まで順番に通します。starter にコードが1行もありません。" +
+      "構文は知っているのに白紙から書けない、という壁を越えるための章です。" +
+      "⑥は手本を開かずに書き切ってください。",
+    outcome:
+      "要件だけを渡された状態から、ToDoアプリのロジック一式を自分で組み立てられる。" +
+      "「何から書き始めるか」を毎回自分で決められる。",
+    gate:
+      "⑥を手本なしで書き切れたら次へ。開いてしまったら、閉じてもう一度書いてください。",
+  },
+  {
+    title: "第2段階　AIの出力を疑えるようになる",
     source: { language: "typescript", tier: "focus" },
     minutesPerLesson: 30,
     what:
@@ -318,7 +343,7 @@ export const ROADMAP: RoadmapStep[] = [
     gate: "診断レッスンで、症状を読んだだけで原因の見当がつくようになったら次へ。",
   },
   {
-    title: "第2段階　AIが無くても画面が書けるようになる",
+    title: "第3段階　AIが無くても画面が書けるようになる",
     source: { language: "svelte", tier: "focus" },
     minutesPerLesson: 30,
     what:
@@ -329,7 +354,7 @@ export const ROADMAP: RoadmapStep[] = [
     gate: "$state と $derived を、手本を見ずに書けるようになったら次へ。",
   },
   {
-    title: "第3段階　1本のサイトを動かす",
+    title: "第4段階　1本のサイトを動かす",
     source: { language: "svelte", tier: "tutorial", prefix: "sk-" },
     minutesPerLesson: 40,
     what:
@@ -341,23 +366,23 @@ export const ROADMAP: RoadmapStep[] = [
       "「このファイルはブラウザに配られるか？」に、ファイル名を見て即答できるようになったら次へ。",
   },
   {
-    title: "第4段階　納品できる状態にする",
+    title: "第5段階　納品できる状態にする",
     source: { language: "svelte", tier: "tutorial", prefix: "gr-" },
     minutesPerLesson: 35,
     what:
       "ガードレール編を①から⑥まで通します。" +
-      "第3段階で目で見つけた地雷を、型と Lint に見つけさせる作業です。",
+      "第4段階で目で見つけた地雷を、型と Lint に見つけさせる作業です。",
     outcome:
       "型・Lint・CI が入り、AIが何行書いてきても機械が止めてくれる。人間が見るべきものが3点（秘密・認可・条件の向き）に絞られる。",
     gate: "Lint と型が「止められないもの」を3つ挙げられたら、教材は卒業です。",
   },
   {
-    title: "第5段階　公開してよいものを見分ける（Compact編）",
+    title: "第6段階　公開してよいものを見分ける（Compact編）",
     source: { language: "compact", tier: "tutorial" },
     minutesPerLesson: 35,
     what:
       "Compact 編を①から⑨まで順番に通します。" +
-      "第3・第4段階で扱った「秘密がブラウザに漏れる」話が、ここでは言語仕様そのものになります。" +
+      "第4・第5段階で扱った「秘密がブラウザに漏れる」話が、ここでは言語仕様そのものになります。" +
       "見る場所は毎回 `disclose(...)` の中身だけです。",
     outcome:
       "秘密そのものを渡さずに「条件を満たしている」ことだけを示せる。" +
@@ -366,7 +391,7 @@ export const ROADMAP: RoadmapStep[] = [
       "`disclose` の中身を指さして「なぜこれは公開してよいのか」を毎回言えるようになったら次へ。",
   },
   {
-    title: "第6段階　失敗と依存を型に出す（Effect編）",
+    title: "第7段階　失敗と依存を型に出す（Effect編）",
     source: { language: "effect", tier: "focus" },
     minutesPerLesson: 30,
     what:
@@ -380,11 +405,11 @@ export const ROADMAP: RoadmapStep[] = [
       "エラー型が `never` になっている箇所を見て、その理由を毎回言えるようになったら卒業です。",
   },
   {
-    title: "第7段階　自分の題材で1本作る",
+    title: "第8段階　自分の題材で1本作る",
     source: null,
     minutesPerLesson: 0,
     what:
-      "教材はここで終わりです。第3・第4段階で作ったものを土台に、自分の題材で1本作ってください。" +
+      "教材はここで終わりです。第4・第5段階で作ったものを土台に、自分の題材で1本作ってください。" +
       "ファイル構成も app.d.ts も eslint.config.js も、そのまま持っていけます。",
     outcome:
       "受託の相談を受けたときに、できる/できないを自分で判断できる。ここが本来の目的地です。",

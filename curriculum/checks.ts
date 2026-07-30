@@ -701,7 +701,8 @@ function runCheckInner(
   switch (spec.kind) {
     case "type":
     case "expect-error":
-      // TypeScript の採点は Monaco 側が担当する
+    case "run":
+      // TypeScript の採点（型診断・実行）は Monaco 側が担当する
       return { pass: false, message: "このエンジンでは判定できません" };
 
     // ── Compact ──
