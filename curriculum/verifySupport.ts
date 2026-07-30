@@ -284,3 +284,58 @@ declare module "effect" {
   ): D;
 }
 `;
+
+/**
+ * 実行採点（kind: "run"）の前提。
+ *
+ * 型だけを見る採点では「型は合うが何もしない」実装が通ってしまうため、
+ * アプリを組み立てる練習では実際に走らせて結果を確かめる。
+ * ブラウザ（Function）と Node（vm）の両方でこの前提を先に流し込むので、
+ * 採点結果は環境によらず一致する。
+ *
+ * localStorage をシムにしているのは、Node に存在しないだけでなく、
+ * ブラウザでも本物を使うと採点が前回の実行結果に影響されるため。
+ * 毎回空から始めたい。
+ */
+export const RUN_PRELUDE = `
+var __store = new Map();
+var localStorage = {
+  getItem: function (k) { return __store.has(k) ? __store.get(k) : null; },
+  setItem: function (k, v) { __store.set(String(k), String(v)); },
+  removeItem: function (k) { __store.delete(k); },
+  clear: function () { __store.clear(); },
+  get length() { return __store.size; },
+  key: function (i) { return Array.from(__store.keys())[i] ?? null; },
+};
+
+// CommonJS へ変換された学習者コードが exports を触っても落ちないようにする
+var exports = {};
+var module = { exports: exports };
+function require() { throw new Error("この練習では import / require は使いません"); }
+
+function __show(v) {
+  try { return JSON.stringify(v); } catch (e) { return String(v); }
+}
+
+/** 深い比較。ToDo のような素のデータを比べるのに使う */
+function assertEqual(actual, expected, label) {
+  var a = __show(actual);
+  var b = __show(expected);
+  if (a !== b) {
+    throw new Error(
+      (label ? label + ": " : "") + "期待 " + b + " だが " + a + " だった"
+    );
+  }
+}
+
+function assertTrue(cond, label) {
+  if (!cond) throw new Error(label || "条件を満たしていません");
+}
+
+/** 呼ぶと例外になることを確かめる */
+function assertThrows(fn, label) {
+  var threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  if (!threw) throw new Error((label || "例外が出るはず") + "だが、出なかった");
+}
+`;

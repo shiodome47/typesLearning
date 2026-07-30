@@ -9,7 +9,12 @@ import type { Monaco } from "@monaco-editor/react";
 import type { LessonLanguage } from "@curriculum/types";
 
 // 採点の前提はブラウザ/Node で共通の定義を使う（curriculum/verifySupport.ts）
-export { PRELUDE, REACT_SHIM, EFFECT_SHIM } from "@curriculum/verifySupport";
+export {
+  PRELUDE,
+  REACT_SHIM,
+  EFFECT_SHIM,
+  RUN_PRELUDE,
+} from "@curriculum/verifySupport";
 import { REACT_SHIM, EFFECT_SHIM } from "@curriculum/verifySupport";
 
 // ── Monaco インスタンスの共有 ───────────────────────────────
@@ -45,7 +50,10 @@ export function configureTypeScript(monaco: Monaco): void {
     target: ts.ScriptTarget.ES2020,
     jsx: ts.JsxEmit.ReactJSX,
     strict: true,
-    noEmit: true,
+    // 実行採点（runEngine）が getEmitOutput で JS を取り出すため false。
+    // true だと emitSkipped になり、変換結果が返ってこない。
+    // 型診断には影響しない。
+    noEmit: false,
     allowNonTsExtensions: true,
     moduleResolution: ts.ModuleResolutionKind.NodeJs,
     skipLibCheck: true,

@@ -22,6 +22,7 @@ export type Category =
   | "react-basics"   // React連携
   | "runtime-safety" // 型と実行時のズレ（境界の検証）
   | "code-review"    // コードレビュー・欠陥診断
+  | "scratch"        // 白紙から組み立てる（アプリ設計）
   // ── Svelte ──
   | "runes"          // リアクティビティ（$state / $derived / $effect）
   | "components"     // コンポーネント分割（$props / $bindable / snippet）
@@ -84,6 +85,19 @@ export type CheckSpec =
   | { kind: "type"; assert: string }
   /** TS: 型診断が「出れば」合格（不正な使い方を型で弾けている） */
   | { kind: "expect-error"; assert: string }
+  /**
+   * TS: 学習者コードを実行し、assert が例外を投げなければ合格。
+   *
+   * 型だけを見る採点では `(list, text) => list` のように
+   * 「型は合っているが何もしない」実装が通ってしまう。
+   * アプリを作る練習では動くかどうかが本質なので、実際に走らせる。
+   *
+   * assert では assertEqual / assertTrue / assertThrows が使える
+   * （curriculum/verifySupport.ts の RUN_PRELUDE）。
+   * localStorage も同じ前提のシムが入っているので、ブラウザと Node で
+   * 同じ結果になる。
+   */
+  | { kind: "run"; assert: string }
   /** Svelte: コンパイルが通れば合格 */
   | { kind: "svelte-compile"; file?: string }
   /** Svelte: AST クエリの結果が expect と一致すれば合格（既定 true） */

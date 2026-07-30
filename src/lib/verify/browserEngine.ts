@@ -11,6 +11,7 @@
 import type { Monaco } from "@monaco-editor/react";
 import type { CheckSpec, Checkpoint } from "@curriculum/types";
 import { PRELUDE, configureTypeScript } from "@/lib/monaco/setup";
+import { runOne, isRunSpec } from "./runEngine";
 
 export interface CheckResult {
   id: string;
@@ -88,6 +89,19 @@ export async function gradeCheckpoints(
   configureTypeScript(monaco);
   const results: CheckResult[] = [];
   for (const cp of checkpoints) {
+    // 実行採点は型診断では判定できないので、専用エンジンへ回す。
+    // 1レッスンの中で型と実行を混ぜられる（型で契約、実行で挙動を見る）。
+    if (cp.verify && isRunSpec(cp.verify)) {
+      const r = await runOne(monaco, learnerCode, cp.verify.assert);
+      results.push({
+        id: cp.id,
+        description: cp.description,
+        graded: true,
+        pass: r.pass,
+        message: r.message,
+      });
+      continue;
+    }
     // verify が無い、または Svelte 用の仕様なら、このエンジンでは採点しない
     if (!cp.verify || !isTypeScriptSpec(cp.verify)) {
       results.push({

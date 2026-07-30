@@ -21,6 +21,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   "react-basics": "React",
   "runtime-safety": "実行時安全",
   "code-review": "コード診断",
+  scratch: "白紙から作る",
   runes: "リアクティビティ",
   components: "コンポーネント",
   template: "テンプレート",
