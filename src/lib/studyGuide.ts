@@ -38,9 +38,9 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
     tutorial: {
       label: "白紙から作る（スクラッチ編）",
       summary:
-        "①〜⑥で ToDoアプリのロジックを、コードが1行も無い状態から組み立てます。他の章と違って穴埋めの枠がありません。構文を知っていても白紙から書けない、という壁はここでしか越えられません。",
+        "①〜⑪で ToDoアプリのロジックを、コードが1行も無い状態から組み立てます。他の章と違って穴埋めの枠がありません。各回で新しいことは1つだけです。構文を知っていても白紙から書けない、という壁はここでしか越えられません。",
       howTo:
-        "1件30〜40分。⑥は手本を開かずに書き切ってください。開いたら閉じて、もう一度ゼロから書く。それができたら「作れる」ということです。",
+        "1件10〜25分。前半は数分で終わります。⑪だけは手本を開かずに書き切ってください。開いたら閉じて、もう一度ゼロから書く。それができたら「作れる」ということです。",
       accent: "border-rose-300 bg-rose-50 text-rose-900",
     },
     foundation: {
@@ -205,12 +205,17 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "ts-32-generic-react-component",
     ],
     tutorial: [
-      "sc-01-decide-the-type",
-      "sc-02-hold-the-list",
-      "sc-03-toggle-and-remove",
-      "sc-04-derive-dont-store",
-      "sc-05-save-and-load",
-      "sc-06-from-scratch",
+      "sc-01-write-one-type",
+      "sc-02-return-an-object",
+      "sc-03-unique-id",
+      "sc-04-add-without-breaking",
+      "sc-05-toggle-one",
+      "sc-06-remove-one",
+      "sc-07-derive-dont-store",
+      "sc-08-save-and-load-basic",
+      "sc-09-survive-broken-json",
+      "sc-10-check-the-shape",
+      "sc-11-from-scratch",
     ],
   },
   svelte: {
@@ -322,14 +327,14 @@ export const ROADMAP: RoadmapStep[] = [
     source: { language: "typescript", tier: "tutorial" },
     minutesPerLesson: 35,
     what:
-      "①から⑥まで順番に通します。starter にコードが1行もありません。" +
+      "①から⑪まで順番に通します。starter にコードが1行もありません。" +
       "構文は知っているのに白紙から書けない、という壁を越えるための章です。" +
-      "⑥は手本を開かずに書き切ってください。",
+      "各回で新しいことは1つだけです。⑪だけは手本を開かずに書き切ってください。",
     outcome:
       "要件だけを渡された状態から、ToDoアプリのロジック一式を自分で組み立てられる。" +
       "「何から書き始めるか」を毎回自分で決められる。",
     gate:
-      "⑥を手本なしで書き切れたら次へ。開いてしまったら、閉じてもう一度書いてください。",
+      "⑪を手本なしで書き切れたら次へ。開いてしまったら、閉じてもう一度書いてください。",
   },
   {
     title: "第2段階　AIの出力を疑えるようになる",
