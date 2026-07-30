@@ -17,7 +17,8 @@
     "smoke:svelte": "node scripts/smoke-svelte.mjs",
     "smoke:sveltekit": "node scripts/smoke-sveltekit.mjs",
     "smoke:compact": "node scripts/smoke-compact.mjs",
-    "smoke:effect": "node scripts/smoke-effect.mjs"
+    "smoke:effect": "node scripts/smoke-effect.mjs",
+    "audit:markup": "node scripts/audit-markup.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

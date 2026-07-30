@@ -4,14 +4,68 @@
 import type { Why } from "@curriculum/types";
 import { InlineCodeText } from "./InlineCodeText";
 
+type Block =
+  | { type: "text"; content: string }
+  | { type: "code"; content: string };
+
+/**
+ * ``` で囲んだ部分をコードブロックとして切り出し、残りを本文として返す。
+ *
+ * why では「正しい書き方 / 間違った書き方」を数行並べて見せたい場面があり、
+ * インラインコード（`...`）は改行を含められないためフェンスを使っている。
+ * ここで扱わないと ``` が生のまま画面に出る。
+ *
+ * 段落分割（\n\n）より先にフェンスを取り出すのが要点。
+ * コードの中に空行があると、後から分割したのでは
+ * フェンスが2つの段落に割れて検出できなくなる。
+ */
+function parseBlocks(text: string): Block[] {
+  const blocks: Block[] = [];
+  const fence = /```[^\n]*\n([\s\S]*?)```/g;
+  let last = 0;
+
+  for (let m = fence.exec(text); m !== null; m = fence.exec(text)) {
+    if (m.index > last) {
+      blocks.push({ type: "text", content: text.slice(last, m.index) });
+    }
+    blocks.push({ type: "code", content: m[1].replace(/\s+$/, "") });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) {
+    blocks.push({ type: "text", content: text.slice(last) });
+  }
+  return blocks;
+}
+
 function Paragraphs({ text }: { text: string }) {
+  let key = 0;
   return (
     <>
-      {text.split("\n\n").map((para, i) => (
-        <p key={i} className={i > 0 ? "mt-2.5" : undefined}>
-          <InlineCodeText text={para} />
-        </p>
-      ))}
+      {parseBlocks(text).map((block) => {
+        if (block.type === "code") {
+          return (
+            <pre
+              key={key++}
+              className={[
+                "bg-gray-900 text-gray-100 rounded-lg px-3 py-2.5 my-2.5",
+                "text-[0.8em] font-mono leading-relaxed overflow-x-auto",
+              ].join(" ")}
+            >
+              <code>{block.content}</code>
+            </pre>
+          );
+        }
+        // 本文側だけを段落に割る
+        return block.content
+          .split("\n\n")
+          .map((para) => para.trim())
+          .filter((para) => para.length > 0)
+          .map((para) => (
+            <p key={key++} className="mt-2.5 first:mt-0">
+              <InlineCodeText text={para} />
+            </p>
+          ));
+      })}
     </>
   );
 }
