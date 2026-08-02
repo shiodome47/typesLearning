@@ -253,6 +253,257 @@ export const runStamp = () =>
 const dl2 = await grade();
 log(dl2.total > 0 && dl2.got === dl2.total, "ef-05: 依存を型に戻すと全合格", `${dl2.got} / ${dl2.total}`);
 
+
+// ── 後半（⑥〜⑩）──────────────────────────────────────────
+//
+// 見たいのは1点。シムに足した Fiber / Scope / Schema が
+// ブラウザの Monaco 側でも解決できているか。
+// Node の検証が通っても、ここが解決できなければ採点は動かない。
+
+/** starter では落ち、模範解答で全合格することを1レッスンぶん確かめる */
+async function bothSides(id, label, model) {
+  await open(id);
+  const before = await grade();
+  log(
+    before.total > 0 && before.got < before.total,
+    `${id}: 手を入れる前は不合格`,
+    `${before.got} / ${before.total}`
+  );
+  await replaceCode(model);
+  const after = await grade();
+  log(
+    after.total > 0 && after.got === after.total,
+    `${id}: ${label}`,
+    `${after.got} / ${after.total}`
+  );
+}
+
+await bothSides("ef-06-interruption", "fork / interrupt / join を書けると全合格", `import { Effect, Data, Fiber } from "effect";
+
+type Price = { symbol: string; value: number };
+
+class NetworkError extends Data.TaggedError("NetworkError")<{
+  status: number;
+}> {}
+
+const fetchPrice = (symbol: string): Effect.Effect<Price, NetworkError> =>
+  Effect.tryPromise({
+    try: () => fetch("/api/prices/" + symbol).then((r) => r.json() as Promise<Price>),
+    catch: () => new NetworkError({ status: 500 }),
+  });
+
+const start = (
+  symbol: string
+): Effect.Effect<Fiber.Fiber<Price, NetworkError>> =>
+  Effect.fork(fetchPrice(symbol));
+
+const stop = (fiber: Fiber.Fiber<Price, NetworkError>): Effect.Effect<void> =>
+  Fiber.interrupt(fiber);
+
+const wait = (
+  fiber: Fiber.Fiber<Price, NetworkError>
+): Effect.Effect<Price, NetworkError> => Fiber.join(fiber);
+
+export { start, stop, wait };
+`);
+
+await bothSides("ef-07-acquire-release", "Scope を型に出して閉じられると全合格", `import { Effect, Data, Scope } from "effect";
+
+type Conn = {
+  id: string;
+  query: (sql: string) => Promise<string[]>;
+};
+
+class ConnError extends Data.TaggedError("ConnError")<{}> {}
+
+declare const openConnection: () => Promise<Conn>;
+declare const closeConnection: (c: Conn) => Promise<void>;
+
+const connection: Effect.Effect<Conn, ConnError, Scope.Scope> =
+  Effect.acquireRelease(
+    Effect.tryPromise({
+      try: () => openConnection(),
+      catch: () => new ConnError({}),
+    }),
+    (c) => Effect.promise(() => closeConnection(c))
+  );
+
+const listTables = (): Effect.Effect<string[], ConnError, Scope.Scope> =>
+  Effect.gen(function* () {
+    const conn = yield* connection;
+    return yield* Effect.tryPromise({
+      try: () => conn.query("show tables"),
+      catch: () => new ConnError({}),
+    });
+  });
+
+const program = (): Effect.Effect<string[], ConnError> =>
+  Effect.scoped(listTables());
+
+const run = (): Promise<string[]> => Effect.runPromise(program());
+
+export { connection, listTables, program, run };
+`);
+
+await bothSides("ef-08-structured-concurrency", "同時本数と race を書けると全合格", `import { Effect, Data } from "effect";
+
+type User = { id: string; name: string };
+
+class NetworkError extends Data.TaggedError("NetworkError")<{
+  status: number;
+}> {}
+class MirrorError extends Data.TaggedError("MirrorError")<{}> {}
+
+const fetchUser = (id: string): Effect.Effect<User, NetworkError> =>
+  Effect.tryPromise({
+    try: () => fetch("/api/users/" + id).then((r) => r.json() as Promise<User>),
+    catch: () => new NetworkError({ status: 500 }),
+  });
+
+declare const fetchUserFromMirror: (
+  id: string
+) => Effect.Effect<User, MirrorError>;
+
+const fetchAll = (
+  ids: readonly string[]
+): Effect.Effect<User[], NetworkError> =>
+  Effect.all(
+    ids.map((id) => fetchUser(id)),
+    { concurrency: 5 }
+  );
+
+const allNames = (
+  ids: readonly string[]
+): Effect.Effect<string[], NetworkError> =>
+  Effect.map(fetchAll(ids), (users) => users.map((user) => user.name));
+
+const fastest = (
+  id: string
+): Effect.Effect<User, NetworkError | MirrorError> =>
+  Effect.race(fetchUser(id), fetchUserFromMirror(id));
+
+export { fetchAll, allNames, fastest };
+`);
+
+await bothSides("ef-09-schema-boundary", "境界で検証すると全合格", `import { Effect, Data, Schema, ParseResult } from "effect";
+
+type User = { id: string; name: string; age: number };
+
+class NetworkError extends Data.TaggedError("NetworkError")<{
+  status: number;
+}> {}
+
+const httpGet = (url: string): Effect.Effect<unknown, NetworkError> =>
+  Effect.tryPromise({
+    try: () => fetch(url).then((r) => r.json() as Promise<unknown>),
+    catch: () => new NetworkError({ status: 500 }),
+  });
+
+const UserSchema = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  age: Schema.Number,
+});
+
+const parseUser = (
+  input: unknown
+): Effect.Effect<User, ParseResult.ParseError> =>
+  Schema.decodeUnknown(UserSchema)(input);
+
+const getUser = (
+  id: string
+): Effect.Effect<User, NetworkError | ParseResult.ParseError> =>
+  Effect.gen(function* () {
+    const raw = yield* httpGet("/api/users/" + id);
+    return yield* parseUser(raw);
+  });
+
+export { UserSchema, parseUser, getUser };
+`);
+
+await bothSides("ef-10-diagnose-leak-and-runaway", "4件の欠陥を直すと全合格", `import { Effect, Data, Fiber, Scope, Schema, ParseResult } from "effect";
+
+type User = { id: string; name: string; age: number };
+
+type Conn = {
+  id: string;
+  query: (sql: string) => Promise<string[]>;
+};
+
+class NetworkError extends Data.TaggedError("NetworkError")<{
+  status: number;
+}> {}
+class ConnError extends Data.TaggedError("ConnError")<{}> {}
+
+declare const openConnection: () => Promise<Conn>;
+declare const closeConnection: (c: Conn) => Promise<void>;
+
+const httpGet = (url: string): Effect.Effect<unknown, NetworkError> =>
+  Effect.tryPromise({
+    try: () => fetch(url).then((r) => r.json() as Promise<unknown>),
+    catch: () => new NetworkError({ status: 500 }),
+  });
+
+const poll = (userId: string): Effect.Effect<void, NetworkError> =>
+  Effect.tryPromise({
+    try: () => fetch("/api/notify/" + userId).then(() => undefined),
+    catch: () => new NetworkError({ status: 500 }),
+  });
+
+const UserSchema = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  age: Schema.Number,
+});
+
+const connection: Effect.Effect<Conn, ConnError, Scope.Scope> =
+  Effect.acquireRelease(
+    Effect.tryPromise({
+      try: () => openConnection(),
+      catch: () => new ConnError({}),
+    }),
+    (c) => Effect.promise(() => closeConnection(c))
+  );
+
+const listTablesScoped = (): Effect.Effect<string[], ConnError, Scope.Scope> =>
+  Effect.gen(function* () {
+    const conn = yield* connection;
+    return yield* Effect.tryPromise({
+      try: () => conn.query("show tables"),
+      catch: () => new ConnError({}),
+    });
+  });
+
+const listTables = (): Effect.Effect<string[], ConnError> =>
+  Effect.scoped(listTablesScoped());
+
+const startPolling = (
+  userId: string
+): Effect.Effect<Fiber.Fiber<void, NetworkError>> => Effect.fork(poll(userId));
+
+const stopPolling = (
+  fiber: Fiber.Fiber<void, NetworkError>
+): Effect.Effect<void> => Fiber.interrupt(fiber);
+
+const fetchUser = (
+  id: string
+): Effect.Effect<User, NetworkError | ParseResult.ParseError> =>
+  Effect.gen(function* () {
+    const raw = yield* httpGet("/api/users/" + id);
+    return yield* Schema.decodeUnknown(UserSchema)(raw);
+  });
+
+const fetchAll = (
+  ids: readonly string[]
+): Effect.Effect<User[], NetworkError | ParseResult.ParseError> =>
+  Effect.all(
+    ids.map((id) => fetchUser(id)),
+    { concurrency: 10 }
+  );
+
+export { listTables, listTablesScoped, startPolling, stopPolling, fetchUser, fetchAll };
+`);
+
 console.log(`\n=== ${results.filter(Boolean).length}/${results.length} 合格 ===`);
 await b.close();
 process.exit(results.every(Boolean) ? 0 : 1);

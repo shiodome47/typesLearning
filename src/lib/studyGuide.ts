@@ -129,7 +129,7 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
   // そこだけを扱い、白紙練習ではなく診断に寄せる。
   effect: {
     focus: {
-      label: "順番に通す（5件だけ）",
+      label: "まずここ（①〜⑤）",
       summary:
         "Effect の全体を覚える必要はありません。見るのは「失敗と依存が型に出ているか」の1点だけです。①から⑤まで順番に通してください。②と⑤の診断が本命で、①③④はその準備です。",
       howTo:
@@ -142,10 +142,14 @@ export const TIER_INFO: Record<LessonLanguage, Record<Tier, TierInfo>> = {
       howTo: "",
       accent: "border-gray-300 bg-gray-50 text-gray-700",
     },
+    // ⑥〜⑩。①〜⑤が「型に出る」の話なのに対し、
+    // ここは「Promise では書けない」の話。Effect を使う実利はこちら側にある
     foundation: {
-      label: "読んで理解する",
-      summary: "（Effect 側にはありません。5件すべてが中核です）",
-      howTo: "",
+      label: "Promise では書けないもの（⑥〜⑩）",
+      summary:
+        "①〜⑤が終わってから来てください。中断・後始末・並行・境界の検証を扱います。どれも Promise では型に出せないもので、Effect を使う理由の本体はこちら側です。⑩の診断で4つまとめて回収します。",
+      howTo:
+        "1件30〜40分。順番に依存があるので飛ばさないこと（⑦は③、⑧は⑥を前提にしています）。",
       accent: "border-blue-300 bg-blue-50 text-blue-900",
     },
     reference: {
@@ -280,7 +284,8 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
     reference: [],
   },
   effect: {
-    // 5件すべてが中核。②と⑤の診断が本命で、①③④はその準備
+    // ①〜⑤は土台。「失敗と依存が型に出る」だけを扱う。
+    // ②と⑤の診断が本命で、①③④はその準備
     focus: [
       "ef-01-error-in-type",
       "ef-02-diagnose-swallowed-error",
@@ -288,7 +293,15 @@ export const TIER_LESSONS: Record<LessonLanguage, Record<Tier, string[]>> = {
       "ef-04-retry-timeout",
       "ef-05-diagnose-lost-dependency",
     ],
-    foundation: [],
+    // ⑥〜⑩は Promise では書けないもの。順番に依存関係がある
+    // （⑦の Scope は③の R、⑧の中断は⑥の Fiber を前提にしている）
+    foundation: [
+      "ef-06-interruption",
+      "ef-07-acquire-release",
+      "ef-08-structured-concurrency",
+      "ef-09-schema-boundary",
+      "ef-10-diagnose-leak-and-runaway",
+    ],
     tutorial: [],
     reference: [],
   },
@@ -410,7 +423,22 @@ export const ROADMAP: RoadmapStep[] = [
       "エラー型が `never` になっている箇所を見て、その理由を毎回言えるようになったら卒業です。",
   },
   {
-    title: "第8段階　自分の題材で1本作る",
+    title: "第8段階　Promise では書けないものを書く（Effect編 後半）",
+    source: { language: "effect", tier: "foundation" },
+    minutesPerLesson: 35,
+    what:
+      "Effect 編を⑥から⑩まで順番に通します。" +
+      "中断（走っている処理を止める）、後始末（開いたものを必ず閉じる）、" +
+      "並行（同時本数を決め、要らなくなったら全部止める）、境界（外から来た値を検証する）。" +
+      "どれも `Promise` では型に出せなかったものです。⑩の診断で4つまとめて回収します。",
+    outcome:
+      "「Effect を使うと何が嬉しいのか」を、機能名ではなく事故の名前で説明できる。" +
+      "リソースリークと止まらない処理を、動かす前に型から見つけられる。",
+    gate:
+      "⑩の欠陥4件を、ヒント無しで指させるようになったら卒業です。",
+  },
+  {
+    title: "第9段階　自分の題材で1本作る",
     source: null,
     minutesPerLesson: 0,
     what:

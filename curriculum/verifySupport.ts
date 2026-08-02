@@ -205,9 +205,82 @@ declare module "effect" {
       duration: DurationInput
     ): Effect<A, E | Cause.TimeoutException, R>;
 
+    /** 失敗しないと分かっている Promise を包む（後始末など） */
+    export function promise<A>(evaluate: () => Promise<A>): Effect<A, never, never>;
+
+    /** 指定時間待つ。TestClock を差せば実時間を待たずに進められる */
+    export function sleep(duration: DurationInput): Effect<void, never, never>;
+
+    /**
+     * 別の Fiber として走らせ、その Fiber を返す。
+     *
+     * 戻り値が Fiber なのが要点。Promise を受け取っても止める手段は無いが、
+     * Fiber を受け取れば止められる。「中断できるか」が型に出る。
+     */
+    export function fork<A, E, R>(
+      self: Effect<A, E, R>
+    ): Effect<Fiber.Fiber<A, E>, never, R>;
+
+    /**
+     * 取得と後始末を対にする。
+     *
+     * 後始末の約束が済んでいないことが R の Scope として型に出る。
+     * scoped を通すまで実行できないので、閉じ忘れが型で止まる。
+     * （本物の release は (a, exit) を受け取るが、ここでは a だけにしている）
+     */
+    export function acquireRelease<A, E, R>(
+      acquire: Effect<A, E, R>,
+      release: (a: A) => Effect<void, never, never>
+    ): Effect<A, E, R | Scope.Scope>;
+
+    /** 後始末の範囲を閉じる。ここで Scope が R から消える */
+    export function scoped<A, E, R>(
+      self: Effect<A, E, R>
+    ): Effect<A, E, Exclude<R, Scope.Scope>>;
+
+    /**
+     * まとめて走らせる。concurrency で同時本数を決める。
+     * 1つ失敗したら残りは中断される（放置されない）。
+     */
+    export function all<A, E, R>(
+      effects: readonly Effect<A, E, R>[],
+      options?: { readonly concurrency?: number | "unbounded" }
+    ): Effect<A[], E, R>;
+
+    /**
+     * 競争させ、先に終わった方を採る。
+     * 負けた方は中断される。エラー型は両方の和になる。
+     */
+    export function race<A, E, R, A2, E2, R2>(
+      self: Effect<A, E, R>,
+      that: Effect<A2, E2, R2>
+    ): Effect<A | A2, E | E2, R | R2>;
+
     /** 実行できるのは依存が解決済み（R = never）のときだけ */
     export function runPromise<A, E>(self: Effect<A, E, never>): Promise<A>;
     export function runSync<A, E>(self: Effect<A, E, never>): A;
+  }
+
+  /**
+   * 走っている処理そのもの。持っていれば止められる。
+   * 本物と同じく import { Fiber } from "effect" で Fiber.Fiber<A, E> と書く。
+   */
+  export namespace Fiber {
+    export interface Fiber<out A, out E = never> {
+      readonly _A: (_: never) => A;
+      readonly _E: (_: never) => E;
+    }
+    /** 中断する。（本物は Exit を返すが、ここでは void に単純化している） */
+    export function interrupt<A, E>(fiber: Fiber<A, E>): Effect.Effect<void>;
+    /** 終わるまで待つ。失敗はここで型に出る */
+    export function join<A, E>(fiber: Fiber<A, E>): Effect.Effect<A, E>;
+  }
+
+  /** 後始末をまとめる範囲。R に現れているうちは「閉じ忘れ」がありうる */
+  export namespace Scope {
+    export interface Scope {
+      readonly _tag: "Scope";
+    }
   }
 
   /** gen の中で yield* された Effect を型として拾うための目印 */
@@ -255,6 +328,47 @@ declare module "effect" {
   export class UnknownException {
     readonly _tag: "UnknownException";
     readonly error: unknown;
+  }
+
+  /**
+   * 形を「値」として書き、そこから型と検証の両方を出す仕組み。
+   *
+   * as は実行時に何もしないので、外から来た値が仕様どおりかは確かめられない。
+   * decodeUnknown は確かめた上で、失敗を Effect のエラー型に入れる。
+   *
+   * 本物の Schema は encode・JSON Schema 生成・変換なども持つが、
+   * ここでは「境界で検証し、失敗が型に出る」ことだけを扱う。
+   * （本物のフィールドは readonly になるが、ここでは読みやすさを優先している）
+   */
+  export namespace Schema {
+    export interface Schema<out A> {
+      readonly _A: (_: never) => A;
+    }
+    export namespace Schema {
+      /** スキーマから型を取り出す（本物と同じ Schema.Schema.Type<...>） */
+      export type Type<S> = S extends Schema<infer A> ? A : never;
+    }
+
+    export const String: Schema<string>;
+    export const Number: Schema<number>;
+    export const Boolean: Schema<boolean>;
+    export function Array<A>(item: Schema<A>): Schema<A[]>;
+    export function Struct<F extends Record<string, Schema<any>>>(
+      fields: F
+    ): Schema<{ [K in keyof F]: Schema.Type<F[K]> }>;
+
+    /** unknown を検証して取り込む。失敗はエラー型に出るので握りつぶせない */
+    export function decodeUnknown<A>(
+      schema: Schema<A>
+    ): (input: unknown) => Effect.Effect<A, ParseResult.ParseError>;
+  }
+
+  /** 検証に失敗したときのエラー。本物と同じ ParseResult 名前空間にある */
+  export namespace ParseResult {
+    export class ParseError {
+      readonly _tag: "ParseError";
+      readonly message: string;
+    }
   }
 
   export namespace Context {
