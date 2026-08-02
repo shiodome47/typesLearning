@@ -13,6 +13,11 @@
 // 存在し、それは見た目にはまったく正しく見える。
 // AI が最も自然にやってしまう修正でもあるので、診断の題材として強い。
 //
+// ①〜⑤で「失敗と依存が型に出る」を扱ったあと、⑥〜⑩では
+// Promise では書けないもの——中断・後始末・構造化並行性・境界の検証——を扱う。
+// ここが Effect を使う実利で、①〜⑤が土台になっている。
+// 順番は入れ替えられない（⑦の Scope は③の R、⑧の中断は⑥の Fiber を前提にしている）。
+//
 // 採点は TypeScript 側の型診断をそのまま使う（新しいエンジンは要らない）。
 // ただし effect 本体は数百ファイルあるのでブラウザに持ち込まず、
 // React シムと同じ考え方で最小の型シムを置いている
@@ -24,6 +29,11 @@ import { efLesson02 } from "./ef-02-diagnose-swallowed-error";
 import { efLesson03 } from "./ef-03-dependency-in-type";
 import { efLesson04 } from "./ef-04-retry-timeout";
 import { efLesson05 } from "./ef-05-diagnose-lost-dependency";
+import { efLesson06 } from "./ef-06-interruption";
+import { efLesson07 } from "./ef-07-acquire-release";
+import { efLesson08 } from "./ef-08-structured-concurrency";
+import { efLesson09 } from "./ef-09-schema-boundary";
+import { efLesson10 } from "./ef-10-diagnose-leak-and-runaway";
 import type { Lesson } from "../types";
 
 export const effectLessons: Lesson[] = [
@@ -32,4 +42,9 @@ export const effectLessons: Lesson[] = [
   efLesson03,
   efLesson04,
   efLesson05,
+  efLesson06,
+  efLesson07,
+  efLesson08,
+  efLesson09,
+  efLesson10,
 ];
